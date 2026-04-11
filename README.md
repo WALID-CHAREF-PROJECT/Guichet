@@ -1,15 +1,15 @@
 # TicketFlow (inspiration UX marocaine FR)
 
-Projet full-stack local inspiré d'une expérience billetterie moderne (sans reprise de marque/assets protégés), avec un frontend React/Vite et un backend Laravel 11 API.
+Projet full-stack local inspiré d'une expérience billetterie moderne (sans reprise de marque/assets protégés), avec un frontend React/Vite et un backend Laravel 12 API.
 
 ## Structure
 
 - `frontend/` : React + Vite + TypeScript + Tailwind CSS
-- `backend/` : Laravel 11 API (REST)
+- `backend/` : Laravel 12 API (REST)
 
 ## Pré-requis
 
-- PHP 8.2+
+- PHP 8.2+ (8.3 recommandé pour Laravel 12)
 - Composer
 - Node.js 20+
 - npm
@@ -102,5 +102,5 @@ VITE_API_BASE_URL=http://127.0.0.1:8000/api
 
 ## Notes auth
 
-Structure compatible Sanctum côté Laravel (package prévu dans `composer.json`).
 L'auth complète est volontairement mock/scaffold pour la démo locale.
+Vous pouvez ajouter Sanctum plus tard via `composer require laravel/sanctum` si nécessaire.
