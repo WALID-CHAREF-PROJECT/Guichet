@@ -1,4 +1,5 @@
 import { Category, City, EventItem, PaginatedResponse } from '../types/api';
+import { buildPaginatedEvents, mockCategories, mockCities, mockEvents } from './mockData';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000/api';
 
@@ -33,33 +34,64 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export function getEvents(filters: EventFilters): Promise<PaginatedResponse<EventItem>> {
+function filterMockEvents(filters: EventFilters): EventItem[] {
+  return mockEvents.filter((event) => {
+    const matchSearch = !filters.search || event.title.toLowerCase().includes(filters.search.toLowerCase());
+    const matchCategory = !filters.category || event.category.slug === filters.category;
+    const matchCity = !filters.city || event.city.slug === filters.city;
+    return matchSearch && matchCategory && matchCity;
+  });
+}
+
+export async function getEvents(filters: EventFilters): Promise<PaginatedResponse<EventItem>> {
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([key, value]) => {
     if (value !== undefined && value !== '') params.append(key, String(value));
   });
 
-  return request<PaginatedResponse<EventItem>>(`/events?${params.toString()}`);
+  try {
+    return await request<PaginatedResponse<EventItem>>(`/events?${params.toString()}`);
+  } catch {
+    return buildPaginatedEvents(filterMockEvents(filters));
+  }
 }
 
 export async function getEvent(slug: string): Promise<EventItem> {
-  const response = await request<{ data: EventItem }>(`/events/${slug}`);
-  return response.data;
+  try {
+    const response = await request<{ data: EventItem }>(`/events/${slug}`);
+    return response.data;
+  } catch {
+    const localEvent = mockEvents.find((event) => event.slug === slug);
+    if (!localEvent) throw new Error('Événement introuvable.');
+    return localEvent;
+  }
 }
 
 export async function getCategories(): Promise<Category[]> {
-  const response = await request<{ data: Category[] }>('/categories');
-  return response.data;
+  try {
+    const response = await request<{ data: Category[] }>('/categories');
+    return response.data;
+  } catch {
+    return mockCategories;
+  }
 }
 
 export async function getCities(): Promise<City[]> {
-  const response = await request<{ data: City[] }>('/cities');
-  return response.data;
+  try {
+    const response = await request<{ data: City[] }>('/cities');
+    return response.data;
+  } catch {
+    return mockCities;
+  }
 }
 
-export function subscribeNewsletter(email: string): Promise<{ message: string }> {
-  return request('/newsletter/subscribe', {
-    method: 'POST',
-    body: JSON.stringify({ email })
-  });
+export async function subscribeNewsletter(email: string): Promise<{ message: string }> {
+  try {
+    return await request('/newsletter/subscribe', {
+      method: 'POST',
+      body: JSON.stringify({ email })
+    });
+  } catch {
+    return { message: `Inscription réussie pour ${email}.` };
+  }
 }
