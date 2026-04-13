@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import EventCard from '../components/EventCard';
 import FiltersBar from '../components/FiltersBar';
 import NewsletterSection from '../components/NewsletterSection';
@@ -6,12 +7,13 @@ import { getCategories, getCities, getEvents } from '../services/api';
 import { Category, City, EventItem } from '../types/api';
 
 export default function EventsPage(): JSX.Element {
+  const [params] = useSearchParams();
   const [events, setEvents] = useState<EventItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [cities, setCities] = useState<City[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [filters, setFilters] = useState({ search: '', category: '', city: '', quickDate: '', sort: 'date_asc' });
+  const [filters, setFilters] = useState({ search: '', category: params.get('category') ?? '', city: '', quickDate: '', sort: 'date_asc' });
 
   useEffect(() => {
     getCategories().then(setCategories);
