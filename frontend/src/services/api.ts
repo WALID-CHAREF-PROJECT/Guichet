@@ -20,7 +20,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    throw new Error(`Erreur API (${response.status})`);
+    let errorMessage = `Erreur API (${response.status})`;
+    try {
+      const payload = await response.json() as { message?: string };
+      if (payload.message) errorMessage = payload.message;
+    } catch {
+      // keep fallback message when API body is not JSON
+    }
+    throw new Error(errorMessage);
   }
 
   return response.json() as Promise<T>;
