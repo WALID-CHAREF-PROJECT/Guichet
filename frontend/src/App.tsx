@@ -10,6 +10,8 @@ import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import NotFoundPage from './pages/NotFoundPage';
 import RegisterPage from './pages/RegisterPage';
+import VoyagesPage from './pages/VoyagesPage';
+import CinemaPage from './pages/CinemaPage';
 
 export default function App(): JSX.Element {
   return (
@@ -24,6 +26,8 @@ export default function App(): JSX.Element {
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/gallery" element={<GalleryPage />} />
+        <Route path="/voyages" element={<VoyagesPage />} />
+        <Route path="/cinema" element={<CinemaPage />} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

@@ -4,7 +4,9 @@ export const mockCategories: Category[] = [
   { id: 1, name: 'Concert', slug: 'concert' },
   { id: 2, name: 'Festival', slug: 'festival' },
   { id: 3, name: 'Sport', slug: 'sport' },
-  { id: 4, name: 'Humour', slug: 'humour' }
+  { id: 4, name: 'Humour', slug: 'humour' },
+  { id: 5, name: 'Voyages', slug: 'voyages' },
+  { id: 6, name: 'Cinéma', slug: 'cinema' }
 ];
 
 export const mockCities: City[] = [
