@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { getUsers, saveUsers, setCurrentUser } from '../services/storage';
 
 export default function RegisterPage(): JSX.Element {
   const navigate = useNavigate();
@@ -11,8 +12,7 @@ export default function RegisterPage(): JSX.Element {
   function onSubmit(event: FormEvent): void {
     event.preventDefault();
 
-    const rawUsers = localStorage.getItem('ticketflow_users');
-    const users = rawUsers ? JSON.parse(rawUsers) as Array<{ email: string; password: string; name: string }> : [];
+    const users = getUsers();
     const alreadyExists = users.some((user) => user.email === email.trim());
 
     if (alreadyExists) {
@@ -21,8 +21,9 @@ export default function RegisterPage(): JSX.Element {
     }
 
     users.push({ name: name.trim(), email: email.trim(), password });
-    localStorage.setItem('ticketflow_users', JSON.stringify(users));
-    localStorage.setItem('ticketflow_current_user', JSON.stringify({ name: name.trim(), email: email.trim() }));
+    saveUsers(users);
+    setCurrentUser({ name: name.trim(), email: email.trim() });
+    window.dispatchEvent(new Event('ticketflow:update'));
     navigate('/events');
   }
 

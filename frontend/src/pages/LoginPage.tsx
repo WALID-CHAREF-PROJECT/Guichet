@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { getUsers, setCurrentUser } from '../services/storage';
 
 export default function LoginPage(): JSX.Element {
   const navigate = useNavigate();
@@ -9,8 +10,7 @@ export default function LoginPage(): JSX.Element {
 
   function onSubmit(event: FormEvent): void {
     event.preventDefault();
-    const rawUsers = localStorage.getItem('ticketflow_users');
-    const users = rawUsers ? JSON.parse(rawUsers) as Array<{ email: string; password: string; name: string }> : [];
+    const users = getUsers();
     const foundUser = users.find((user) => user.email === email.trim() && user.password === password);
 
     if (!foundUser) {
@@ -18,7 +18,8 @@ export default function LoginPage(): JSX.Element {
       return;
     }
 
-    localStorage.setItem('ticketflow_current_user', JSON.stringify(foundUser));
+    setCurrentUser(foundUser);
+    window.dispatchEvent(new Event('ticketflow:update'));
     navigate('/events');
   }
 

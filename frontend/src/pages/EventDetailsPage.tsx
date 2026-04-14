@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getEvent } from '../services/api';
+import { addToCart } from '../services/storage';
 import { EventItem } from '../types/api';
 
 export default function EventDetailsPage(): JSX.Element {
@@ -32,7 +33,16 @@ export default function EventDetailsPage(): JSX.Element {
         <p><strong>Prix:</strong> {event.is_free ? 'Gratuit' : `${event.price_mad} MAD`}</p>
       </div>
       <p className="leading-7">{event.description}</p>
-      <button disabled={event.is_sold_out} className="rounded bg-brand-600 px-5 py-2 text-white disabled:cursor-not-allowed disabled:bg-slate-400">{event.is_sold_out ? 'Complet' : 'Ajouter au panier'}</button>
+      <button
+        disabled={event.is_sold_out}
+        onClick={() => {
+          addToCart(event);
+          window.dispatchEvent(new Event('ticketflow:update'));
+        }}
+        className="rounded bg-brand-600 px-5 py-2 text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+      >
+        {event.is_sold_out ? 'Complet' : 'Ajouter au panier'}
+      </button>
     </article>
   );
 }
