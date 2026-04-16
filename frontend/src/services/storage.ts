@@ -4,6 +4,7 @@ export interface StoredUser {
   name: string;
   email: string;
   password?: string;
+  role?: 'user' | 'admin';
 }
 
 export interface CartItem {
@@ -14,10 +15,22 @@ export interface CartItem {
 const USERS_KEY = 'ticketflow_users';
 const CURRENT_USER_KEY = 'ticketflow_current_user';
 const CART_KEY = 'ticketflow_cart';
+const DEFAULT_ADMIN: StoredUser = {
+  name: 'Project Admin',
+  email: 'admin@guichet.ma',
+  password: 'Admin@123',
+  role: 'admin'
+};
 
 export function getUsers(): StoredUser[] {
   const rawUsers = localStorage.getItem(USERS_KEY);
-  return rawUsers ? JSON.parse(rawUsers) as StoredUser[] : [];
+  const parsedUsers = rawUsers ? JSON.parse(rawUsers) as StoredUser[] : [];
+  if (!parsedUsers.some((user) => user.email === DEFAULT_ADMIN.email)) {
+    const seededUsers = [DEFAULT_ADMIN, ...parsedUsers];
+    saveUsers(seededUsers);
+    return seededUsers;
+  }
+  return parsedUsers;
 }
 
 export function saveUsers(users: StoredUser[]): void {

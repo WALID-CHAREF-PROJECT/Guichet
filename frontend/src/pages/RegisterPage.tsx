@@ -20,7 +20,7 @@ export default function RegisterPage(): JSX.Element {
       return;
     }
 
-    users.push({ name: name.trim(), email: email.trim(), password });
+    users.push({ name: name.trim(), email: email.trim(), password, role: 'user' });
     saveUsers(users);
     setCurrentUser({ name: name.trim(), email: email.trim() });
     window.dispatchEvent(new Event('ticketflow:update'));
