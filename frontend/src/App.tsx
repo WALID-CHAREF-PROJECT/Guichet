@@ -12,6 +12,8 @@ import NotFoundPage from './pages/NotFoundPage';
 import RegisterPage from './pages/RegisterPage';
 import VoyagesPage from './pages/VoyagesPage';
 import CinemaPage from './pages/CinemaPage';
+import SportPage from './pages/SportPage';
+import VoyageDetailsPage from './pages/VoyageDetailsPage';
 
 export default function App(): JSX.Element {
   return (
@@ -27,7 +29,9 @@ export default function App(): JSX.Element {
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/gallery" element={<GalleryPage />} />
         <Route path="/voyages" element={<VoyagesPage />} />
+        <Route path="/voyages/:slug" element={<VoyageDetailsPage />} />
         <Route path="/cinema" element={<CinemaPage />} />
+        <Route path="/sport" element={<SportPage />} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

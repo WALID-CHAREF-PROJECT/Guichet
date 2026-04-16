@@ -14,28 +14,32 @@ export default function NewsletterSection(): JSX.Element {
       const res = await subscribeNewsletter(email.trim());
       setMessage(res.message);
       setEmail('');
-    } catch (error) {
-      const fallbackMessage = 'Erreur lors de la souscription.';
-      if (error instanceof Error) {
-        setMessage(error.message || fallbackMessage);
-      } else {
-        setMessage(fallbackMessage);
-      }
+    } catch {
+      setMessage('Ce champ est obligatoire.');
     } finally {
       setIsSubmitting(false);
     }
   }
 
   return (
-    <section className="rounded-3xl bg-gradient-to-r from-blue-50 to-orange-50 p-8">
-      <h2 className="text-2xl font-semibold text-slate-900">Recevez les nouveautés TicketFlow</h2>
+    <section className="rounded-xl border border-white/10 bg-white/5 p-5">
+      <h2 className="text-lg font-bold uppercase">Restez informés!</h2>
+      <p className="mt-1 text-xs text-slate-300">Soyez le premier à profiter d’offres exclusives et à être informé des dernières nouveautés.</p>
       <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-3 md:flex-row">
-        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Votre email" className="flex-1 rounded border border-blue-200 px-3 py-2" />
-        <button type="submit" disabled={isSubmitting} className="rounded bg-orange-500 px-5 py-2 font-medium text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-orange-300">
-          {isSubmitting ? 'Inscription...' : "S'inscrire"}
+        <div className="flex-1">
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Entrer votre adresse email"
+            className="w-full rounded-full border border-white/10 bg-[#051b48] px-4 py-2 text-sm placeholder:text-slate-400"
+          />
+          {message && <p className="mt-2 text-xs text-orange-400">{message}</p>}
+        </div>
+        <button type="submit" disabled={isSubmitting} className="rounded-full border border-orange-400 px-6 py-2 text-sm font-semibold text-white">
+          {isSubmitting ? '...' : "S'inscrire"}
         </button>
       </form>
-      {message && <p className="mt-2 text-sm text-slate-600">{message}</p>}
     </section>
   );
 }
