@@ -1,26 +1,23 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { getCartCount, getCurrentUser, setCurrentUser, StoredUser } from '../services/storage';
+import { Link, NavLink } from 'react-router-dom';
+import { getCartCount, getCurrentUser } from '../services/storage';
 
-const navLinks = [
-  { to: '/', label: 'Accueil' },
-  { to: '/events', label: 'Événements' },
-  { to: '/voyages', label: 'Voyages' },
+const mainTabs = [
+  { to: '/events', label: 'Billetterie' },
+  { to: '/events', label: 'Store' },
+  { to: '/voyages', label: 'Voyage' },
   { to: '/cinema', label: 'Cinéma' },
-  { to: '/gallery', label: 'Galerie' },
-  { to: '/about', label: 'À propos' },
-  { to: '/contact', label: 'Contact' }
+  { to: '/sport', label: 'Sport' }
 ];
 
 export default function Header(): JSX.Element {
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [cartCount, setCartCount] = useState(0);
-  const [user, setUser] = useState<StoredUser | null>(null);
+  const [user, setUser] = useState<string | null>(null);
 
   useEffect(() => {
     const sync = (): void => {
       setCartCount(getCartCount());
-      setUser(getCurrentUser());
+      setUser(getCurrentUser()?.name ?? null);
     };
 
     sync();
@@ -32,52 +29,46 @@ export default function Header(): JSX.Element {
     };
   }, []);
 
-  const logout = (): void => {
-    setCurrentUser(null);
-    window.dispatchEvent(new Event('ticketflow:update'));
-  };
-
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur">
-      <div className="mx-auto max-w-7xl px-4 py-3">
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#031438]/90 backdrop-blur">
+      <div className="mx-auto max-w-[1700px] space-y-4 px-4 py-4 lg:px-8">
         <div className="flex items-center justify-between">
-          <Link to="/" className="text-2xl font-bold text-brand-600">TicketFlow</Link>
-
-          <nav className="hidden items-center gap-4 md:flex">
-            {navLinks.map((link) => <Link key={link.to} to={link.to} className="hover:text-brand-600">{link.label}</Link>)}
-            <Link to="/cart" className="relative rounded border px-3 py-1" aria-label="Panier">🛒
-              <span className="absolute -right-2 -top-2 rounded-full bg-orange-500 px-1.5 text-xs text-white">{cartCount}</span>
+          <Link to="/" className="text-5xl font-black leading-none text-white">Guichet</Link>
+          <div className="hidden items-center gap-2 md:flex">
+            <button className="rounded border border-white/30 px-2 py-0.5 text-xs">FR</button>
+            <button className="rounded border border-white/20 bg-white/10 px-2 py-0.5 text-xs">MA</button>
+            <Link to="/cart" className="relative rounded-full bg-white/10 px-3 py-1 text-sm">🛒
+              <span className="absolute -right-2 -top-2 rounded-full bg-orange-500 px-1.5 text-[10px] font-semibold text-white">{cartCount}</span>
             </Link>
-            {user ? (
-              <>
-                <span className="text-sm text-slate-600">Bonjour, {user.name}</span>
-                <button onClick={logout} className="rounded border px-3 py-1">Déconnexion</button>
-              </>
-            ) : (
-              <>
-                <Link to="/login" className="rounded border px-3 py-1">Connexion</Link>
-                <Link to="/register" className="rounded bg-orange-500 px-3 py-1 text-white transition hover:bg-orange-600">S'inscrire</Link>
-              </>
-            )}
-          </nav>
-
-          <button onClick={() => setMobileOpen((value) => !value)} className="rounded border px-2 py-1 md:hidden" aria-label="Menu mobile">☰</button>
+            <button className="rounded-full bg-white/10 px-3 py-1 text-sm">☰</button>
+            {user && <span className="rounded bg-white/10 px-3 py-1 text-xs">{user}</span>}
+          </div>
         </div>
 
-        {mobileOpen && (
-          <nav className="mt-3 grid gap-2 border-t pt-3 md:hidden">
-            {navLinks.map((link) => <Link key={link.to} to={link.to} onClick={() => setMobileOpen(false)} className="rounded px-2 py-1 hover:bg-slate-100">{link.label}</Link>)}
-            <Link to="/cart" onClick={() => setMobileOpen(false)} className="rounded px-2 py-1 hover:bg-slate-100">Panier ({cartCount})</Link>
-            {user ? (
-              <button onClick={() => { logout(); setMobileOpen(false); }} className="rounded border px-3 py-1 text-left">Déconnexion</button>
-            ) : (
-              <>
-                <Link to="/login" onClick={() => setMobileOpen(false)} className="rounded border px-3 py-1">Connexion</Link>
-                <Link to="/register" onClick={() => setMobileOpen(false)} className="rounded bg-orange-500 px-3 py-1 text-white">S'inscrire</Link>
-              </>
-            )}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <nav className="flex flex-wrap gap-2">
+            {mainTabs.map((tab) => (
+              <NavLink
+                key={tab.to}
+                to={tab.to}
+                className={({ isActive }) =>
+                  `rounded-md border px-4 py-2 text-sm font-semibold transition ${
+                    isActive ? 'border-white bg-white text-[#04143d]' : 'border-white/20 bg-white/5 text-white hover:bg-white/10'
+                  }`
+                }
+              >
+                {tab.label}
+              </NavLink>
+            ))}
           </nav>
-        )}
+          <div className="flex w-full items-center gap-2 md:w-auto">
+            <input
+              placeholder="Cherchez ce que vous voulez"
+              className="w-full rounded-full border border-white/10 bg-[#112957] px-4 py-2 text-sm placeholder:text-slate-300 md:w-80"
+            />
+            <button className="rounded-full border border-white/20 bg-white/10 p-2">⚙️</button>
+          </div>
+        </div>
       </div>
     </header>
   );

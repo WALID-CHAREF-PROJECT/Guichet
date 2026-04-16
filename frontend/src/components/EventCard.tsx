@@ -11,21 +11,21 @@ export default function EventCard({ event }: Props): JSX.Element {
   };
 
   return (
-    <article className="overflow-hidden rounded-2xl border bg-white shadow-sm">
-      <div className="relative h-40 bg-slate-200">
+    <article className="overflow-hidden rounded-2xl border border-white/10 bg-[#041743] shadow-sm">
+      <div className="relative h-52 bg-slate-200">
         <img src={event.image_url} alt={event.title} className="h-full w-full object-cover" />
         {event.badge && <span className="absolute left-3 top-3 rounded-full bg-slate-900/80 px-3 py-1 text-xs text-white">{event.badge}</span>}
       </div>
       <div className="space-y-2 p-4">
-        <p className="text-xs uppercase text-slate-500">{event.organizer}</p>
+        <p className="text-xs uppercase text-slate-400">{event.organizer}</p>
         <h3 className="line-clamp-2 font-semibold">{event.title}</h3>
-        <p className="text-sm text-slate-600">{event.venue} · {event.city.name}</p>
-        <p className="text-sm text-slate-600">{event.starts_at_human}</p>
+        <p className="text-sm text-slate-300">{event.venue} · {event.city.name}</p>
+        <p className="text-sm text-slate-300">{event.starts_at_human}</p>
         <div className="flex items-center justify-between gap-2">
-          <span className="font-semibold text-brand-600">{event.is_free ? 'Gratuit' : `${event.price_mad} MAD`}</span>
+          <span className="font-semibold text-orange-400">{event.is_free ? 'Gratuit' : `${event.price_mad} MAD`}</span>
           <div className="flex items-center gap-2">
-            <button onClick={handleAddToCart} className="rounded bg-orange-500 px-3 py-1 text-sm font-medium text-white hover:bg-orange-600">Ajouter</button>
-            <Link to={`/events/${event.slug}`} className="text-sm font-medium text-brand-600">Voir</Link>
+            <button onClick={handleAddToCart} className="rounded-full bg-orange-500 px-3 py-1 text-sm font-medium text-white hover:bg-orange-600">Ajouter</button>
+            <Link to={`/events/${event.slug}`} className="rounded-full border border-white/40 px-3 py-1 text-sm font-medium">Voir</Link>
           </div>
         </div>
       </div>
