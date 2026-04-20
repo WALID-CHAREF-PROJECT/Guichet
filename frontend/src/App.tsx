@@ -15,12 +15,14 @@ import CinemaPage from './pages/CinemaPage';
 import SportPage from './pages/SportPage';
 import VoyageDetailsPage from './pages/VoyageDetailsPage';
 import AdminPage from './pages/AdminPage';
+import BilleteriePage from './pages/BilleteriePage';
 
 export default function App(): JSX.Element {
   return (
     <Routes>
       <Route element={<MainLayout />}>
         <Route path="/" element={<HomePage />} />
+        <Route path="/billeterie" element={<BilleteriePage />} />
         <Route path="/events" element={<EventsPage />} />
         <Route path="/events/:slug" element={<EventDetailsPage />} />
         <Route path="/cart" element={<CartPage />} />

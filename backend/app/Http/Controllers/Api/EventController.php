@@ -29,16 +29,19 @@ class EventController extends Controller
 
         if ($quick = $request->string('quick_date')->toString()) {
             $start = Carbon::now()->startOfDay();
-            $end = match ($quick) {
-                'today' => Carbon::now()->endOfDay(),
-                'weekend' => Carbon::now()->next('Saturday')->endOfDay(),
-                '7d' => Carbon::now()->addDays(7)->endOfDay(),
-                '30d' => Carbon::now()->addDays(30)->endOfDay(),
-                default => null,
+            [$rangeStart, $rangeEnd] = match ($quick) {
+                'today' => [Carbon::now()->startOfDay(), Carbon::now()->endOfDay()],
+                'tomorrow' => [Carbon::tomorrow()->startOfDay(), Carbon::tomorrow()->endOfDay()],
+                'week' => [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()],
+                'month' => [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()],
+                'weekend' => [Carbon::now()->startOfDay(), Carbon::now()->next('Saturday')->endOfDay()],
+                '7d' => [$start, Carbon::now()->addDays(7)->endOfDay()],
+                '30d' => [$start, Carbon::now()->addDays(30)->endOfDay()],
+                default => [null, null],
             };
 
-            if ($end) {
-                $query->whereBetween('starts_at', [$start, $end]);
+            if ($rangeStart && $rangeEnd) {
+                $query->whereBetween('starts_at', [$rangeStart, $rangeEnd]);
             }
         }
 
