@@ -11,7 +11,7 @@ export default function Header(): JSX.Element {
 
   const mainTabs = [
     { to: '/billeterie', label: translate('ticketing') },
-    { to: '/events', label: translate('store') },
+    { to: '/store', label: translate('store') },
     { to: '/voyages', label: translate('travel') },
     { to: '/cinema', label: translate('cinema') },
     { to: '/sport', label: translate('sport') }
