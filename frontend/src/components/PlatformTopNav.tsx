@@ -1,16 +1,22 @@
+import { Link } from 'react-router-dom';
 import ServiceTabs from './ServiceTabs';
 import { ServiceKey } from '../services/platformData';
+import { useCart } from '../contexts/CartContext';
 
 export default function PlatformTopNav({ active, showCategories = false }: { active: ServiceKey; showCategories?: boolean }): JSX.Element {
+  const { totals } = useCart();
+
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-[#030d2a]/95 backdrop-blur">
       <div className="mx-auto w-full max-w-[1800px] px-4 py-4 lg:px-8">
         <div className="flex items-center justify-between gap-4 pb-4">
-          <div className="text-4xl font-black tracking-tight text-white">Guichet</div>
+          <Link to="/ma-fr/billeterie" className="text-4xl font-black tracking-tight text-white">Guichet</Link>
           <div className="flex items-center gap-2">
             <button className="rounded-full border border-white/25 px-2.5 py-1 text-xs font-semibold text-white hover:bg-white/10">FR</button>
             <button className="rounded-full border border-white/25 px-2.5 py-1 text-xs font-semibold text-white/75 hover:bg-white/10">MA</button>
-            <button className="rounded-full border border-white/20 bg-white/10 p-2.5 text-sm text-white hover:bg-white/20">🛒</button>
+            <Link to="/ma-fr/panier" className="relative rounded-full border border-white/20 bg-white/10 p-2.5 text-sm text-white hover:bg-white/20">🛒
+              <span className="absolute -right-2 -top-2 rounded-full bg-orange-500 px-1.5 text-[10px] font-bold">{totals.totalQuantity}</span>
+            </Link>
             <button className="rounded-full border border-white/20 bg-white/10 p-2.5 text-sm text-white hover:bg-white/20">☰</button>
           </div>
         </div>

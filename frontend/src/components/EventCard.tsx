@@ -1,13 +1,29 @@
 import { Link } from 'react-router-dom';
-import { addToCart } from '../services/storage';
 import { EventItem } from '../types/api';
+import { useCart } from '../contexts/CartContext';
+import { uid } from '../services/commerce/utils';
 
 interface Props { event: EventItem }
 
 export default function EventCard({ event }: Props): JSX.Element {
+  const { addItems } = useCart();
+
   const handleAddToCart = (): void => {
-    addToCart(event);
-    window.dispatchEvent(new Event('ticketflow:update'));
+    addItems([
+      {
+        id: uid('cart'),
+        productType: 'event_ticket',
+        slug: event.slug,
+        title: event.title,
+        image: event.image_url,
+        date: event.starts_at_human,
+        location: `${event.venue} · ${event.city.name}`,
+        ticketType: 'Normal',
+        quantity: 1,
+        unitPrice: event.price_mad,
+        subtotal: event.price_mad
+      }
+    ]);
   };
 
   return (
