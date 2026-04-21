@@ -40,7 +40,7 @@ export default function EventDetailsPage(): JSX.Element {
           </div>
           <div className="mb-5 flex items-center gap-3">
             <img src={event.organizerLogo} alt={event.organizer} className="h-10 w-10 rounded-full object-cover" />
-            <p className="text-sm text-slate-300">{event.organizer}</p>
+            <Link to={`/ma-fr/event/producer/${event.organizer.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`} className="text-sm text-slate-200 underline">{event.organizer}</Link>
           </div>
           <h1 className="text-4xl font-bold leading-tight">{event.title}</h1>
           <p className="mt-4 text-slate-300">📍 {event.location}</p>
