@@ -1,4 +1,6 @@
 import { EventItem } from '../types/api';
+import { CartItem } from '../types/commerce';
+import { uid } from './commerce/utils';
 
 export interface StoredUser {
   name: string;
@@ -7,14 +9,9 @@ export interface StoredUser {
   role?: 'user' | 'admin';
 }
 
-export interface CartItem {
-  event: EventItem;
-  quantity: number;
-}
-
 const USERS_KEY = 'ticketflow_users';
 const CURRENT_USER_KEY = 'ticketflow_current_user';
-const CART_KEY = 'ticketflow_cart';
+const CART_KEY = 'ticketflow_cart_v2';
 const DEFAULT_ADMIN: StoredUser = {
   name: 'Project Admin',
   email: 'admin@guichet.ma',
@@ -65,13 +62,18 @@ export function getCartCount(): number {
 
 export function addToCart(event: EventItem): void {
   const cart = getCart();
-  const existing = cart.find((item) => item.event.id === event.id);
-
-  if (existing) {
-    existing.quantity += 1;
-  } else {
-    cart.push({ event, quantity: 1 });
-  }
-
+  cart.push({
+    id: uid('cart'),
+    productType: 'event_ticket',
+    slug: event.slug,
+    title: event.title,
+    image: event.image_url,
+    date: event.starts_at_human,
+    location: `${event.venue}, ${event.city.name}`,
+    quantity: 1,
+    ticketType: 'Normal',
+    unitPrice: event.price_mad,
+    subtotal: event.price_mad
+  });
   saveCart(cart);
 }

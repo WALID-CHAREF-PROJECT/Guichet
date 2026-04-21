@@ -1,10 +1,15 @@
 import { Link, useParams } from 'react-router-dom';
 import PlatformTopNav from '../components/PlatformTopNav';
 import { getEventBySlug } from '../services/platformData';
+import TicketSelectionModal from '../components/commerce/TicketSelectionModal';
+import SeatPlanModal from '../components/commerce/SeatPlanModal';
+import { useState } from 'react';
 
 export default function EventDetailsPage(): JSX.Element {
   const { slug = '' } = useParams();
   const event = getEventBySlug(slug);
+  const [ticketModalOpen, setTicketModalOpen] = useState(false);
+  const [seatModalOpen, setSeatModalOpen] = useState(false);
 
   if (!event) {
     return (
@@ -42,14 +47,15 @@ export default function EventDetailsPage(): JSX.Element {
           <p className="mt-2 text-slate-300">🗓️ {event.date} · {event.time}</p>
           <hr className="my-6 border-white/10" />
           <p className="leading-7 text-slate-200">{event.description}</p>
-          <ul className="mt-5 list-disc space-y-2 pl-5 text-sm text-slate-300">
-            <li>Entrée numérique sécurisée.</li>
-            <li>Support client 7j/7.</li>
-            <li>Places et tarifs selon disponibilité.</li>
-          </ul>
-          <button className="mt-8 w-full rounded-full bg-white px-6 py-4 text-lg font-bold text-[#03143a]">Acheter maintenant · {event.price}</button>
+          <div className="mt-8 grid gap-3 sm:grid-cols-2">
+            <button onClick={() => setTicketModalOpen(true)} className="w-full rounded-full bg-white px-6 py-4 text-lg font-bold text-[#03143a]">Acheter maintenant · {event.price}</button>
+            <button onClick={() => setSeatModalOpen(true)} className="w-full rounded-full border border-white/30 bg-white/5 px-6 py-4 text-lg font-bold">Acheter via plan</button>
+          </div>
         </article>
       </section>
+
+      <TicketSelectionModal event={event} open={ticketModalOpen} onClose={() => setTicketModalOpen(false)} />
+      <SeatPlanModal event={event} open={seatModalOpen} onClose={() => setSeatModalOpen(false)} />
     </div>
   );
 }
