@@ -4,7 +4,7 @@ import Header from '../components/Header';
 
 export default function MainLayout(): JSX.Element {
   const { pathname } = useLocation();
-  const isTicketingHome = pathname === '/billeterie';
+  const isTicketingHome = pathname === '/ma-fr/billeterie' || pathname.startsWith('/ma-fr/event');
 
   if (isTicketingHome) {
     return (

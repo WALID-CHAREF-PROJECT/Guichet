@@ -10,11 +10,11 @@ export default function Header(): JSX.Element {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const mainTabs = [
-    { to: '/billeterie', label: translate('ticketing') },
-    { to: '/store', label: translate('store') },
-    { to: '/voyages', label: translate('travel') },
-    { to: '/cinema', label: translate('cinema') },
-    { to: '/sport', label: translate('sport') }
+    { to: '/ma-fr/billeterie', label: translate('ticketing') },
+    { to: '/ma-fr/store', label: translate('store') },
+    { to: '/ma-fr/voyage', label: translate('travel') },
+    { to: '/ma-fr/cinema', label: translate('cinema') },
+    { to: '/ma-fr/sport', label: translate('sport') }
   ];
 
   useEffect(() => {
