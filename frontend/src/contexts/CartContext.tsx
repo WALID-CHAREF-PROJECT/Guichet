@@ -1,7 +1,6 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import { CartItem, CartTotals } from '../types/commerce';
-
-const CART_KEY = 'ticketflow_cart_v2';
+import { getCurrentUser, getUserState, saveUserState } from '../services/storage';
 
 interface CartContextValue {
   items: CartItem[];
@@ -15,14 +14,18 @@ interface CartContextValue {
 
 const CartContext = createContext<CartContextValue | null>(null);
 
-function readStoredCart(): CartItem[] {
-  const raw = localStorage.getItem(CART_KEY);
-  if (!raw) return [];
-  try {
-    return JSON.parse(raw) as CartItem[];
-  } catch {
-    return [];
-  }
+function readUserCart(): CartItem[] {
+  const current = getCurrentUser();
+  if (!current) return [];
+  return getUserState(current.id, current).cart;
+}
+
+function persistUserCart(items: CartItem[]): void {
+  const current = getCurrentUser();
+  if (!current) return;
+  const state = getUserState(current.id, current);
+  state.cart = items;
+  saveUserState(current.id, state);
 }
 
 function mergeByIdentity(current: CartItem[], incoming: CartItem[]): CartItem[] {
@@ -62,10 +65,20 @@ function updateQuantity(item: CartItem, quantity: number): CartItem {
 }
 
 export function CartProvider({ children }: { children: ReactNode }): JSX.Element {
-  const [items, setItems] = useState<CartItem[]>(() => readStoredCart());
+  const [items, setItems] = useState<CartItem[]>(() => readUserCart());
 
   useEffect(() => {
-    localStorage.setItem(CART_KEY, JSON.stringify(items));
+    const sync = (): void => setItems(readUserCart());
+    window.addEventListener('ticketflow:update', sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener('ticketflow:update', sync);
+      window.removeEventListener('storage', sync);
+    };
+  }, []);
+
+  useEffect(() => {
+    persistUserCart(items);
     window.dispatchEvent(new Event('ticketflow:update'));
   }, [items]);
 

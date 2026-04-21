@@ -21,6 +21,26 @@ import EventTagsPage from './pages/EventTagsPage';
 import CinemaDetailsPage from './pages/CinemaDetailsPage';
 import CheckoutPage from './pages/commerce/CheckoutPage';
 import OrderConfirmationPage from './pages/commerce/OrderConfirmationPage';
+import AccountAreaPage, {
+  AccountBalance,
+  AccountDashboard,
+  AccountFavorites,
+  AccountMovies,
+  AccountProfile,
+  AccountReservations,
+  AccountSecurity,
+  AccountStatus,
+  AccountTravels
+} from './pages/AccountAreaPage';
+import {
+  OrganizerDashboardPage,
+  OrganizerEditEventPage,
+  OrganizerEventsPage,
+  OrganizerNewEventPage,
+  OrganizerOrdersPage,
+  OrganizerProfilePage,
+  OrganizerPublicPage
+} from './pages/OrganizerPages';
 
 export default function App(): JSX.Element {
   return (
@@ -30,6 +50,7 @@ export default function App(): JSX.Element {
         <Route path="/ma-fr/billeterie" element={<BilleteriePage />} />
         <Route path="/ma-fr/store" element={<StorePage />} />
         <Route path="/ma-fr/voyage" element={<VoyagesPage />} />
+        <Route path="/ma-fr/travel/category/:category" element={<VoyagesPage />} />
         <Route path="/ma-fr/voyage/:slug" element={<VoyageDetailsPage />} />
         <Route path="/ma-fr/travel/:category/:slug" element={<VoyageDetailsPage />} />
         <Route path="/ma-fr/travel/:category/:slug/checkout" element={<CheckoutPage />} />
@@ -37,6 +58,7 @@ export default function App(): JSX.Element {
         <Route path="/ma-fr/cinema/:slug" element={<CinemaDetailsPage />} />
         <Route path="/ma-fr/sport" element={<SportPage />} />
         <Route path="/ma-fr/event/tags/:tag" element={<EventTagsPage />} />
+        <Route path="/ma-fr/event/producer/:slug" element={<OrganizerPublicPage />} />
         <Route path="/ma-fr/event/:slug" element={<EventDetailsPage />} />
         <Route path="/ma-fr/event/:category/:slug" element={<EventDetailsPage />} />
         <Route path="/ma-fr/event/:slug/tickets" element={<EventDetailsPage />} />
@@ -45,21 +67,42 @@ export default function App(): JSX.Element {
         <Route path="/ma-fr/checkout" element={<CheckoutPage />} />
         <Route path="/ma-fr/confirmation" element={<OrderConfirmationPage />} />
 
-        <Route path="/billeterie" element={<Navigate to="/ma-fr/billeterie" replace />} />
-        <Route path="/store" element={<Navigate to="/ma-fr/store" replace />} />
-        <Route path="/voyages" element={<Navigate to="/ma-fr/voyage" replace />} />
-        <Route path="/voyages/:slug" element={<Navigate to="/ma-fr/voyage" replace />} />
-        <Route path="/cinema" element={<Navigate to="/ma-fr/cinema" replace />} />
-        <Route path="/sport" element={<Navigate to="/ma-fr/sport" replace />} />
+        <Route path="/ma-fr/account" element={<AccountAreaPage />}>
+          <Route index element={<AccountDashboard />} />
+          <Route path="profile" element={<AccountProfile />} />
+          <Route path="reservations" element={<AccountReservations />} />
+          <Route path="travels" element={<AccountTravels />} />
+          <Route path="movies" element={<AccountMovies />} />
+          <Route path="favorites" element={<AccountFavorites />} />
+          <Route path="balance" element={<AccountBalance />} />
+          <Route path="security" element={<AccountSecurity />} />
+          <Route path="status" element={<AccountStatus />} />
+        </Route>
+
+        <Route path="/ma-fr/organizer" element={<OrganizerDashboardPage />} />
+        <Route path="/ma-fr/organizer/events" element={<OrganizerEventsPage />} />
+        <Route path="/ma-fr/organizer/events/new" element={<OrganizerNewEventPage />} />
+        <Route path="/ma-fr/organizer/events/:id/edit" element={<OrganizerEditEventPage />} />
+        <Route path="/ma-fr/organizer/orders" element={<OrganizerOrdersPage />} />
+        <Route path="/ma-fr/organizer/profile" element={<OrganizerProfilePage />} />
+
+        <Route path="/ma-fr/admin" element={<AdminPage />} />
+        <Route path="/ma-fr/admin/events" element={<AdminPage />} />
+        <Route path="/ma-fr/admin/users" element={<AdminPage />} />
+        <Route path="/ma-fr/admin/orders" element={<AdminPage />} />
+        <Route path="/ma-fr/admin/organizers" element={<AdminPage />} />
+        <Route path="/ma-fr/admin/content" element={<AdminPage />} />
+
+        <Route path="/login" element={<Navigate to="/ma-fr/login" replace />} />
+        <Route path="/register" element={<Navigate to="/ma-fr/signup" replace />} />
+        <Route path="/ma-fr/login" element={<LoginPage />} />
+        <Route path="/ma-fr/signup" element={<RegisterPage />} />
 
         <Route path="/events" element={<EventsPage />} />
-        <Route path="/cart" element={<Navigate to="/ma-fr/panier" replace />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/gallery" element={<GalleryPage />} />
-        <Route path="/admin" element={<AdminPage />} />
+        <Route path="/admin" element={<Navigate to="/ma-fr/admin" replace />} />
         <Route path="/home" element={<HomePage />} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />

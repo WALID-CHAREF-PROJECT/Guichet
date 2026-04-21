@@ -36,7 +36,7 @@ export default function OrderConfirmationPage(): JSX.Element {
 
       <div className="mt-6 flex flex-wrap gap-3">
         <Link to="/ma-fr/billeterie" className="rounded-full bg-white px-5 py-3 font-semibold text-[#031438]">Retour à l'accueil</Link>
-        <Link to="/ma-fr/panier" className="rounded-full border border-white/20 px-5 py-3 font-semibold">Voir mes réservations</Link>
+        <Link to="/ma-fr/account/reservations" className="rounded-full border border-white/20 px-5 py-3 font-semibold">Voir mes réservations</Link>
       </div>
     </section>
   );

@@ -1,46 +1,55 @@
 import { FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getUsers, saveUsers, setCurrentUser } from '../services/storage';
+import { useUser } from '../contexts/UserContext';
 
 export default function RegisterPage(): JSX.Element {
   const navigate = useNavigate();
-  const [name, setName] = useState('');
+  const { register } = useUser();
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
+  const [terms, setTerms] = useState(false);
+  const [marketing, setMarketing] = useState(false);
   const [message, setMessage] = useState('');
 
   function onSubmit(event: FormEvent): void {
     event.preventDefault();
-
-    const users = getUsers();
-    const alreadyExists = users.some((user) => user.email === email.trim());
-
-    if (alreadyExists) {
-      setMessage('Cet email est déjà utilisé.');
+    if (!terms) {
+      setMessage('Vous devez accepter les conditions.');
       return;
     }
 
-    users.push({ name: name.trim(), email: email.trim(), password, role: 'user' });
-    saveUsers(users);
-    setCurrentUser({ name: name.trim(), email: email.trim() });
-    window.dispatchEvent(new Event('ticketflow:update'));
-    navigate('/events');
+    const result = register({ firstName, lastName, email, password, phone });
+
+    if (!result.ok) {
+      setMessage(result.message ?? 'Erreur inscription');
+      return;
+    }
+
+    void marketing;
+    navigate('/ma-fr/account');
   }
 
   return (
-    <section className="mx-auto max-w-xl rounded-2xl border bg-white p-8 shadow-sm">
-      <h1 className="text-3xl font-bold text-slate-900">Inscription</h1>
-      <p className="mt-2 text-slate-600">Créez votre compte pour réserver vos places plus vite.</p>
+    <section className="mx-auto max-w-xl rounded-2xl border border-white/10 bg-[#041743] p-8 shadow-sm">
+      <h1 className="text-3xl font-bold text-white">Inscription</h1>
+      <p className="mt-2 text-slate-300">Créez un compte Guichet et démarrez avec un espace vide personnel.</p>
       <form onSubmit={onSubmit} className="mt-6 space-y-4">
-        <input type="text" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom complet" className="w-full rounded border px-3 py-2" />
-        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Votre email" className="w-full rounded border px-3 py-2" />
-        <input type="password" minLength={6} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mot de passe (6 caractères minimum)" className="w-full rounded border px-3 py-2" />
+        <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Prénom" className="w-full rounded border border-white/20 bg-white/5 px-3 py-2" />
+        <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Nom de famille" className="w-full rounded border border-white/20 bg-white/5 px-3 py-2" />
+        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="w-full rounded border border-white/20 bg-white/5 px-3 py-2" />
+        <input type="password" minLength={6} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mot de passe" className="w-full rounded border border-white/20 bg-white/5 px-3 py-2" />
+        <input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Numéro mobile" className="w-full rounded border border-white/20 bg-white/5 px-3 py-2" />
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} /> J'accepte les conditions générales</label>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={marketing} onChange={(e) => setMarketing(e.target.checked)} /> Recevoir les nouveautés</label>
         <button type="submit" className="w-full rounded bg-orange-500 px-4 py-2 font-medium text-white hover:bg-orange-600">Créer mon compte</button>
       </form>
-      {message && <p className="mt-3 text-sm text-red-600">{message}</p>}
-      <p className="mt-4 text-sm text-slate-600">
+      {message && <p className="mt-3 text-sm text-red-400">{message}</p>}
+      <p className="mt-4 text-sm text-slate-300">
         Vous avez déjà un compte ?{' '}
-        <Link to="/login" className="font-semibold text-brand-600">Se connecter</Link>
+        <Link to="/ma-fr/login" className="font-semibold text-brand-300">Se connecter</Link>
       </p>
     </section>
   );

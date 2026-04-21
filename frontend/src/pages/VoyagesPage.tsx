@@ -1,17 +1,36 @@
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import ServiceTabs from '../components/ServiceTabs';
 import { voyageCategories, voyages } from '../services/platformData';
 
+const slugify = (value: string): string =>
+  value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+
 export default function VoyagesPage(): JSX.Element {
+  const { category } = useParams();
+  const filtered = category ? voyages.filter((trip) => slugify(trip.collection) === category) : voyages;
+
   return (
     <section className="space-y-8">
       <ServiceTabs active="voyage" />
       <div className="flex gap-2 overflow-x-auto pb-1">
-        {voyageCategories.map((item) => <button key={item} className="shrink-0 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm hover:bg-white/10">{item}</button>)}
+        {voyageCategories.map((item) => {
+          const slug = slugify(item);
+          const active = category === slug;
+          return (
+            <Link key={item} to={`/ma-fr/travel/category/${slug}`} className={`shrink-0 rounded-full border px-4 py-2 text-sm ${active ? 'border-white bg-white text-[#041743]' : 'border-white/20 bg-white/5 hover:bg-white/10'}`}>
+              {item}
+            </Link>
+          );
+        })}
       </div>
       <h1 className="text-5xl font-bold">Les voyages les plus appréciés sur Guichet</h1>
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {voyages.map((trip) => (
+        {filtered.map((trip) => (
           <Link key={trip.slug} to={`/ma-fr/voyage/${trip.slug}`} className="overflow-hidden rounded-xl border border-white/10 bg-[#041743]">
             <img src={trip.image} alt={trip.title} className="h-64 w-full object-cover" />
             <div className="space-y-2 p-4">
