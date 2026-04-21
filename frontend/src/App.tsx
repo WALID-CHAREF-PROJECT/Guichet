@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import MainLayout from './layouts/MainLayout';
 import AboutPage from './pages/AboutPage';
 import CartPage from './pages/CartPage';
@@ -17,27 +17,40 @@ import SportPage from './pages/SportPage';
 import VoyageDetailsPage from './pages/VoyageDetailsPage';
 import AdminPage from './pages/AdminPage';
 import BilleteriePage from './pages/BilleteriePage';
+import EventTagsPage from './pages/EventTagsPage';
+import CinemaDetailsPage from './pages/CinemaDetailsPage';
 
 export default function App(): JSX.Element {
   return (
     <Routes>
       <Route element={<MainLayout />}>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/billeterie" element={<BilleteriePage />} />
-        <Route path="/store" element={<StorePage />} />
+        <Route path="/" element={<Navigate to="/ma-fr/billeterie" replace />} />
+        <Route path="/ma-fr/billeterie" element={<BilleteriePage />} />
+        <Route path="/ma-fr/store" element={<StorePage />} />
+        <Route path="/ma-fr/voyage" element={<VoyagesPage />} />
+        <Route path="/ma-fr/voyage/:slug" element={<VoyageDetailsPage />} />
+        <Route path="/ma-fr/cinema" element={<CinemaPage />} />
+        <Route path="/ma-fr/cinema/:slug" element={<CinemaDetailsPage />} />
+        <Route path="/ma-fr/sport" element={<SportPage />} />
+        <Route path="/ma-fr/event/tags/:tag" element={<EventTagsPage />} />
+        <Route path="/ma-fr/event/:slug" element={<EventDetailsPage />} />
+
+        <Route path="/billeterie" element={<Navigate to="/ma-fr/billeterie" replace />} />
+        <Route path="/store" element={<Navigate to="/ma-fr/store" replace />} />
+        <Route path="/voyages" element={<Navigate to="/ma-fr/voyage" replace />} />
+        <Route path="/voyages/:slug" element={<Navigate to="/ma-fr/voyage" replace />} />
+        <Route path="/cinema" element={<Navigate to="/ma-fr/cinema" replace />} />
+        <Route path="/sport" element={<Navigate to="/ma-fr/sport" replace />} />
+
         <Route path="/events" element={<EventsPage />} />
-        <Route path="/events/:slug" element={<EventDetailsPage />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/gallery" element={<GalleryPage />} />
-        <Route path="/voyages" element={<VoyagesPage />} />
-        <Route path="/voyages/:slug" element={<VoyageDetailsPage />} />
-        <Route path="/cinema" element={<CinemaPage />} />
-        <Route path="/sport" element={<SportPage />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/home" element={<HomePage />} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
