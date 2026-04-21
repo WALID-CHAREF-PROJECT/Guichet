@@ -5,6 +5,7 @@ import CartPage from './pages/CartPage';
 import ContactPage from './pages/ContactPage';
 import EventDetailsPage from './pages/EventDetailsPage';
 import EventsPage from './pages/EventsPage';
+import StorePage from './pages/StorePage';
 import GalleryPage from './pages/GalleryPage';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
@@ -23,6 +24,7 @@ export default function App(): JSX.Element {
       <Route element={<MainLayout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/billeterie" element={<BilleteriePage />} />
+        <Route path="/store" element={<StorePage />} />
         <Route path="/events" element={<EventsPage />} />
         <Route path="/events/:slug" element={<EventDetailsPage />} />
         <Route path="/cart" element={<CartPage />} />
