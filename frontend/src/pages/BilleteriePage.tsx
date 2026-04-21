@@ -26,17 +26,23 @@ const serviceMenu = [
   { label: 'Sport', icon: '🏀', active: false }
 ];
 
-const categories = [
-  'COMEDIABLANCA',
-  'La Basketball Africa League (BAL)',
-  'NOSTALGIA LOVERS FESTIVAL',
-  'Concerts',
-  'Festivals',
-  'Théâtre & Humour',
-  'Divertissement',
-  'Jeune Public',
-  'Salon & formation',
-  'Sport'
+type CategoryStripItem = {
+  label: string;
+  slug: string;
+  icon: string;
+};
+
+const categories: CategoryStripItem[] = [
+  { label: 'COMEDIABLANCA', slug: 'comediablanca', icon: '🎭' },
+  { label: 'La Basketball Africa League (BAL)', slug: 'basketball-africa-league', icon: '🏀' },
+  { label: 'NOSTALGIA LOVERS FESTIVAL', slug: 'nostalgia-lovers-festival', icon: '🎶' },
+  { label: 'Concerts', slug: 'concerts', icon: '🎤' },
+  { label: 'Festivals', slug: 'festivals', icon: '🎉' },
+  { label: 'Théâtre & Humour', slug: 'theatre-humour', icon: '😂' },
+  { label: 'Divertissement', slug: 'divertissement', icon: '✨' },
+  { label: 'Jeune Public', slug: 'jeune-public', icon: '🧒' },
+  { label: 'Salon & formation', slug: 'salon-formation', icon: '🎓' },
+  { label: 'Sport', slug: 'sport', icon: '🏆' }
 ];
 
 const featuredPosters = [
@@ -214,7 +220,7 @@ function TopNavbar(): JSX.Element {
           </div>
         </div>
       </div>
-      <CategoryStrip />
+      <BilleterieCategoryStrip />
     </header>
   );
 }
@@ -239,15 +245,20 @@ function ServiceMenu(): JSX.Element {
   );
 }
 
-function CategoryStrip(): JSX.Element {
+function BilleterieCategoryStrip(): JSX.Element {
   return (
     <div className="border-t border-white/10 bg-[#041537]">
-      <div className="mx-auto flex max-w-[1800px] items-center gap-3 overflow-x-auto px-4 py-3 lg:px-8">
+      <div className="mx-auto flex max-w-[1800px] items-center gap-2 overflow-x-auto px-4 py-2 lg:px-8">
         {categories.map((item, idx) => (
-          <div key={item} className="flex items-center gap-3">
-            <span className="shrink-0 whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-slate-200">{item}</span>
-            {idx !== categories.length - 1 && <span className="text-slate-500">•</span>}
-          </div>
+          <Link
+            key={item.slug}
+            to={`/events/category/${item.slug}`}
+            className="group flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1.5 text-[11px] font-medium leading-none text-slate-200 transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white"
+          >
+            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#10244f] text-[10px]">{item.icon}</span>
+            <span className="whitespace-nowrap">{item.label}</span>
+            {idx !== categories.length - 1 && <span className="ml-1 text-slate-500">•</span>}
+          </Link>
         ))}
       </div>
     </div>
