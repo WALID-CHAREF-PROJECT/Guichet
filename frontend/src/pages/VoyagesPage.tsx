@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import ServiceTabs from '../components/ServiceTabs';
 import { voyageCategories, voyages } from '../services/platformData';
 
@@ -12,7 +12,17 @@ const slugify = (value: string): string =>
 
 export default function VoyagesPage(): JSX.Element {
   const { category } = useParams();
-  const filtered = category ? voyages.filter((trip) => slugify(trip.collection) === category) : voyages;
+  const [searchParams] = useSearchParams();
+  const filtered = voyages.filter((trip) => {
+    const byCategoryRoute = category ? slugify(trip.collection) === category : true;
+    const q = (searchParams.get('q') ?? '').toLowerCase();
+    const byQuery = !q || trip.title.toLowerCase().includes(q) || trip.location.toLowerCase().includes(q);
+    const selectedCategory = (searchParams.get('category') ?? '').toLowerCase();
+    const byCategoryFilter = !selectedCategory || trip.collection.toLowerCase().includes(selectedCategory);
+    const city = (searchParams.get('city') ?? '').toLowerCase();
+    const byCity = !city || trip.location.toLowerCase().includes(city);
+    return byCategoryRoute && byQuery && byCategoryFilter && byCity;
+  });
 
   return (
     <section className="space-y-8">
@@ -48,6 +58,7 @@ export default function VoyagesPage(): JSX.Element {
           </Link>
         ))}
       </div>
+      {filtered.length === 0 && <div className="rounded-2xl border border-white/10 bg-[#041743] p-8 text-center text-slate-300">Aucun voyage disponible avec ces filtres.</div>}
     </section>
   );
 }

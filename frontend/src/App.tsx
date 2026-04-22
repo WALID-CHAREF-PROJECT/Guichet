@@ -21,6 +21,7 @@ import EventTagsPage from './pages/EventTagsPage';
 import CinemaDetailsPage from './pages/CinemaDetailsPage';
 import CheckoutPage from './pages/commerce/CheckoutPage';
 import OrderConfirmationPage from './pages/commerce/OrderConfirmationPage';
+import PaymentPage from './pages/commerce/PaymentPage';
 import AccountAreaPage, {
   AccountBalance,
   AccountDashboard,
@@ -65,6 +66,7 @@ export default function App(): JSX.Element {
         <Route path="/ma-fr/event/:slug/checkout" element={<CheckoutPage />} />
         <Route path="/ma-fr/panier" element={<CartPage />} />
         <Route path="/ma-fr/checkout" element={<CheckoutPage />} />
+        <Route path="/ma-fr/payment" element={<PaymentPage />} />
         <Route path="/ma-fr/confirmation" element={<OrderConfirmationPage />} />
 
         <Route path="/ma-fr/account" element={<AccountAreaPage />}>
