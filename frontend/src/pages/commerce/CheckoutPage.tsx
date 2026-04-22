@@ -2,10 +2,10 @@ import { FormEvent, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
 import { formatMad } from '../../services/commerce/utils';
-import { submitOrder } from '../../services/commerce/orderService';
+import { createPendingOrder } from '../../services/commerce/orderService';
 
 export default function CheckoutPage(): JSX.Element {
-  const { items, totals, clearCart } = useCart();
+  const { items, totals } = useCart();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [mobile, setMobile] = useState('');
@@ -25,9 +25,8 @@ export default function CheckoutPage(): JSX.Element {
     setLoading(true);
 
     try {
-      await submitOrder(items, { email, mobile, countryCode });
-      clearCart();
-      navigate('/ma-fr/confirmation');
+      createPendingOrder(items, { email, mobile, countryCode });
+      navigate('/ma-fr/payment');
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Erreur de paiement');
     } finally {

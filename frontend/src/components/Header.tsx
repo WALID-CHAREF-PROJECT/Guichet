@@ -1,14 +1,25 @@
-import { useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useCart } from '../contexts/CartContext';
 import { useUser } from '../contexts/UserContext';
+
+const quickPresets = [
+  { key: 'today', label: 'Aujourd’hui' },
+  { key: 'week', label: 'Cette semaine' },
+  { key: 'weekend', label: 'ce weekend' },
+  { key: 'month', label: 'Ce mois-ci' }
+] as const;
 
 export default function Header(): JSX.Element {
   const { language, changeLanguage, translate } = useLanguage();
   const { totals } = useCart();
   const { user, logout } = useUser();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const mainTabs = [
     { to: '/ma-fr/billeterie', label: translate('ticketing') },
@@ -17,6 +28,48 @@ export default function Header(): JSX.Element {
     { to: '/ma-fr/cinema', label: translate('cinema') },
     { to: '/ma-fr/sport', label: translate('sport') }
   ];
+
+  const pageConfig = useMemo(() => {
+    if (location.pathname.startsWith('/ma-fr/cinema')) return { isSport: false, categories: ['Action', 'Comédie', 'Horreur', 'Animation'], cities: ['Casablanca', 'Rabat', 'Marrakech'], hours: ['Matin', 'Après-midi', 'Soir'] };
+    if (location.pathname.startsWith('/ma-fr/voyage') || location.pathname.startsWith('/ma-fr/travel')) return { isSport: false, categories: ['Voyage organisé', 'Last Minute', 'Early Booking', 'Voyage thématique'], cities: ['Paris', 'Istanbul', 'Amman'], hours: ['Matin', 'Après-midi', 'Soir'] };
+    if (location.pathname.startsWith('/ma-fr/sport')) return { isSport: true, categories: ['Basketball', 'Running'], cities: ['Casablanca', 'Rabat'], hours: [] as string[] };
+    return { isSport: false, categories: ['Concerts', 'Festivals', 'Théâtre'], cities: ['Casablanca', 'Rabat', 'Marrakech'], hours: ['Matin', 'Après-midi', 'Soir'] };
+  }, [location.pathname]);
+
+  const [draft, setDraft] = useState(() => ({
+    q: searchParams.get('q') ?? '',
+    category: searchParams.get('category') ?? '',
+    city: searchParams.get('city') ?? '',
+    hour: searchParams.get('hour') ?? '',
+    preset: searchParams.get('preset') ?? 'week',
+    date: searchParams.get('date') ?? ''
+  }));
+
+  const openFilters = (): void => {
+    setDraft({
+      q: searchParams.get('q') ?? '',
+      category: searchParams.get('category') ?? '',
+      city: searchParams.get('city') ?? '',
+      hour: searchParams.get('hour') ?? '',
+      preset: searchParams.get('preset') ?? 'week',
+      date: searchParams.get('date') ?? ''
+    });
+    setFilterOpen(true);
+  };
+
+  const applyFilters = (): void => {
+    const next = new URLSearchParams(searchParams.toString());
+    (Object.entries(draft) as Array<[keyof typeof draft, string]>).forEach(([key, value]) => {
+      if (value) next.set(key, value);
+      else next.delete(key);
+    });
+    navigate({ pathname: location.pathname, search: next.toString() });
+    setFilterOpen(false);
+  };
+
+  const resetFilters = (): void => {
+    setDraft({ q: '', category: '', city: '', hour: '', preset: 'week', date: '' });
+  };
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#031438]/90 backdrop-blur">
@@ -44,11 +97,54 @@ export default function Header(): JSX.Element {
             {mainTabs.map((tab) => <NavLink key={tab.to} to={tab.to} className={({ isActive }) => `rounded-md border px-4 py-2 text-sm font-semibold ${isActive ? 'border-white bg-white text-[#04143d]' : 'border-white/20 bg-white/5 text-white hover:bg-white/10'}`}>{tab.label}</NavLink>)}
           </nav>
           <div className="flex w-full items-center gap-2 md:w-auto">
-            <input placeholder={translate('searchPlaceholder')} className="w-full rounded-full border border-white/10 bg-[#112957] px-4 py-2 text-sm placeholder:text-slate-300 md:w-80" />
-            <button className="rounded-full border border-white/20 bg-white/10 p-2">⚙️</button>
+            <input
+              value={searchParams.get('q') ?? ''}
+              onChange={(e) => {
+                const next = new URLSearchParams(searchParams.toString());
+                if (e.target.value) next.set('q', e.target.value);
+                else next.delete('q');
+                navigate({ pathname: location.pathname, search: next.toString() });
+              }}
+              placeholder={translate('searchPlaceholder')}
+              className="w-full rounded-full border border-white/10 bg-[#112957] px-4 py-2 text-sm placeholder:text-slate-300 md:w-80"
+            />
+            <button onClick={openFilters} className="rounded-full border border-white/20 bg-white/10 p-2">⚙️</button>
           </div>
         </div>
       </div>
+
+      {filterOpen && (
+        <div className="fixed inset-0 z-[80] bg-black/70 p-3 backdrop-blur-sm" onClick={() => setFilterOpen(false)}>
+          <aside className="ml-auto mt-8 w-full max-w-md rounded-3xl border border-white/10 bg-[#041743] p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-xl font-bold">Filtres</h3>
+            <div className="mt-4 space-y-4 text-sm">
+              <label className="block">Catégories
+                <select disabled={pageConfig.isSport} value={draft.category} onChange={(e) => setDraft((prev) => ({ ...prev, category: e.target.value }))} className="mt-1 w-full rounded-xl border border-white/20 bg-[#0a2457] p-2 disabled:opacity-50">
+                  <option value="">Toutes catégories</option>{pageConfig.categories.map((item) => <option key={item}>{item}</option>)}
+                </select>
+              </label>
+              <label className="block">Villes
+                <select value={draft.city} onChange={(e) => setDraft((prev) => ({ ...prev, city: e.target.value }))} className="mt-1 w-full rounded-xl border border-white/20 bg-[#0a2457] p-2">
+                  <option value="">Toutes villes</option>{pageConfig.cities.map((item) => <option key={item}>{item}</option>)}
+                </select>
+              </label>
+              <label className="block">Heures
+                <select disabled={pageConfig.hours.length === 0} value={draft.hour} onChange={(e) => setDraft((prev) => ({ ...prev, hour: e.target.value }))} className="mt-1 w-full rounded-xl border border-white/20 bg-[#0a2457] p-2 disabled:opacity-50">
+                  <option value="">Tous créneaux</option>{pageConfig.hours.map((item) => <option key={item}>{item}</option>)}
+                </select>
+              </label>
+              <label className="block">Date spécifique
+                <input type="date" value={draft.date} onChange={(e) => setDraft((prev) => ({ ...prev, date: e.target.value }))} className="mt-1 w-full rounded-xl border border-white/20 bg-[#0a2457] p-2" />
+              </label>
+              <div className="flex flex-wrap gap-2">{quickPresets.map((preset) => <button key={preset.key} onClick={() => setDraft((prev) => ({ ...prev, preset: preset.key }))} className={`rounded-full border px-3 py-1.5 text-xs ${draft.preset === preset.key ? 'border-orange-300 bg-orange-400/20 text-orange-200' : 'border-white/20 bg-white/5 text-slate-200'}`}>{preset.label}</button>)}</div>
+            </div>
+            <div className="mt-6 flex gap-2">
+              <button onClick={resetFilters} className="flex-1 rounded-xl border border-white/20 py-2">Réinitialiser</button>
+              <button onClick={applyFilters} className="flex-1 rounded-xl bg-white py-2 font-semibold text-[#041743]">Appliquer</button>
+            </div>
+          </aside>
+        </div>
+      )}
     </header>
   );
 }
