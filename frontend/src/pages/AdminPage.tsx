@@ -10,7 +10,7 @@ export default function AdminPage(): JSX.Element {
     return (
       <section className="rounded-2xl border border-white/10 bg-[#041743] p-8">
         <h1 className="text-3xl font-bold">Admin</h1>
-        <p className="mt-3 text-slate-300">Accès refusé. Connectez-vous avec admin@guichet.ma / Admin@123.</p>
+        <p className="mt-3 text-slate-300">Accès refusé. Admin: admin@guichet.ma / Admin@123 · Fournisseur: fournisseur@guichet.ma / Fournisseur@123.</p>
         <Link to="/ma-fr/login" className="mt-4 inline-block rounded bg-brand-600 px-4 py-2 text-white">Connexion</Link>
       </section>
     );
