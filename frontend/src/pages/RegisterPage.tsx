@@ -10,6 +10,8 @@ export default function RegisterPage(): JSX.Element {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
+  const [role, setRole] = useState<'client' | 'organizer'>('client');
+  const [companyName, setCompanyName] = useState('');
   const [terms, setTerms] = useState(false);
   const [marketing, setMarketing] = useState(false);
   const [message, setMessage] = useState('');
@@ -21,7 +23,7 @@ export default function RegisterPage(): JSX.Element {
       return;
     }
 
-    const result = register({ firstName, lastName, email, password, phone });
+    const result = register({ firstName, lastName, email, password, phone, role, companyName: role === 'organizer' ? companyName : undefined });
 
     if (!result.ok) {
       setMessage(result.message ?? 'Erreur inscription');
@@ -29,7 +31,7 @@ export default function RegisterPage(): JSX.Element {
     }
 
     void marketing;
-    navigate('/ma-fr/account');
+    navigate(role === 'organizer' ? '/ma-fr/organizer' : '/ma-fr/account');
   }
 
   return (
@@ -37,8 +39,13 @@ export default function RegisterPage(): JSX.Element {
       <h1 className="text-3xl font-bold text-white">Inscription</h1>
       <p className="mt-2 text-slate-300">Créez un compte Guichet et démarrez avec un espace vide personnel.</p>
       <form onSubmit={onSubmit} className="mt-6 space-y-4">
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" onClick={() => setRole('client')} className={`rounded-lg px-3 py-2 text-sm ${role === 'client' ? 'bg-white text-[#041743]' : 'border border-white/20 text-white'}`}>Client</button>
+          <button type="button" onClick={() => setRole('organizer')} className={`rounded-lg px-3 py-2 text-sm ${role === 'organizer' ? 'bg-white text-[#041743]' : 'border border-white/20 text-white'}`}>Organisateur</button>
+        </div>
         <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Prénom" className="w-full rounded border border-white/20 bg-white/5 px-3 py-2" />
         <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Nom de famille" className="w-full rounded border border-white/20 bg-white/5 px-3 py-2" />
+        {role === 'organizer' && <input type="text" required value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Nom de l'entreprise" className="w-full rounded border border-white/20 bg-white/5 px-3 py-2" />}
         <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="w-full rounded border border-white/20 bg-white/5 px-3 py-2" />
         <input type="password" minLength={6} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mot de passe" className="w-full rounded border border-white/20 bg-white/5 px-3 py-2" />
         <input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Numéro mobile" className="w-full rounded border border-white/20 bg-white/5 px-3 py-2" />

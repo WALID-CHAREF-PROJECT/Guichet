@@ -1,0 +1,32 @@
+import { Navigate } from 'react-router-dom';
+import { ReactNode } from 'react';
+import { useUser } from '../contexts/UserContext';
+
+function roleHome(role: 'client' | 'organizer' | 'admin'): string {
+  if (role === 'organizer') return '/ma-fr/organizer';
+  if (role === 'admin') return '/ma-fr/admin';
+  return '/ma-fr/account';
+}
+
+function Guard({ children, role }: { children: ReactNode; role?: 'client' | 'organizer' | 'admin' }): JSX.Element {
+  const { user } = useUser();
+  if (!user) return <Navigate to="/ma-fr/login" replace />;
+  if (role && user.role !== role) return <Navigate to={roleHome(user.role)} replace />;
+  return <>{children}</>;
+}
+
+export function RequireAuth({ children }: { children: ReactNode }): JSX.Element {
+  return <Guard>{children}</Guard>;
+}
+
+export function RequireClient({ children }: { children: ReactNode }): JSX.Element {
+  return <Guard role="client">{children}</Guard>;
+}
+
+export function RequireOrganizer({ children }: { children: ReactNode }): JSX.Element {
+  return <Guard role="organizer">{children}</Guard>;
+}
+
+export function RequireAdmin({ children }: { children: ReactNode }): JSX.Element {
+  return <Guard role="admin">{children}</Guard>;
+}

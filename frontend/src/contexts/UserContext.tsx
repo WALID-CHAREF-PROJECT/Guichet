@@ -1,4 +1,5 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import { login as apiLogin, logout as apiLogout, register as apiRegister } from '../services/api/authClient';
 import {
   createUser,
   FavoriteItem,
@@ -21,12 +22,14 @@ interface RegisterInput {
   email: string;
   password: string;
   phone: string;
+  role?: 'client' | 'organizer';
+  companyName?: string;
 }
 
 interface UserContextValue {
   user: StoredUser | null;
   scopedState: UserScopedState | null;
-  login: (email: string, password: string) => { ok: boolean; message?: string };
+  login: (email: string, password: string) => { ok: boolean; message?: string; role?: 'client' | 'organizer' | 'admin' };
   register: (data: RegisterInput) => { ok: boolean; message?: string };
   logout: () => void;
   refresh: () => void;
@@ -66,20 +69,50 @@ export function UserProvider({ children }: { children: ReactNode }): JSX.Element
       user,
       scopedState,
       login: (email, password) => {
-        const found = getUsers().find((candidate) => candidate.email === email.trim() && candidate.password === password);
+        const found = getUsers().find((candidate) => candidate.email.toLowerCase() === email.trim().toLowerCase() && candidate.password === password);
         if (!found) return { ok: false, message: 'Email ou mot de passe invalide.' };
         if (found.active === false) return { ok: false, message: 'Compte désactivé.' };
+        try {
+          apiLogin({ email, password });
+        } catch (error) {
+          return { ok: false, message: (error as Error).message };
+        }
         setCurrentUser(found);
-        return { ok: true };
+        return { ok: true, role: found.role };
       },
       register: (data) => {
         const exists = getUsers().some((u) => u.email.toLowerCase() === data.email.trim().toLowerCase());
         if (exists) return { ok: false, message: 'Cet email est déjà utilisé.' };
-        const created = createUser({ ...data, email: data.email.trim().toLowerCase() });
-        setCurrentUser(created);
+        try {
+          apiRegister({
+            firstName: data.firstName,
+            lastName: data.lastName,
+            email: data.email,
+            password: data.password,
+            role: data.role ?? 'client',
+            companyName: data.companyName
+          });
+        } catch (error) {
+          return { ok: false, message: (error as Error).message };
+        }
+        const created = createUser({
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email.trim().toLowerCase(),
+          password: data.password,
+          phone: data.phone,
+          role: data.role ?? 'client'
+        });
+        const withOrg = data.role === 'organizer' ? {
+          ...created,
+          companyName: data.companyName,
+          organizationSlug: data.companyName ? data.companyName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : undefined
+        } : created;
+        setCurrentUser(withOrg);
         return { ok: true };
       },
       logout: () => {
+        apiLogout();
         setCurrentUser(null);
       },
       refresh,
