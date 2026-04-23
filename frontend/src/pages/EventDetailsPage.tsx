@@ -2,6 +2,8 @@ import { Link, useParams } from 'react-router-dom';
 import PlatformTopNav from '../components/PlatformTopNav';
 import { getEventBySlug } from '../services/platformData';
 import TicketSelectionModal from '../components/commerce/TicketSelectionModal';
+import FavoriteButton from '../components/FavoriteButton';
+import SharePopover from '../components/SharePopover';
 import SeatPlanModal from '../components/commerce/SeatPlanModal';
 import { useState } from 'react';
 
@@ -35,8 +37,8 @@ export default function EventDetailsPage(): JSX.Element {
 
         <article className="rounded-3xl border border-white/10 bg-[#06173c] p-6 lg:p-8">
           <div className="mb-6 flex items-center justify-end gap-2">
-            <button className="rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-xs">Partager</button>
-            <button className="rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-xs">♡</button>
+            <SharePopover title={event.title} />
+            <FavoriteButton itemId={event.slug} itemType="event" payload={{ slug: event.slug, title: event.title, image: event.image, location: event.location, date: `${event.date} · ${event.time}`, route: `/ma-fr/event/${event.slug}`, organizer: event.organizer }} />
           </div>
           <div className="mb-5 flex items-center gap-3">
             <img src={event.organizerLogo} alt={event.organizer} className="h-10 w-10 rounded-full object-cover" />

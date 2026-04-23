@@ -1,9 +1,19 @@
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { platformEvents } from '../services/platformData';
 
 export function OrganizerPublicPage(): JSX.Element {
   const { slug = '' } = useParams();
-  const events = platformEvents.filter((event) => event.organizer.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') === slug);
+  const [searchParams] = useSearchParams();
+  const events = platformEvents
+    .filter((event) => event.organizer.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') === slug)
+    .filter((event) => {
+      const q = (searchParams.get('q') ?? '').toLowerCase();
+      const city = (searchParams.get('city') ?? '').toLowerCase();
+      const category = (searchParams.get('category') ?? '').toLowerCase();
+      return (!q || event.title.toLowerCase().includes(q))
+        && (!city || event.location.toLowerCase().includes(city))
+        && (!category || event.tags.some((tag) => tag.toLowerCase().includes(category)));
+    });
   const organizer = events[0];
   if (!organizer) return <section className="rounded-2xl border border-white/10 bg-[#041743] p-6">Organisateur introuvable.</section>;
 

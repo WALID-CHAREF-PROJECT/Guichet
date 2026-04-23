@@ -3,6 +3,8 @@ import ServiceTabs from '../components/ServiceTabs';
 import { voyages } from '../services/platformData';
 import { useState } from 'react';
 import TravelReservationModal from '../components/commerce/TravelReservationModal';
+import FavoriteButton from '../components/FavoriteButton';
+import SharePopover from '../components/SharePopover';
 
 export default function VoyageDetailsPage(): JSX.Element {
   const { slug = '' } = useParams();
@@ -23,7 +25,7 @@ export default function VoyageDetailsPage(): JSX.Element {
           <img src={voyage.image} alt={voyage.title} className="h-40 w-full rounded-2xl object-cover" />
         </div>
         <article className="space-y-4 rounded-2xl border border-white/10 bg-white/10 p-6">
-          <p className="text-sm text-orange-400">{voyage.location}</p>
+          <div className="flex items-center justify-end gap-2"><SharePopover title={voyage.title} /><FavoriteButton itemId={voyage.slug} itemType="travel" payload={{ slug: voyage.slug, title: voyage.title, image: voyage.image, location: voyage.location, date: voyage.departureDate, route: `/ma-fr/voyage/${voyage.slug}` }} /></div><p className="text-sm text-orange-400">{voyage.location}</p>
           <h1 className="text-3xl font-bold">{voyage.title}</h1>
           <p className="text-sm text-slate-200">{voyage.departureDate}</p>
           <p className="text-2xl font-semibold">{voyage.price}</p>

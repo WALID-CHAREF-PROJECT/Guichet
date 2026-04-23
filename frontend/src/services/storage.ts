@@ -1,6 +1,7 @@
 import { CartItem, Order } from '../types/commerce';
 
 export type UserRole = 'client' | 'organizer' | 'admin';
+export type FavoriteItemType = 'event' | 'movie' | 'travel' | 'sport';
 
 export interface StoredUser {
   id: string;
@@ -16,10 +17,24 @@ export interface StoredUser {
   active?: boolean;
 }
 
+export interface FavoriteItem {
+  id: string;
+  userId: string;
+  itemId: string;
+  itemType: FavoriteItemType;
+  slug: string;
+  title: string;
+  image: string;
+  location?: string;
+  date?: string;
+  route: string;
+  organizer?: string;
+}
+
 export interface UserScopedState {
   profile: StoredUser;
   cart: CartItem[];
-  favorites: string[];
+  favorites: FavoriteItem[];
   orders: Order[];
   reservations: Order[];
   travelBookings: CartItem[];
@@ -84,6 +99,42 @@ function defaultState(user: StoredUser): UserScopedState {
   };
 }
 
+function normalizeFavorites(userId: string, raw: unknown): FavoriteItem[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item) => {
+      if (typeof item === 'string') {
+        return {
+          id: uid('fav'),
+          userId,
+          itemId: item,
+          itemType: 'event' as FavoriteItemType,
+          slug: item,
+          title: item,
+          image: '',
+          route: `/ma-fr/event/${item}`
+        } satisfies FavoriteItem;
+      }
+      if (!item || typeof item !== 'object') return null;
+      const candidate = item as Partial<FavoriteItem>;
+      if (!candidate.slug || !candidate.route || !candidate.itemId || !candidate.itemType || !candidate.title) return null;
+      return {
+        id: candidate.id ?? uid('fav'),
+        userId,
+        itemId: candidate.itemId,
+        itemType: candidate.itemType,
+        slug: candidate.slug,
+        title: candidate.title,
+        image: candidate.image ?? '',
+        location: candidate.location,
+        date: candidate.date,
+        route: candidate.route,
+        organizer: candidate.organizer
+      } satisfies FavoriteItem;
+    })
+    .filter((item): item is FavoriteItem => item !== null);
+}
+
 export function getUsers(): StoredUser[] {
   const users = parseJSON<StoredUser[]>(localStorage.getItem(USERS_KEY), []);
   const withDefaults = [...users];
@@ -127,7 +178,7 @@ export function getUserState(userId: string, fallbackUser?: StoredUser): UserSco
   return {
     profile: parseJSON<StoredUser>(localStorage.getItem(key(userId, 'profile')), user),
     cart: parseJSON<CartItem[]>(localStorage.getItem(key(userId, 'cart')), []),
-    favorites: parseJSON<string[]>(localStorage.getItem(key(userId, 'favorites')), []),
+    favorites: normalizeFavorites(userId, parseJSON<unknown[]>(localStorage.getItem(key(userId, 'favorites')), [])),
     orders: parseJSON<Order[]>(localStorage.getItem(key(userId, 'orders')), []),
     reservations: parseJSON<Order[]>(localStorage.getItem(key(userId, 'reservations')), []),
     travelBookings: parseJSON<CartItem[]>(localStorage.getItem(key(userId, 'travelBookings')), []),
@@ -198,18 +249,32 @@ export function updateUserPassword(userId: string, nextPassword: string): void {
   saveUsers(users);
 }
 
-export function addFavorite(userId: string, slug: string): void {
+export function isFavorite(userId: string, itemId: string, itemType: FavoriteItemType): boolean {
   const state = getUserState(userId);
-  if (!state.favorites.includes(slug)) {
-    state.favorites.push(slug);
+  return state.favorites.some((item) => item.itemId === itemId && item.itemType === itemType);
+}
+
+export function addFavorite(userId: string, favorite: Omit<FavoriteItem, 'id' | 'userId'>): void {
+  const state = getUserState(userId);
+  if (!state.favorites.some((item) => item.itemId === favorite.itemId && item.itemType === favorite.itemType)) {
+    state.favorites.unshift({ ...favorite, id: uid('fav'), userId });
     saveUserState(userId, state);
     window.dispatchEvent(new Event('ticketflow:update'));
   }
 }
 
-export function removeFavorite(userId: string, slug: string): void {
+export function removeFavorite(userId: string, itemId: string, itemType: FavoriteItemType): void {
   const state = getUserState(userId);
-  state.favorites = state.favorites.filter((item) => item !== slug);
+  state.favorites = state.favorites.filter((item) => !(item.itemId === itemId && item.itemType === itemType));
   saveUserState(userId, state);
   window.dispatchEvent(new Event('ticketflow:update'));
+}
+
+export function toggleFavorite(userId: string, favorite: Omit<FavoriteItem, 'id' | 'userId'>): boolean {
+  if (isFavorite(userId, favorite.itemId, favorite.itemType)) {
+    removeFavorite(userId, favorite.itemId, favorite.itemType);
+    return false;
+  }
+  addFavorite(userId, favorite);
+  return true;
 }

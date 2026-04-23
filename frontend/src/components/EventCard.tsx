@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { EventItem } from '../types/api';
 import { useCart } from '../contexts/CartContext';
 import { uid } from '../services/commerce/utils';
+import FavoriteButton from './FavoriteButton';
 
 interface Props { event: EventItem }
 
@@ -27,7 +28,8 @@ export default function EventCard({ event }: Props): JSX.Element {
   };
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-white/10 bg-[#041743] shadow-sm">
+    <article className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#041743] shadow-sm">
+      <div className="absolute right-3 top-3 z-10"><FavoriteButton itemId={event.slug} itemType="event" payload={{ slug: event.slug, title: event.title, image: event.image_url, location: `${event.venue} · ${event.city.name}`, date: event.starts_at_human, route: `/events/${event.slug}`, organizer: event.organizer }} /></div>
       <div className="relative h-52 bg-slate-200">
         <img src={event.image_url} alt={event.title} className="h-full w-full object-cover" />
         {event.badge && <span className="absolute left-3 top-3 rounded-full bg-slate-900/80 px-3 py-1 text-xs text-white">{event.badge}</span>}

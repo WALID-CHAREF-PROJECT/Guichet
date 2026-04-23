@@ -116,7 +116,7 @@ export default function Header(): JSX.Element {
       {filterOpen && (
         <div className="fixed inset-0 z-[80] bg-black/70 p-3 backdrop-blur-sm" onClick={() => setFilterOpen(false)}>
           <aside className="ml-auto mt-8 w-full max-w-md rounded-3xl border border-white/10 bg-[#041743] p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-xl font-bold">Filtres</h3>
+            <div className="flex items-center justify-between"><h3 className="text-xl font-bold">Plus de filtres</h3><button onClick={() => setFilterOpen(false)} className="rounded-full border border-white/20 px-2">✕</button></div>
             <div className="mt-4 space-y-4 text-sm">
               <label className="block">Catégories
                 <select disabled={pageConfig.isSport} value={draft.category} onChange={(e) => setDraft((prev) => ({ ...prev, category: e.target.value }))} className="mt-1 w-full rounded-xl border border-white/20 bg-[#0a2457] p-2 disabled:opacity-50">
@@ -139,8 +139,8 @@ export default function Header(): JSX.Element {
               <div className="flex flex-wrap gap-2">{quickPresets.map((preset) => <button key={preset.key} onClick={() => setDraft((prev) => ({ ...prev, preset: preset.key }))} className={`rounded-full border px-3 py-1.5 text-xs ${draft.preset === preset.key ? 'border-orange-300 bg-orange-400/20 text-orange-200' : 'border-white/20 bg-white/5 text-slate-200'}`}>{preset.label}</button>)}</div>
             </div>
             <div className="mt-6 flex gap-2">
-              <button onClick={resetFilters} className="flex-1 rounded-xl border border-white/20 py-2">Réinitialiser</button>
-              <button onClick={applyFilters} className="flex-1 rounded-xl bg-white py-2 font-semibold text-[#041743]">Appliquer</button>
+              <button onClick={resetFilters} className="flex-1 rounded-xl bg-white py-2 text-[#041743]">Réinitialiser</button>
+              <button onClick={applyFilters} className="flex-1 rounded-xl bg-orange-500 py-2 font-semibold text-white">Appliquer</button>
             </div>
           </aside>
         </div>
