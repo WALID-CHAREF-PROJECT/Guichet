@@ -4,18 +4,22 @@ const uid = (prefix: string): string => `${prefix}-${Math.random().toString(36).
 
 const users: ApiUser[] = [
   {
-    id: 'admin-1', role: 'admin', firstName: 'Project', lastName: 'Admin', email: 'admin@guichet.ma',
-    password: 'Admin@123', phone: '+212600000000', isActive: true
+    id: 'admin-1', role: 'admin', firstName: 'Admin', lastName: 'Guichet', email: 'admin@guichet.com',
+    password: 'Admin123!', phone: '+212600000000', isActive: true
   },
   {
-    id: 'org-1', role: 'organizer', firstName: 'BAL', lastName: 'Team', email: 'organizer@guichet.ma',
-    password: 'Organizer@123', phone: '+212611111111', companyName: 'Basketball Africa League', organizationSlug: 'basketball-africa-league', isActive: true
+    id: 'org-1', role: 'organizer', firstName: 'Organizer', lastName: 'Guichet', email: 'organizer@guichet.com',
+    password: 'Organizer123!', phone: '+212611111111', companyName: 'Guichet Events Pro', organizationSlug: 'guichet-events-pro', isActive: true
+  },
+  {
+    id: 'client-1', role: 'client', firstName: 'Client', lastName: 'Guichet', email: 'client@guichet.com',
+    password: 'Client123!', phone: '+212622222222', isActive: true
   }
 ];
 
 const organizers: OrganizerModel[] = [
   {
-    id: 'organizer-1', userId: 'org-1', companyName: 'Basketball Africa League', slug: 'basketball-africa-league', logo: '/assets/organizer-bal.png',
+    id: 'organizer-1', userId: 'org-1', companyName: 'Guichet Events Pro', slug: 'guichet-events-pro', logo: '/assets/organizer-bal.png',
     coverImage: '/assets/organizer-cover.jpg', isApproved: true
   }
 ];
