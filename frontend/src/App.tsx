@@ -1,27 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
+import { RequireAdmin, RequireClient, RequireOrganizer } from './components/RouteGuards';
 import MainLayout from './layouts/MainLayout';
 import AboutPage from './pages/AboutPage';
-import CartPage from './pages/CartPage';
-import ContactPage from './pages/ContactPage';
-import EventDetailsPage from './pages/EventDetailsPage';
-import EventsPage from './pages/EventsPage';
-import StorePage from './pages/StorePage';
-import GalleryPage from './pages/GalleryPage';
-import HomePage from './pages/HomePage';
-import LoginPage from './pages/LoginPage';
-import NotFoundPage from './pages/NotFoundPage';
-import RegisterPage from './pages/RegisterPage';
-import VoyagesPage from './pages/VoyagesPage';
-import CinemaPage from './pages/CinemaPage';
-import SportPage from './pages/SportPage';
-import VoyageDetailsPage from './pages/VoyageDetailsPage';
-import AdminPage from './pages/AdminPage';
-import BilleteriePage from './pages/BilleteriePage';
-import EventTagsPage from './pages/EventTagsPage';
-import CinemaDetailsPage from './pages/CinemaDetailsPage';
-import CheckoutPage from './pages/commerce/CheckoutPage';
-import OrderConfirmationPage from './pages/commerce/OrderConfirmationPage';
-import PaymentPage from './pages/commerce/PaymentPage';
 import AccountAreaPage, {
   AccountBalance,
   AccountDashboard,
@@ -33,6 +13,19 @@ import AccountAreaPage, {
   AccountStatus,
   AccountTravels
 } from './pages/AccountAreaPage';
+import AdminPage from './pages/AdminPage';
+import BilleteriePage from './pages/BilleteriePage';
+import CartPage from './pages/CartPage';
+import CinemaDetailsPage from './pages/CinemaDetailsPage';
+import CinemaPage from './pages/CinemaPage';
+import ContactPage from './pages/ContactPage';
+import EventDetailsPage from './pages/EventDetailsPage';
+import EventTagsPage from './pages/EventTagsPage';
+import EventsPage from './pages/EventsPage';
+import GalleryPage from './pages/GalleryPage';
+import HomePage from './pages/HomePage';
+import LoginPage from './pages/LoginPage';
+import NotFoundPage from './pages/NotFoundPage';
 import {
   OrganizerDashboardPage,
   OrganizerEditEventPage,
@@ -42,6 +35,14 @@ import {
   OrganizerProfilePage,
   OrganizerPublicPage
 } from './pages/OrganizerPages';
+import RegisterPage from './pages/RegisterPage';
+import SportPage from './pages/SportPage';
+import StorePage from './pages/StorePage';
+import VoyageDetailsPage from './pages/VoyageDetailsPage';
+import VoyagesPage from './pages/VoyagesPage';
+import CheckoutPage from './pages/commerce/CheckoutPage';
+import OrderConfirmationPage from './pages/commerce/OrderConfirmationPage';
+import PaymentPage from './pages/commerce/PaymentPage';
 
 export default function App(): JSX.Element {
   return (
@@ -69,7 +70,7 @@ export default function App(): JSX.Element {
         <Route path="/ma-fr/payment" element={<PaymentPage />} />
         <Route path="/ma-fr/confirmation" element={<OrderConfirmationPage />} />
 
-        <Route path="/ma-fr/account" element={<AccountAreaPage />}>
+        <Route path="/ma-fr/account" element={<RequireClient><AccountAreaPage /></RequireClient>}>
           <Route index element={<AccountDashboard />} />
           <Route path="profile" element={<AccountProfile />} />
           <Route path="reservations" element={<AccountReservations />} />
@@ -81,19 +82,29 @@ export default function App(): JSX.Element {
           <Route path="status" element={<AccountStatus />} />
         </Route>
 
-        <Route path="/ma-fr/organizer" element={<OrganizerDashboardPage />} />
-        <Route path="/ma-fr/organizer/events" element={<OrganizerEventsPage />} />
-        <Route path="/ma-fr/organizer/events/new" element={<OrganizerNewEventPage />} />
-        <Route path="/ma-fr/organizer/events/:id/edit" element={<OrganizerEditEventPage />} />
-        <Route path="/ma-fr/organizer/orders" element={<OrganizerOrdersPage />} />
-        <Route path="/ma-fr/organizer/profile" element={<OrganizerProfilePage />} />
+        <Route path="/ma-fr/organizer" element={<RequireOrganizer><OrganizerDashboardPage /></RequireOrganizer>} />
+        <Route path="/ma-fr/organizer/dashboard" element={<RequireOrganizer><OrganizerDashboardPage /></RequireOrganizer>} />
+        <Route path="/ma-fr/organizer/events" element={<RequireOrganizer><OrganizerEventsPage /></RequireOrganizer>} />
+        <Route path="/ma-fr/organizer/events/new" element={<RequireOrganizer><OrganizerNewEventPage /></RequireOrganizer>} />
+        <Route path="/ma-fr/organizer/events/:id/edit" element={<RequireOrganizer><OrganizerEditEventPage /></RequireOrganizer>} />
+        <Route path="/ma-fr/organizer/orders" element={<RequireOrganizer><OrganizerOrdersPage /></RequireOrganizer>} />
+        <Route path="/ma-fr/organizer/customers" element={<RequireOrganizer><OrganizerOrdersPage /></RequireOrganizer>} />
+        <Route path="/ma-fr/organizer/reports" element={<RequireOrganizer><OrganizerOrdersPage /></RequireOrganizer>} />
+        <Route path="/ma-fr/organizer/payouts" element={<RequireOrganizer><OrganizerOrdersPage /></RequireOrganizer>} />
+        <Route path="/ma-fr/organizer/settings" element={<RequireOrganizer><OrganizerProfilePage /></RequireOrganizer>} />
+        <Route path="/ma-fr/organizer/profile" element={<RequireOrganizer><OrganizerProfilePage /></RequireOrganizer>} />
 
-        <Route path="/ma-fr/admin" element={<AdminPage />} />
-        <Route path="/ma-fr/admin/events" element={<AdminPage />} />
-        <Route path="/ma-fr/admin/users" element={<AdminPage />} />
-        <Route path="/ma-fr/admin/orders" element={<AdminPage />} />
-        <Route path="/ma-fr/admin/organizers" element={<AdminPage />} />
-        <Route path="/ma-fr/admin/content" element={<AdminPage />} />
+        <Route path="/ma-fr/admin" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
+        <Route path="/ma-fr/admin/dashboard" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
+        <Route path="/ma-fr/admin/users" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
+        <Route path="/ma-fr/admin/organizers" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
+        <Route path="/ma-fr/admin/events" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
+        <Route path="/ma-fr/admin/orders" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
+        <Route path="/ma-fr/admin/travels" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
+        <Route path="/ma-fr/admin/movies" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
+        <Route path="/ma-fr/admin/categories" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
+        <Route path="/ma-fr/admin/content" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
+        <Route path="/ma-fr/admin/settings" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
 
         <Route path="/login" element={<Navigate to="/ma-fr/login" replace />} />
         <Route path="/register" element={<Navigate to="/ma-fr/signup" replace />} />

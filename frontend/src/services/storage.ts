@@ -42,8 +42,8 @@ export interface UserScopedState {
   balanceTransactions: Array<{ id: string; label: string; amount: number; createdAt: string }>;
 }
 
-const USERS_KEY = 'ticketflow_users_v2';
-const CURRENT_USER_KEY = 'ticketflow_current_user_v2';
+const USERS_KEY = 'app:db:users';
+const CURRENT_USER_KEY = 'app:auth:user';
 
 const ADMIN_USER: StoredUser = {
   id: 'admin-1',
