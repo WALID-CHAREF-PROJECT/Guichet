@@ -1,11 +1,16 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import {
   createUser,
+  FavoriteItem,
+  FavoriteItemType,
   getCurrentUser,
   getUserState,
   getUsers,
+  isFavorite as checkIsFavorite,
+  removeFavorite as deleteFavorite,
   setCurrentUser,
   StoredUser,
+  toggleFavorite as toggleFavoriteInStorage,
   updateUserPassword,
   updateUserProfile,
   UserScopedState
@@ -28,6 +33,10 @@ interface UserContextValue {
   refresh: () => void;
   updateProfile: (patch: Partial<Pick<StoredUser, 'firstName' | 'lastName' | 'email' | 'phone' | 'avatar'>>) => void;
   changePassword: (currentPassword: string, nextPassword: string, confirm: string) => { ok: boolean; message: string };
+  favorites: FavoriteItem[];
+  isFavorite: (itemId: string, itemType: FavoriteItemType) => boolean;
+  toggleFavorite: (favorite: Omit<FavoriteItem, 'id' | 'userId'>) => boolean;
+  removeFavorite: (itemId: string, itemType: FavoriteItemType) => void;
 }
 
 const UserContext = createContext<UserContextValue | null>(null);
@@ -87,7 +96,20 @@ export function UserProvider({ children }: { children: ReactNode }): JSX.Element
         if (fresh?.password !== currentPassword) return { ok: false, message: 'Mot de passe actuel incorrect.' };
         updateUserPassword(user.id, nextPassword);
         return { ok: true, message: 'Mot de passe mis à jour avec succès.' };
-      }
+      },
+      favorites: scopedState?.favorites ?? [],
+      isFavorite: (itemId, itemType) => (user ? checkIsFavorite(user.id, itemId, itemType) : false),
+      toggleFavorite: (favorite) => {
+        if (!user) return false;
+        const next = toggleFavoriteInStorage(user.id, favorite);
+        refresh();
+        return next;
+      },
+      removeFavorite: (itemId, itemType) => {
+        if (!user) return;
+        deleteFavorite(user.id, itemId, itemType);
+        refresh();
+      },
     }),
     [user, scopedState]
   );

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
-import { platformEvents, voyages } from '../services/platformData';
+
 
 const menu = [
   { to: '/ma-fr/account', label: 'Tableau de bord', end: true },
@@ -79,11 +79,30 @@ function StatCard({ label, value }: { label: string; value: string }): JSX.Eleme
 }
 
 export function AccountFavorites(): JSX.Element {
-  const { scopedState } = useUser();
-  const favorites = scopedState?.favorites ?? [];
-  const items = platformEvents.filter((event) => favorites.includes(event.slug));
-  if (!items.length) return <Empty title="Aucun favori" subtitle="Ajoutez des événements à vos favoris pour les retrouver ici." />;
-  return <ListSection title="Mes favoris" items={items.map((item) => ({ label: item.title, to: `/ma-fr/event/${item.slug}` }))} />;
+  const { favorites, removeFavorite } = useUser();
+  if (!favorites.length) return <Empty title="Aucun favori" subtitle="Ajoutez des événements, films et voyages à vos favoris pour les retrouver ici." />;
+  return (
+    <section className="rounded-3xl border border-white/10 bg-[#041743] p-6">
+      <h2 className="text-2xl font-bold">Mes favoris</h2>
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        {favorites.map((item) => (
+          <article key={item.id} className="overflow-hidden rounded-xl border border-white/10 bg-white/5">
+            <img src={item.image || 'https://placehold.co/800x480/0B2557/FFFFFF?text=Favori'} alt={item.title} className="h-36 w-full object-cover" />
+            <div className="space-y-1 p-3 text-sm">
+              <p className="text-xs uppercase text-orange-300">{item.itemType}</p>
+              <h3 className="font-semibold">{item.title}</h3>
+              {item.location ? <p className="text-slate-300">📍 {item.location}</p> : null}
+              {item.date ? <p className="text-slate-300">📅 {item.date}</p> : null}
+              <div className="mt-2 flex items-center gap-2">
+                <Link to={item.route} className="rounded-full border border-white/40 px-3 py-1 text-xs">Ouvrir</Link>
+                <button onClick={() => removeFavorite(item.itemId, item.itemType)} className="rounded-full bg-white px-3 py-1 text-xs text-[#041743]">Retirer</button>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
 }
 
 export function AccountReservations(): JSX.Element {

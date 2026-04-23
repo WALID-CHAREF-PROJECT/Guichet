@@ -1,6 +1,7 @@
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import ServiceTabs from '../components/ServiceTabs';
 import { voyageCategories, voyages } from '../services/platformData';
+import FavoriteButton from '../components/FavoriteButton';
 
 const slugify = (value: string): string =>
   value
@@ -41,7 +42,8 @@ export default function VoyagesPage(): JSX.Element {
       <h1 className="text-5xl font-bold">Les voyages les plus appréciés sur Guichet</h1>
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {filtered.map((trip) => (
-          <Link key={trip.slug} to={`/ma-fr/voyage/${trip.slug}`} className="overflow-hidden rounded-xl border border-white/10 bg-[#041743]">
+          <Link key={trip.slug} to={`/ma-fr/voyage/${trip.slug}`} className="relative overflow-hidden rounded-xl border border-white/10 bg-[#041743]">
+            <div className="absolute right-3 top-3 z-10"><FavoriteButton itemId={trip.slug} itemType="travel" payload={{ slug: trip.slug, title: trip.title, image: trip.image, location: trip.location, date: trip.departureDate, route: `/ma-fr/voyage/${trip.slug}` }} /></div>
             <img src={trip.image} alt={trip.title} className="h-64 w-full object-cover" />
             <div className="space-y-2 p-4">
               <p className="inline-block rounded bg-white/10 px-2 py-1 text-xs">{trip.location}</p>

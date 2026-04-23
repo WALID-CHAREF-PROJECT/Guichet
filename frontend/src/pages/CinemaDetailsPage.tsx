@@ -4,6 +4,8 @@ import ServiceTabs from '../components/ServiceTabs';
 import { movies } from '../services/platformData';
 import { useCart } from '../contexts/CartContext';
 import { uid } from '../services/commerce/utils';
+import FavoriteButton from '../components/FavoriteButton';
+import SharePopover from '../components/SharePopover';
 
 const dates = ['Aujourd’hui', 'Demain', 'Vendredi', 'Samedi'];
 
@@ -41,7 +43,7 @@ export default function CinemaDetailsPage(): JSX.Element {
       <div className="grid gap-6 lg:grid-cols-[0.6fr_1fr]">
         <img src={movie.image} alt={movie.title} className="h-[560px] w-full rounded-2xl object-cover" />
         <article className="rounded-2xl border border-white/10 bg-[#041743] p-6">
-          <h1 className="text-4xl font-bold">{movie.title}</h1>
+          <div className="mb-3 flex items-center justify-end gap-2"><SharePopover title={movie.title} /><FavoriteButton itemId={movie.slug} itemType="movie" payload={{ slug: movie.slug, title: movie.title, image: movie.image, route: `/ma-fr/cinema/${movie.slug}` }} /></div><h1 className="text-4xl font-bold">{movie.title}</h1>
           <p className="mt-2 text-slate-300">Genre: {movie.genre} · Durée: {movie.duration} · Âge: +12</p>
           <p className="mt-4 text-sm text-slate-300">Un thriller immersif au rythme soutenu, avec une photographie soignée et une bande-son intense.</p>
           <div className="mt-4 grid gap-2 text-sm text-slate-300 sm:grid-cols-2">

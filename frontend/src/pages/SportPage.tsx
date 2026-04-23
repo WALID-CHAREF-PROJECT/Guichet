@@ -1,6 +1,7 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import ServiceTabs from '../components/ServiceTabs';
 import { sports } from '../services/platformData';
+import FavoriteButton from '../components/FavoriteButton';
 
 export default function SportPage(): JSX.Element {
   const [searchParams] = useSearchParams();
@@ -15,7 +16,8 @@ export default function SportPage(): JSX.Element {
       <ServiceTabs active="sport" />
       <div className="grid gap-5 md:grid-cols-2">
         {filtered.map((item) => (
-          <Link key={item.id} to={`/ma-fr/event/${item.slug}`} className="overflow-hidden rounded-2xl border border-white/10 bg-[#041743]">
+          <Link key={item.id} to={`/ma-fr/event/${item.slug}`} className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#041743]">
+            <div className="absolute right-3 top-3 z-10"><FavoriteButton itemId={item.slug} itemType="sport" payload={{ slug: item.slug, title: item.title, image: item.image, location: item.location, date: item.date, route: `/ma-fr/event/${item.slug}` }} /></div>
             <img src={item.image} alt={item.title} className="h-56 w-full object-cover" />
             <div className="space-y-1 p-4">
               <p className="text-xs uppercase tracking-wide text-orange-300">{item.category}</p>

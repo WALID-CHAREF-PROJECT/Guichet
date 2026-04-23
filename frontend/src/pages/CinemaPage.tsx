@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import ServiceTabs from '../components/ServiceTabs';
 import { movies } from '../services/platformData';
+import FavoriteButton from '../components/FavoriteButton';
 
 export default function CinemaPage(): JSX.Element {
   const [searchParams] = useSearchParams();
@@ -50,7 +51,8 @@ export default function CinemaPage(): JSX.Element {
       <h1 className="text-5xl font-bold">Toujours à l'affiche</h1>
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
         {filteredMovies.map((movie) => (
-          <article key={movie.slug} className="space-y-3 rounded-lg border border-white/10 bg-[#041743] p-3">
+          <article key={movie.slug} className="relative space-y-3 rounded-lg border border-white/10 bg-[#041743] p-3">
+            <div className="absolute right-3 top-3 z-10"><FavoriteButton itemId={movie.slug} itemType="movie" payload={{ slug: movie.slug, title: movie.title, image: movie.image, route: `/ma-fr/cinema/${movie.slug}` }} /></div>
             <Link to={`/ma-fr/cinema/${movie.slug}`}><img src={movie.image} alt={movie.title} className="h-72 w-full rounded-md object-cover" /></Link>
             <h2 className="font-semibold">{movie.title}</h2>
             <p className="text-sm text-slate-300">Durée: {movie.duration}</p>

@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import CategoryStrip from '../components/CategoryStrip';
 import PlatformTopNav from '../components/PlatformTopNav';
 import { eventTags, featuredPosters, platformEvents } from '../services/platformData';
+import FavoriteButton from '../components/FavoriteButton';
 
 type DateFilter = 'today' | 'week' | 'weekend' | 'month';
 
@@ -24,7 +25,8 @@ function FeaturedPosterCard({ image, slug, title }: { image: string; slug: strin
 
 function EventCard({ event, compact = false }: { event: (typeof platformEvents)[number]; compact?: boolean }): JSX.Element {
   return (
-    <Link to={`/ma-fr/event/${event.slug}`} className={`group ${compact ? 'w-[230px] shrink-0' : ''} rounded-2xl border border-white/10 bg-[#071b45] p-3 transition-all hover:-translate-y-1 hover:shadow-lg hover:shadow-black/30`}>
+    <Link to={`/ma-fr/event/${event.slug}`} className={`group relative ${compact ? 'w-[230px] shrink-0' : ''} rounded-2xl border border-white/10 bg-[#071b45] p-3 transition-all hover:-translate-y-1 hover:shadow-lg hover:shadow-black/30`}>
+      <div className="absolute right-3 top-3 z-10"><FavoriteButton itemId={event.slug} itemType="event" payload={{ slug: event.slug, title: event.title, image: event.image, location: event.location, date: `${event.date} · ${event.time}`, route: `/ma-fr/event/${event.slug}`, organizer: event.organizer }} /></div>
       <div className="mb-3 flex items-center gap-2"><img src={event.organizerLogo} alt={event.organizer} className="h-7 w-7 rounded-full object-cover" /><span className="line-clamp-1 text-xs font-medium text-slate-200">{event.organizer}</span></div>
       <div className="overflow-hidden rounded-xl"><img src={event.image} alt={event.title} className={`${compact ? 'h-64' : 'h-72'} w-full object-cover transition-all duration-500 group-hover:scale-105`} /></div>
       <h3 className="mt-3 text-sm font-semibold leading-snug text-white line-clamp-2">{event.title}</h3>
@@ -43,6 +45,14 @@ export default function TicketingHomePage(): JSX.Element {
   const [hour, setHour] = useState(searchParams.get('hour') ?? '');
   const [calendarDate, setCalendarDate] = useState(searchParams.get('date') ?? '');
   const [activeDateFilter, setActiveDateFilter] = useState<DateFilter>((searchParams.get('preset') as DateFilter) ?? 'week');
+
+  useEffect(() => {
+    setSelectedTag(searchParams.get('category') ?? '');
+    setSelectedCity(searchParams.get('city') ?? '');
+    setHour(searchParams.get('hour') ?? '');
+    setCalendarDate(searchParams.get('date') ?? '');
+    setActiveDateFilter((searchParams.get('preset') as DateFilter) ?? 'week');
+  }, [searchParams]);
 
   const filteredEvents = useMemo(() => {
     const ids = filterMap[activeDateFilter] ?? platformEvents.map((event) => event.id);
