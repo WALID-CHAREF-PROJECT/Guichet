@@ -33,7 +33,11 @@ import {
   OrganizerNewEventPage,
   OrganizerOrdersPage,
   OrganizerProfilePage,
-  OrganizerPublicPage
+  OrganizerPublicPage,
+  OrganizerCustomersPage,
+  OrganizerReportsPage,
+  OrganizerPayoutsPage,
+  OrganizerSettingsPage
 } from './pages/OrganizerPages';
 import RegisterPage from './pages/RegisterPage';
 import SportPage from './pages/SportPage';
@@ -88,10 +92,10 @@ export default function App(): JSX.Element {
         <Route path="/ma-fr/organizer/events/new" element={<RequireOrganizer><OrganizerNewEventPage /></RequireOrganizer>} />
         <Route path="/ma-fr/organizer/events/:id/edit" element={<RequireOrganizer><OrganizerEditEventPage /></RequireOrganizer>} />
         <Route path="/ma-fr/organizer/orders" element={<RequireOrganizer><OrganizerOrdersPage /></RequireOrganizer>} />
-        <Route path="/ma-fr/organizer/customers" element={<RequireOrganizer><OrganizerOrdersPage /></RequireOrganizer>} />
-        <Route path="/ma-fr/organizer/reports" element={<RequireOrganizer><OrganizerOrdersPage /></RequireOrganizer>} />
-        <Route path="/ma-fr/organizer/payouts" element={<RequireOrganizer><OrganizerOrdersPage /></RequireOrganizer>} />
-        <Route path="/ma-fr/organizer/settings" element={<RequireOrganizer><OrganizerProfilePage /></RequireOrganizer>} />
+        <Route path="/ma-fr/organizer/customers" element={<RequireOrganizer><OrganizerCustomersPage /></RequireOrganizer>} />
+        <Route path="/ma-fr/organizer/reports" element={<RequireOrganizer><OrganizerReportsPage /></RequireOrganizer>} />
+        <Route path="/ma-fr/organizer/payouts" element={<RequireOrganizer><OrganizerPayoutsPage /></RequireOrganizer>} />
+        <Route path="/ma-fr/organizer/settings" element={<RequireOrganizer><OrganizerSettingsPage /></RequireOrganizer>} />
         <Route path="/ma-fr/organizer/profile" element={<RequireOrganizer><OrganizerProfilePage /></RequireOrganizer>} />
 
         <Route path="/ma-fr/admin" element={<RequireAdmin><AdminPage /></RequireAdmin>} />

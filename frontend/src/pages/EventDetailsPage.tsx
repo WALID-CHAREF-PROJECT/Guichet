@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom';
 import PlatformTopNav from '../components/PlatformTopNav';
 import { getEventBySlug } from '../services/platformData';
+import { backofficeService } from '../services/backoffice';
 import TicketSelectionModal from '../components/commerce/TicketSelectionModal';
 import FavoriteButton from '../components/FavoriteButton';
 import SharePopover from '../components/SharePopover';
@@ -9,7 +10,21 @@ import { useState } from 'react';
 
 export default function EventDetailsPage(): JSX.Element {
   const { slug = '' } = useParams();
-  const event = getEventBySlug(slug);
+  const dynamic = backofficeService.getPublicEventBySlug(slug);
+  const fallbackEvent = getEventBySlug(slug);
+  const event = dynamic ? {
+    slug: dynamic.event.slug,
+    title: dynamic.event.title,
+    organizer: dynamic.organizer?.companyName ?? 'Organisateur',
+    organizerLogo: dynamic.organizer?.logo ?? dynamic.event.image,
+    image: dynamic.event.image,
+    tags: dynamic.event.tags,
+    location: dynamic.event.location,
+    date: dynamic.event.date,
+    time: dynamic.event.time,
+    price: `${dynamic.event.ticketTypes[0]?.price ?? 0} MAD`,
+    description: dynamic.event.description
+  } : fallbackEvent;
   const [ticketModalOpen, setTicketModalOpen] = useState(false);
   const [seatModalOpen, setSeatModalOpen] = useState(false);
 

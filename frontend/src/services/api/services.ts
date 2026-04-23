@@ -1,3 +1,4 @@
+import { backofficeService } from '../backoffice';
 import { mockDb, createUser } from './mockDb';
 import { ApiUser, UserRole } from './models';
 
@@ -48,27 +49,48 @@ export const clientService = {
 };
 
 export const organizerService = {
-  dashboard: (userId: string) => ({
-    totalEvents: mockDb.events.filter((e) => e.organizerId === userId).length,
-    revenue: mockDb.orders.filter((o) => o.organizerId === userId).reduce((sum, order) => sum + order.total, 0)
-  }),
-  profile: (userId: string) => mockDb.organizers.find((o) => o.userId === userId) ?? null,
-  events: (userId: string) => mockDb.events.filter((e) => e.organizerId === userId),
-  orders: (userId: string) => mockDb.orders.filter((o) => o.organizerId === userId),
-  customers: (userId: string) => mockDb.orders.filter((o) => o.organizerId === userId).map((o) => o.customerId),
-  reports: (userId: string) => ({ monthlyRevenue: mockDb.orders.filter((o) => o.organizerId === userId).reduce((sum, order) => sum + order.total, 0) }),
-  payouts: (userId: string) => mockDb.payouts.get(userId) ?? []
+  dashboard: (userId: string) => {
+    const events = backofficeService.getOrganizerEvents(userId);
+    const orders = backofficeService.getOrganizerOrders(userId);
+    return { totalEvents: events.length, revenue: orders.reduce((sum, order) => sum + order.total, 0) };
+  },
+  profile: (userId: string) => backofficeService.getOrganizerProfile(userId),
+  updateProfile: (userId: string, payload: Record<string, unknown>) => backofficeService.updateOrganizerProfile(userId, payload),
+  events: (userId: string) => backofficeService.getOrganizerEvents(userId),
+  eventById: (userId: string, id: string) => backofficeService.getOrganizerEvent(userId, id),
+  createEvent: (userId: string, payload: any) => backofficeService.createOrganizerEvent(userId, payload),
+  updateEvent: (userId: string, id: string, payload: any) => backofficeService.updateOrganizerEvent(userId, id, payload),
+  deleteEvent: (userId: string, id: string) => backofficeService.deleteOrganizerEvent(userId, id),
+  orders: (userId: string) => backofficeService.getOrganizerOrders(userId),
+  customers: (userId: string) => backofficeService.getOrganizerCustomers(userId),
+  reports: (userId: string) => ({ orders: backofficeService.getOrganizerOrders(userId), events: backofficeService.getOrganizerEvents(userId) }),
+  payouts: (userId: string) => backofficeService.getOrganizerPayouts(userId)
 };
 
 export const adminService = {
-  dashboard: () => ({ users: mockDb.users.length, events: mockDb.events.length, orders: mockDb.orders.length }),
+  dashboard: () => {
+    const db = backofficeService.getAdminData();
+    return { users: mockDb.users.length, events: db.events.length, orders: db.orders.length };
+  },
   users: () => mockDb.users,
-  organizers: () => mockDb.organizers,
-  events: () => mockDb.events,
-  orders: () => mockDb.orders,
-  categories: () => mockDb.categories,
-  content: () => mockDb.content,
-  settings: () => mockDb.settings
+  updateUser: (id: string, payload: Record<string, unknown>) => backofficeService.updateUser(id, payload),
+  organizers: () => backofficeService.getAdminData().organizers,
+  updateOrganizer: (id: string, payload: Record<string, unknown>) => backofficeService.updateOrganizer(id, payload),
+  events: () => backofficeService.getAdminData().events,
+  updateEvent: (id: string, payload: Record<string, unknown>) => backofficeService.updateEventByAdmin(id, payload),
+  deleteEvent: (id: string) => backofficeService.deleteEventByAdmin(id),
+  orders: () => backofficeService.getAdminData().orders,
+  travels: () => backofficeService.getAdminData().travels,
+  updateTravel: (id: string, payload: Record<string, unknown>) => backofficeService.updateTravel(id, payload),
+  movies: () => backofficeService.getAdminData().movies,
+  updateMovie: (id: string, payload: Record<string, unknown>) => backofficeService.updateMovie(id, payload),
+  categories: () => backofficeService.getAdminData().categories,
+  createCategory: (payload: any) => backofficeService.createCategory(payload),
+  updateCategory: (id: string, payload: any) => backofficeService.updateCategory(id, payload),
+  deleteCategory: (id: string) => backofficeService.deleteCategory(id),
+  content: () => backofficeService.getAdminData().content,
+  updateContent: (id: string, payload: any) => backofficeService.updateContent(id, payload),
+  settings: () => backofficeService.getAdminData().settings
 };
 
 export function canAccess(requiredRoles: UserRole[], currentRole: UserRole | null): boolean {
