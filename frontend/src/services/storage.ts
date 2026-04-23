@@ -49,8 +49,8 @@ const ADMIN_USER: StoredUser = {
   id: 'admin-1',
   firstName: 'Admin',
   lastName: 'Guichet',
-  email: 'admin@guichet.com',
-  password: 'Admin123!',
+  email: 'admin@guichet.ma',
+  password: 'Admin@123',
   phone: '+212600000000',
   role: 'admin',
   active: true
@@ -58,14 +58,14 @@ const ADMIN_USER: StoredUser = {
 
 const ORGANIZER_USER: StoredUser = {
   id: 'org-1',
-  firstName: 'Organizer',
+  firstName: 'Fournisseur',
   lastName: 'Guichet',
-  email: 'organizer@guichet.com',
-  password: 'Organizer123!',
+  email: 'fournisseur@guichet.ma',
+  password: 'Fournisseur@123',
   phone: '+212611111111',
   role: 'organizer',
-  companyName: 'Guichet Events Pro',
-  organizationSlug: 'guichet-events-pro',
+  companyName: 'Guichet Fournisseurs',
+  organizationSlug: 'guichet-fournisseurs',
   active: true
 };
 
