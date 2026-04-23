@@ -47,10 +47,10 @@ const CURRENT_USER_KEY = 'app:auth:user';
 
 const ADMIN_USER: StoredUser = {
   id: 'admin-1',
-  firstName: 'Project',
-  lastName: 'Admin',
-  email: 'admin@guichet.ma',
-  password: 'Admin@123',
+  firstName: 'Admin',
+  lastName: 'Guichet',
+  email: 'admin@guichet.com',
+  password: 'Admin123!',
   phone: '+212600000000',
   role: 'admin',
   active: true
@@ -58,14 +58,25 @@ const ADMIN_USER: StoredUser = {
 
 const ORGANIZER_USER: StoredUser = {
   id: 'org-1',
-  firstName: 'BAL',
-  lastName: 'Team',
-  email: 'organizer@guichet.ma',
-  password: 'Organizer@123',
+  firstName: 'Organizer',
+  lastName: 'Guichet',
+  email: 'organizer@guichet.com',
+  password: 'Organizer123!',
   phone: '+212611111111',
   role: 'organizer',
-  companyName: 'Basketball Africa League',
-  organizationSlug: 'basketball-africa-league',
+  companyName: 'Guichet Events Pro',
+  organizationSlug: 'guichet-events-pro',
+  active: true
+};
+
+const CLIENT_USER: StoredUser = {
+  id: 'client-1',
+  firstName: 'Client',
+  lastName: 'Guichet',
+  email: 'client@guichet.com',
+  password: 'Client123!',
+  phone: '+212622222222',
+  role: 'client',
   active: true
 };
 
@@ -140,6 +151,7 @@ export function getUsers(): StoredUser[] {
   const withDefaults = [...users];
   if (!withDefaults.some((u) => u.email === ADMIN_USER.email)) withDefaults.unshift(ADMIN_USER);
   if (!withDefaults.some((u) => u.email === ORGANIZER_USER.email)) withDefaults.unshift(ORGANIZER_USER);
+  if (!withDefaults.some((u) => u.email === CLIENT_USER.email)) withDefaults.unshift(CLIENT_USER);
   if (withDefaults.length !== users.length) saveUsers(withDefaults);
   return withDefaults;
 }
