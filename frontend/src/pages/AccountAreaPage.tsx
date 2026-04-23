@@ -30,13 +30,14 @@ export default function AccountAreaPage(): JSX.Element {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[290px_1fr]">
-      <aside className="space-y-3 rounded-3xl border border-white/10 bg-[#041743] p-4">
+      <aside className="space-y-3 rounded-3xl border border-white/10 bg-gradient-to-b from-[#071b45] to-[#04122f] p-4 shadow-[0_20px_55px_rgba(2,8,28,0.55)]">
+        <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Compte</p>
         {menu.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.end}
-            className={({ isActive }) => `block rounded-xl px-4 py-2 text-sm ${isActive ? 'bg-white text-[#041743] font-semibold' : 'bg-white/5 hover:bg-white/10'}`}
+            className={({ isActive }) => `block rounded-xl border px-4 py-2.5 text-sm transition ${isActive ? 'border-orange-300/60 bg-gradient-to-r from-orange-500/25 to-orange-400/10 font-semibold text-white shadow-[0_8px_20px_rgba(249,115,22,0.18)]' : 'border-transparent bg-white/5 text-slate-100 hover:border-white/15 hover:bg-white/10'}`}
           >
             {item.label}
           </NavLink>
@@ -46,7 +47,7 @@ export default function AccountAreaPage(): JSX.Element {
             logout();
             navigate('/ma-fr/login');
           }}
-          className="w-full rounded-xl bg-red-500/20 px-4 py-2 text-left text-sm text-red-200"
+          className="mt-3 w-full rounded-xl border border-red-300/35 bg-red-500/15 px-4 py-2.5 text-left text-sm font-semibold text-red-100 transition hover:bg-red-500/25"
         >
           Se déconnecter
         </button>
@@ -87,10 +88,12 @@ export function AccountFavorites(): JSX.Element {
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         {favorites.map((item) => (
           <article key={item.id} className="overflow-hidden rounded-xl border border-white/10 bg-white/5">
-            <img src={item.image || 'https://placehold.co/800x480/0B2557/FFFFFF?text=Favori'} alt={item.title} className="h-36 w-full object-cover" />
+            <Link to={item.route} className="block">
+              <img src={item.image || 'https://placehold.co/800x480/0B2557/FFFFFF?text=Favori'} alt={item.title} className="h-36 w-full object-cover" />
+            </Link>
             <div className="space-y-1 p-3 text-sm">
               <p className="text-xs uppercase text-orange-300">{item.itemType}</p>
-              <h3 className="font-semibold">{item.title}</h3>
+              <Link to={item.route} className="block font-semibold hover:text-orange-200">{item.title}</Link>
               {item.location ? <p className="text-slate-300">📍 {item.location}</p> : null}
               {item.date ? <p className="text-slate-300">📅 {item.date}</p> : null}
               <div className="mt-2 flex items-center gap-2">

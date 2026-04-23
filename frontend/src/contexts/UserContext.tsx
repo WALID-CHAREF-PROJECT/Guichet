@@ -6,7 +6,6 @@ import {
   getCurrentUser,
   getUserState,
   getUsers,
-  isFavorite as checkIsFavorite,
   removeFavorite as deleteFavorite,
   setCurrentUser,
   StoredUser,
@@ -44,6 +43,7 @@ const UserContext = createContext<UserContextValue | null>(null);
 export function UserProvider({ children }: { children: ReactNode }): JSX.Element {
   const [user, setUser] = useState<StoredUser | null>(getCurrentUser());
   const [scopedState, setScopedState] = useState<UserScopedState | null>(user ? getUserState(user.id, user) : null);
+  const favoriteKeys = useMemo(() => new Set((scopedState?.favorites ?? []).map((item) => `${item.itemType}:${item.itemId}`)), [scopedState]);
 
   const refresh = (): void => {
     const nextUser = getCurrentUser();
@@ -98,7 +98,7 @@ export function UserProvider({ children }: { children: ReactNode }): JSX.Element
         return { ok: true, message: 'Mot de passe mis à jour avec succès.' };
       },
       favorites: scopedState?.favorites ?? [],
-      isFavorite: (itemId, itemType) => (user ? checkIsFavorite(user.id, itemId, itemType) : false),
+      isFavorite: (itemId, itemType) => (user ? favoriteKeys.has(`${itemType}:${itemId}`) : false),
       toggleFavorite: (favorite) => {
         if (!user) return false;
         const next = toggleFavoriteInStorage(user.id, favorite);
@@ -111,7 +111,7 @@ export function UserProvider({ children }: { children: ReactNode }): JSX.Element
         refresh();
       },
     }),
-    [user, scopedState]
+    [user, scopedState, favoriteKeys]
   );
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

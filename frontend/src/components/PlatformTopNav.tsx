@@ -93,15 +93,30 @@ export default function PlatformTopNav({ active, showCategories = false }: { act
       ) : null}
 
       {drawerOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50" onClick={() => setDrawerOpen(false)}>
-          <aside className="ml-auto h-full w-[320px] bg-[#041743] p-4" onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => setDrawerOpen(false)} className="mb-4 rounded border border-white/20 px-2 py-1">Fermer</button>
-            <div className="mb-4 rounded-xl bg-white/5 p-3"><p className="text-sm">{user ? `${user.firstName} ${user.lastName}` : 'Invité'}</p><p className="text-xs text-slate-300">{user?.email ?? 'non connecté'}</p></div>
-            <p className="mb-2 text-xs uppercase text-slate-400">Menu</p>
-            <div className="space-y-2 text-sm"><NavLink to="/ma-fr/account/profile" className="block">Mes informations</NavLink><NavLink to="/ma-fr/account/security" className="block">Mot de passe</NavLink><NavLink to="/ma-fr/account/reservations" className="block">Mes réservations</NavLink><NavLink to="/ma-fr/account/travels" className="block">Mes voyages</NavLink><NavLink to="/ma-fr/account/favorites" className="block">Mes favoris</NavLink><NavLink to="/ma-fr/account/balance" className="block">Mon solde</NavLink></div>
-            <p className="mb-2 mt-5 text-xs uppercase text-slate-400">Aide</p>
-            <div className="space-y-2 text-sm text-slate-200"><span className="block">Contacter le service client</span><span className="block">Mentions légales</span><span className="block">F.A.Q</span><span className="block">Politique de remboursement</span></div>
-            <button onClick={logout} className="mt-6 w-full rounded bg-red-500/20 py-2 text-sm">Se déconnecter</button>
+        <div className="fixed inset-0 z-50 bg-[#020814]/80 backdrop-blur-sm" onClick={() => setDrawerOpen(false)}>
+          <aside className="ml-auto flex h-full w-[330px] flex-col border-l border-white/10 bg-gradient-to-b from-[#071b45] to-[#030d26] p-4 text-white shadow-[-18px_0_40px_rgba(2,8,28,0.65)]" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setDrawerOpen(false)} className="mb-4 w-fit rounded-lg border border-white/20 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10">Fermer</button>
+            <div className="mb-5 rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="text-sm font-semibold text-white">{user ? `${user.firstName} ${user.lastName}` : 'Invité'}</p>
+              <p className="mt-1 text-xs text-slate-300">{user?.email ?? 'non connecté'}</p>
+            </div>
+            <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Menu</p>
+            <div className="space-y-2 text-sm">
+              <NavLink to="/ma-fr/account/profile" className={({ isActive }) => `block rounded-xl border px-3 py-2.5 transition ${isActive ? 'border-orange-300/60 bg-orange-400/15 text-white' : 'border-transparent bg-white/5 text-slate-100 hover:border-white/15 hover:bg-white/10'}`}>Mes informations</NavLink>
+              <NavLink to="/ma-fr/account/security" className={({ isActive }) => `block rounded-xl border px-3 py-2.5 transition ${isActive ? 'border-orange-300/60 bg-orange-400/15 text-white' : 'border-transparent bg-white/5 text-slate-100 hover:border-white/15 hover:bg-white/10'}`}>Mot de passe</NavLink>
+              <NavLink to="/ma-fr/account/reservations" className={({ isActive }) => `block rounded-xl border px-3 py-2.5 transition ${isActive ? 'border-orange-300/60 bg-orange-400/15 text-white' : 'border-transparent bg-white/5 text-slate-100 hover:border-white/15 hover:bg-white/10'}`}>Mes réservations</NavLink>
+              <NavLink to="/ma-fr/account/travels" className={({ isActive }) => `block rounded-xl border px-3 py-2.5 transition ${isActive ? 'border-orange-300/60 bg-orange-400/15 text-white' : 'border-transparent bg-white/5 text-slate-100 hover:border-white/15 hover:bg-white/10'}`}>Mes voyages</NavLink>
+              <NavLink to="/ma-fr/account/favorites" className={({ isActive }) => `block rounded-xl border px-3 py-2.5 transition ${isActive ? 'border-orange-300/60 bg-orange-400/15 text-white' : 'border-transparent bg-white/5 text-slate-100 hover:border-white/15 hover:bg-white/10'}`}>Mes favoris</NavLink>
+              <NavLink to="/ma-fr/account/balance" className={({ isActive }) => `block rounded-xl border px-3 py-2.5 transition ${isActive ? 'border-orange-300/60 bg-orange-400/15 text-white' : 'border-transparent bg-white/5 text-slate-100 hover:border-white/15 hover:bg-white/10'}`}>Mon solde</NavLink>
+            </div>
+            <p className="mb-2 mt-6 px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Aide</p>
+            <div className="space-y-1.5 text-sm text-slate-200">
+              <span className="block rounded-lg px-3 py-2">Contacter le service client</span>
+              <span className="block rounded-lg px-3 py-2">Mentions légales</span>
+              <span className="block rounded-lg px-3 py-2">F.A.Q</span>
+              <span className="block rounded-lg px-3 py-2">Politique de remboursement</span>
+            </div>
+            <button onClick={logout} className="mt-auto w-full rounded-xl border border-red-300/35 bg-red-500/15 py-2.5 text-sm font-semibold text-red-100 transition hover:bg-red-500/25">Se déconnecter</button>
           </aside>
         </div>
       )}
