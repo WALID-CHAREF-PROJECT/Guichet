@@ -6,6 +6,8 @@ import SharePopover from '../components/SharePopover';
 import SeatPlanModal from '../components/commerce/SeatPlanModal';
 import { useEffect, useState } from 'react';
 import { catalogApi } from '../services/api/laravelApi';
+import { getEventBySlug } from '../services/platformData';
+import { safeFetchData } from '../services/safeApi';
 
 interface EventDetailsModel {
   id: string;
@@ -25,19 +27,57 @@ interface EventDetailsModel {
   ticketTypes?: Array<{ id: string; name: string; price: number; available: number }>;
 }
 
+function fallbackEvent(slug: string): EventDetailsModel | null {
+  const event = getEventBySlug(slug);
+  if (!event) return null;
+  return {
+    id: String(event.id),
+    slug: event.slug,
+    title: event.title,
+    organizer: { name: event.organizer, logo: event.organizerLogo, slug: 'organisateur' },
+    image: event.image,
+    tags: event.tags,
+    location: event.location,
+    date: event.date,
+    time: event.time,
+    price: event.price,
+    description: event.description,
+    type: event.tags.includes('sport') ? 'sport' : 'event',
+    buyingMode: event.tags.includes('sport') ? 'plan' : 'tickets',
+    hasPlan: event.tags.includes('sport'),
+    ticketTypes: [{ id: 'std', name: 'Standard', price: Number(event.price.replace(/[^\d]/g, '')) || 100, available: 150 }]
+  };
+}
+
 export default function EventDetailsPage(): JSX.Element {
   const { slug = '' } = useParams();
   const [event, setEvent] = useState<EventDetailsModel | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [warning, setWarning] = useState('');
   const [ticketModalOpen, setTicketModalOpen] = useState(false);
   const [seatModalOpen, setSeatModalOpen] = useState(false);
 
   useEffect(() => {
     const load = async (): Promise<void> => {
+      const fallback = fallbackEvent(slug);
       try {
-        const response = await catalogApi.eventBySlug(slug);
-        const payload = response.data ?? response;
+        const payload = await safeFetchData(
+          async () => {
+            const response = await catalogApi.eventBySlug(slug);
+            return response.data ?? response;
+          },
+          fallback
+        );
+
+        if (!payload) {
+          setEvent(null);
+          return;
+        }
+
+        if (payload === fallback && fallback) {
+          setWarning('Données temporaires affichées (mode hors ligne).');
+        }
+
         setEvent({
           id: String(payload.id),
           slug: payload.slug,
@@ -55,8 +95,6 @@ export default function EventDetailsPage(): JSX.Element {
           hasPlan: payload.hasPlan,
           ticketTypes: payload.ticketTypes
         });
-      } catch (apiError) {
-        setError((apiError as Error).message);
       } finally {
         setLoading(false);
       }
@@ -66,12 +104,12 @@ export default function EventDetailsPage(): JSX.Element {
 
   if (loading) return <div className="min-h-screen bg-[#020b22] p-8 text-white">Chargement...</div>;
 
-  if (!event || error) {
+  if (!event) {
     return (
       <div className="-mx-4 min-h-screen bg-[#020b22] text-white lg:-mx-8">
         <PlatformTopNav active="billeterie" />
         <section className="mx-auto max-w-[1200px] px-4 py-10 lg:px-8">
-          <p>{error || 'Événement introuvable.'}</p>
+          <p>Événement introuvable.</p>
         </section>
       </div>
     );
@@ -91,6 +129,7 @@ export default function EventDetailsPage(): JSX.Element {
         </div>
 
         <article className="rounded-3xl border border-white/10 bg-[#06173c] p-6 lg:p-8">
+          {warning && <p className="mb-3 text-xs text-amber-300">{warning}</p>}
           <div className="mb-6 flex items-center justify-end gap-2">
             <SharePopover title={event.title} />
             <FavoriteButton itemId={event.slug} itemType={event.type === 'sport' ? 'sport' : 'event'} payload={{ slug: event.slug, title: event.title, image: event.image, location: event.location, date: `${event.date} · ${event.time}`, route: `/ma-fr/event/${event.slug}`, organizer: event.organizer?.name }} />

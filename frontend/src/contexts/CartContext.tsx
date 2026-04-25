@@ -1,7 +1,8 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import { CartItem, CartTotals } from '../types/commerce';
 import { clientApi } from '../services/api/laravelApi';
-import { isAuthenticated } from '../services/api/authClient';
+import { getCurrentUser, getUserState, saveUserState } from '../services/storage';
+import { safeRun } from '../services/safeApi';
 
 interface CartContextValue {
   items: CartItem[];
@@ -14,6 +15,7 @@ interface CartContextValue {
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
+const GUEST_CART_KEY = 'app:guest:cart';
 
 function updateQuantity(item: CartItem, quantity: number): CartItem {
   const safeQuantity = Math.max(1, quantity);
@@ -27,25 +29,37 @@ function updateQuantity(item: CartItem, quantity: number): CartItem {
   };
 }
 
+function readGuestCart(): CartItem[] {
+  try {
+    return JSON.parse(localStorage.getItem(GUEST_CART_KEY) ?? '[]') as CartItem[];
+  } catch {
+    return [];
+  }
+}
+
+function persistCart(next: CartItem[]): void {
+  const currentUser = getCurrentUser();
+  if (currentUser) {
+    const state = getUserState(currentUser.id);
+    state.cart = next;
+    saveUserState(currentUser.id, state);
+  } else {
+    localStorage.setItem(GUEST_CART_KEY, JSON.stringify(next));
+  }
+  window.dispatchEvent(new Event('ticketflow:update'));
+}
+
+function loadCart(): CartItem[] {
+  const currentUser = getCurrentUser();
+  if (currentUser) return getUserState(currentUser.id).cart;
+  return readGuestCart();
+}
+
 export function CartProvider({ children }: { children: ReactNode }): JSX.Element {
-  const [items, setItems] = useState<CartItem[]>([]);
+  const [items, setItems] = useState<CartItem[]>(() => loadCart());
 
   useEffect(() => {
-    const load = async (): Promise<void> => {
-      if (!isAuthenticated()) {
-        setItems([]);
-        return;
-      }
-      try {
-        const remoteItems = await clientApi.getCart();
-        setItems(remoteItems);
-      } catch {
-        setItems([]);
-      }
-    };
-
-    void load();
-    const sync = (): void => void load();
+    const sync = (): void => setItems(loadCart());
     window.addEventListener('ticketflow:update', sync);
     return () => window.removeEventListener('ticketflow:update', sync);
   }, []);
@@ -68,38 +82,54 @@ export function CartProvider({ children }: { children: ReactNode }): JSX.Element
     items,
     totals,
     addItems: async (newItems) => {
-      for (const item of newItems) {
-        await clientApi.addCartItem(item);
-      }
-      const remote = await clientApi.getCart();
-      setItems(remote);
+      const next = [...items, ...newItems];
+      setItems(next);
+      persistCart(next);
+      await safeRun(async () => {
+        for (const item of newItems) {
+          await clientApi.addCartItem(item);
+        }
+      });
     },
     removeItem: async (itemId) => {
-      await clientApi.deleteCartItem(itemId);
-      setItems((current) => current.filter((item) => item.id !== itemId));
+      const next = items.filter((item) => item.id !== itemId);
+      setItems(next);
+      persistCart(next);
+      await safeRun(async () => {
+        await clientApi.deleteCartItem(itemId);
+      });
     },
     increaseQuantity: async (itemId) => {
-      const item = items.find((current) => current.id === itemId);
-      if (!item) return;
-      const updated = updateQuantity(item, item.quantity + 1);
-      await clientApi.updateCartItem(itemId, { quantity: updated.quantity });
-      setItems((current) => current.map((row) => (row.id === itemId ? updated : row)));
+      const next = items.map((item) => (item.id === itemId ? updateQuantity(item, item.quantity + 1) : item));
+      const updated = next.find((row) => row.id === itemId);
+      setItems(next);
+      persistCart(next);
+      if (!updated) return;
+      await safeRun(async () => {
+        await clientApi.updateCartItem(itemId, { quantity: updated.quantity });
+      });
     },
     decreaseQuantity: async (itemId) => {
-      const item = items.find((current) => current.id === itemId);
-      if (!item) return;
-      if (item.quantity <= 1) {
-        await clientApi.deleteCartItem(itemId);
-        setItems((current) => current.filter((row) => row.id !== itemId));
-        return;
-      }
-      const updated = updateQuantity(item, item.quantity - 1);
-      await clientApi.updateCartItem(itemId, { quantity: updated.quantity });
-      setItems((current) => current.map((row) => (row.id === itemId ? updated : row)));
+      const target = items.find((item) => item.id === itemId);
+      if (!target) return;
+      const next = target.quantity <= 1 ? items.filter((row) => row.id !== itemId) : items.map((item) => (item.id === itemId ? updateQuantity(item, item.quantity - 1) : item));
+      setItems(next);
+      persistCart(next);
+      await safeRun(async () => {
+        if (target.quantity <= 1) {
+          await clientApi.deleteCartItem(itemId);
+          return;
+        }
+        await clientApi.updateCartItem(itemId, { quantity: target.quantity - 1 });
+      });
     },
     clearCart: async () => {
-      await Promise.all(items.map((item) => clientApi.deleteCartItem(item.id)));
+      const currentItems = [...items];
       setItems([]);
+      persistCart([]);
+      await safeRun(async () => {
+        await Promise.all(currentItems.map((item) => clientApi.deleteCartItem(item.id)));
+      });
     }
   };
 
