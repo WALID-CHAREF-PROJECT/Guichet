@@ -25,7 +25,7 @@ export default function CheckoutPage(): JSX.Element {
     setLoading(true);
 
     try {
-      await createPendingOrder(items, { email, mobile, countryCode });
+      createPendingOrder(items, { email, mobile, countryCode });
       navigate('/ma-fr/payment');
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Erreur de paiement');

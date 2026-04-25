@@ -1,21 +1,56 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import { CartItem, CartTotals } from '../types/commerce';
-import { clientApi } from '../services/api/laravelApi';
 import { getCurrentUser, getUserState, saveUserState } from '../services/storage';
-import { safeRun } from '../services/safeApi';
 
 interface CartContextValue {
   items: CartItem[];
   totals: CartTotals;
-  addItems: (items: CartItem[]) => Promise<void>;
-  removeItem: (itemId: string) => Promise<void>;
-  increaseQuantity: (itemId: string) => Promise<void>;
-  decreaseQuantity: (itemId: string) => Promise<void>;
-  clearCart: () => Promise<void>;
+  addItems: (items: CartItem[]) => void;
+  removeItem: (itemId: string) => void;
+  increaseQuantity: (itemId: string) => void;
+  decreaseQuantity: (itemId: string) => void;
+  clearCart: () => void;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
-const GUEST_CART_KEY = 'app:guest:cart';
+
+function readUserCart(): CartItem[] {
+  const current = getCurrentUser();
+  if (!current) return [];
+  return getUserState(current.id, current).cart;
+}
+
+function persistUserCart(items: CartItem[]): void {
+  const current = getCurrentUser();
+  if (!current) return;
+  const state = getUserState(current.id, current);
+  state.cart = items;
+  saveUserState(current.id, state);
+}
+
+function mergeByIdentity(current: CartItem[], incoming: CartItem[]): CartItem[] {
+  const merged = [...current];
+  incoming.forEach((nextItem) => {
+    const found = merged.find(
+      (item) =>
+        item.slug === nextItem.slug &&
+        item.ticketType === nextItem.ticketType &&
+        (item.selectedSeats ?? []).join(',') === (nextItem.selectedSeats ?? []).join(',')
+    );
+
+    if (found) {
+      found.quantity += nextItem.quantity;
+      found.subtotal = found.quantity * found.unitPrice;
+      if (found.advanceAmount !== undefined) found.advanceAmount += nextItem.advanceAmount ?? 0;
+      if (found.remainingAmount !== undefined) found.remainingAmount += nextItem.remainingAmount ?? 0;
+      return;
+    }
+
+    merged.push(nextItem);
+  });
+
+  return merged;
+}
 
 function updateQuantity(item: CartItem, quantity: number): CartItem {
   const safeQuantity = Math.max(1, quantity);
@@ -29,40 +64,23 @@ function updateQuantity(item: CartItem, quantity: number): CartItem {
   };
 }
 
-function readGuestCart(): CartItem[] {
-  try {
-    return JSON.parse(localStorage.getItem(GUEST_CART_KEY) ?? '[]') as CartItem[];
-  } catch {
-    return [];
-  }
-}
-
-function persistCart(next: CartItem[]): void {
-  const currentUser = getCurrentUser();
-  if (currentUser) {
-    const state = getUserState(currentUser.id);
-    state.cart = next;
-    saveUserState(currentUser.id, state);
-  } else {
-    localStorage.setItem(GUEST_CART_KEY, JSON.stringify(next));
-  }
-  window.dispatchEvent(new Event('ticketflow:update'));
-}
-
-function loadCart(): CartItem[] {
-  const currentUser = getCurrentUser();
-  if (currentUser) return getUserState(currentUser.id).cart;
-  return readGuestCart();
-}
-
 export function CartProvider({ children }: { children: ReactNode }): JSX.Element {
-  const [items, setItems] = useState<CartItem[]>(() => loadCart());
+  const [items, setItems] = useState<CartItem[]>(() => readUserCart());
 
   useEffect(() => {
-    const sync = (): void => setItems(loadCart());
+    const sync = (): void => setItems(readUserCart());
     window.addEventListener('ticketflow:update', sync);
-    return () => window.removeEventListener('ticketflow:update', sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener('ticketflow:update', sync);
+      window.removeEventListener('storage', sync);
+    };
   }, []);
+
+  useEffect(() => {
+    persistUserCart(items);
+    window.dispatchEvent(new Event('ticketflow:update'));
+  }, [items]);
 
   const totals = useMemo<CartTotals>(() => {
     return items.reduce(
@@ -81,56 +99,20 @@ export function CartProvider({ children }: { children: ReactNode }): JSX.Element
   const value: CartContextValue = {
     items,
     totals,
-    addItems: async (newItems) => {
-      const next = [...items, ...newItems];
-      setItems(next);
-      persistCart(next);
-      await safeRun(async () => {
-        for (const item of newItems) {
-          await clientApi.addCartItem(item);
-        }
-      });
-    },
-    removeItem: async (itemId) => {
-      const next = items.filter((item) => item.id !== itemId);
-      setItems(next);
-      persistCart(next);
-      await safeRun(async () => {
-        await clientApi.deleteCartItem(itemId);
-      });
-    },
-    increaseQuantity: async (itemId) => {
-      const next = items.map((item) => (item.id === itemId ? updateQuantity(item, item.quantity + 1) : item));
-      const updated = next.find((row) => row.id === itemId);
-      setItems(next);
-      persistCart(next);
-      if (!updated) return;
-      await safeRun(async () => {
-        await clientApi.updateCartItem(itemId, { quantity: updated.quantity });
-      });
-    },
-    decreaseQuantity: async (itemId) => {
-      const target = items.find((item) => item.id === itemId);
-      if (!target) return;
-      const next = target.quantity <= 1 ? items.filter((row) => row.id !== itemId) : items.map((item) => (item.id === itemId ? updateQuantity(item, item.quantity - 1) : item));
-      setItems(next);
-      persistCart(next);
-      await safeRun(async () => {
-        if (target.quantity <= 1) {
-          await clientApi.deleteCartItem(itemId);
-          return;
-        }
-        await clientApi.updateCartItem(itemId, { quantity: target.quantity - 1 });
-      });
-    },
-    clearCart: async () => {
-      const currentItems = [...items];
-      setItems([]);
-      persistCart([]);
-      await safeRun(async () => {
-        await Promise.all(currentItems.map((item) => clientApi.deleteCartItem(item.id)));
-      });
-    }
+    addItems: (newItems) => setItems((current) => mergeByIdentity(current, newItems)),
+    removeItem: (itemId) => setItems((current) => current.filter((item) => item.id !== itemId)),
+    increaseQuantity: (itemId) => setItems((current) => current.map((item) => (item.id === itemId ? updateQuantity(item, item.quantity + 1) : item))),
+    decreaseQuantity: (itemId) =>
+      setItems((current) =>
+        current
+          .map((item) => {
+            if (item.id !== itemId) return item;
+            if (item.quantity <= 1) return null;
+            return updateQuantity(item, item.quantity - 1);
+          })
+          .filter((item): item is CartItem => item !== null)
+      ),
+    clearCart: () => setItems([])
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

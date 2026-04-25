@@ -1,66 +1,72 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { PlatformEvent } from '../../services/platformData';
+import { Seat, SeatZone } from '../../types/commerce';
 import ModalShell from './ModalShell';
 import { useCart } from '../../contexts/CartContext';
 import { formatMad, uid } from '../../services/commerce/utils';
 import { useNavigate } from 'react-router-dom';
-import { catalogApi, SportPlanZone } from '../../services/api/laravelApi';
-import { safeFetchData, safeRun } from '../../services/safeApi';
 
-const fallbackZones: SportPlanZone[] = [
-  { id: 'z-a', name: 'Zone A', price: 220, available: true, capacity: 180 },
-  { id: 'z-b', name: 'Zone B', price: 140, available: true, capacity: 260 },
-  { id: 'z-c', name: 'Zone C', price: 90, available: true, capacity: 320 },
-  { id: 'z-vip', name: 'VIP', price: 420, available: true, capacity: 80 }
-];
+function buildSeats(): Seat[] {
+  const rows = ['A', 'B', 'C', 'D', 'E', 'F'];
+  const zones: SeatZone[] = ['carre_or', 'orchestre', 'balcon'];
+  return rows.flatMap((row, rowIndex) =>
+    Array.from({ length: 12 }).map((_, index) => {
+      const zone = zones[Math.min(2, Math.floor(rowIndex / 2))];
+      const basePrice = zone === 'carre_or' ? 550 : zone === 'orchestre' ? 280 : 180;
+      const unavailable = Math.random() < 0.12;
+      return {
+        id: `${row}-${index + 1}`,
+        row,
+        number: index + 1,
+        zone,
+        price: basePrice,
+        status: unavailable ? 'unavailable' : 'available'
+      } satisfies Seat;
+    })
+  );
+}
 
-export default function SeatPlanModal({ event, open, onClose }: { event: PlatformEvent & { id?: string }; open: boolean; onClose: () => void }): JSX.Element {
+const zoneColor: Record<SeatZone, string> = {
+  carre_or: 'bg-amber-400',
+  orchestre: 'bg-sky-500',
+  balcon: 'bg-indigo-500'
+};
+
+export default function SeatPlanModal({ event, open, onClose }: { event: PlatformEvent; open: boolean; onClose: () => void }): JSX.Element {
   const navigate = useNavigate();
   const { addItems } = useCart();
-  const [zones, setZones] = useState<SportPlanZone[]>([]);
-  const [selectedZone, setSelectedZone] = useState<SportPlanZone | null>(null);
+  const [seats, setSeats] = useState<Seat[]>(() => buildSeats());
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [warning, setWarning] = useState('');
 
-  useEffect(() => {
-    if (!open) return;
-    const load = async (): Promise<void> => {
-      const plan = await safeFetchData(
-        () => catalogApi.sportPlan(String((event as any).id ?? event.slug)),
-        { eventId: String((event as any).id ?? event.slug), zones: fallbackZones }
-      );
-      if (plan.zones === fallbackZones) {
-        setWarning('Plan local utilisé temporairement.');
-      } else {
-        setWarning('');
-      }
-      setZones(plan.zones);
-    };
-    void load();
-  }, [open, event]);
+  const selectedSeats = useMemo(() => seats.filter((seat) => seat.status === 'selected'), [seats]);
 
-  const total = useMemo(() => (selectedZone ? selectedZone.price : 0), [selectedZone]);
+  const toggleSeat = (id: string): void => {
+    setSeats((current) =>
+      current.map((seat) => {
+        if (seat.id !== id || seat.status === 'unavailable') return seat;
+        return { ...seat, status: seat.status === 'selected' ? 'available' : 'selected' };
+      })
+    );
+  };
 
-  const continueFlow = async (): Promise<void> => {
-    if (!selectedZone) return;
-    await safeRun(async () => {
-      await catalogApi.selectSportPlace(String((event as any).id ?? event.slug), { zoneId: selectedZone.id, quantity: 1 });
-    });
-    await addItems([
+  const continueFlow = (): void => {
+    if (selectedSeats.length === 0) return;
+    const total = selectedSeats.reduce((sum, seat) => sum + seat.price, 0);
+    addItems([
       {
         id: uid('cart'),
-        productType: 'sport_ticket',
+        productType: 'event_ticket',
         slug: event.slug,
-        title: `${event.title} · ${selectedZone.name}`,
+        title: `${event.title} · Plan`,
         image: event.image,
         date: `${event.date} · ${event.time}`,
         location: event.location,
-        ticketType: selectedZone.name,
-        selectedSeats: [selectedZone.id],
-        quantity: 1,
-        unitPrice: selectedZone.price,
-        subtotal: selectedZone.price
+        ticketType: 'Placement numéroté',
+        selectedSeats: selectedSeats.map((seat) => seat.id),
+        quantity: selectedSeats.length,
+        unitPrice: Math.round(total / selectedSeats.length),
+        subtotal: total
       }
     ]);
     onClose();
@@ -71,50 +77,48 @@ export default function SeatPlanModal({ event, open, onClose }: { event: Platfor
     <ModalShell open={open} onClose={onClose}>
       <div className="p-6 lg:p-8">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-2xl font-bold">Plan du terrain</h3>
+          <h3 className="text-2xl font-bold">Plan de salle</h3>
           <button onClick={onClose} className="rounded-full border border-white/20 p-2">✕</button>
         </div>
-        {warning && <p className="mb-3 text-sm text-amber-300">{warning}</p>}
         <div className="rounded-2xl bg-slate-100 p-5 text-slate-900">
           <div className="mb-4 flex flex-wrap items-center gap-4 text-xs font-semibold">
             <span>⚫ Indisponible</span>
-            <span>🟢 Zone disponible</span>
-            <span>🟠 Zone sélectionnée</span>
+            <span>🟡 Carré Or</span>
+            <span>🔵 Orchestre</span>
+            <span>🟣 Balcon</span>
             <div className="ml-auto flex items-center gap-2">
               <button onClick={() => setZoom((z) => Math.max(0.8, z - 0.2))} className="rounded border border-slate-300 px-2 py-1">−</button>
               <button onClick={() => setZoom((z) => Math.min(2.4, z + 0.2))} className="rounded border border-slate-300 px-2 py-1">+</button>
+              <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }} className="rounded border border-slate-300 px-2 py-1">Reset</button>
             </div>
           </div>
-          <div className="relative overflow-hidden rounded-xl bg-white p-6" style={{ minHeight: 360 }}>
-            <div className="absolute left-1/2 top-1/2 h-24 w-52 -translate-x-1/2 -translate-y-1/2 rounded-full border-4 border-emerald-600 bg-emerald-200/70" />
-            <div className="absolute left-1/2 top-1/2 grid -translate-x-1/2 -translate-y-1/2 gap-3 transition-transform duration-300 md:grid-cols-3" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: 'center' }}>
-              {zones.map((zone) => {
-                const disabled = !zone.available;
-                const selected = selectedZone?.id === zone.id;
-                return (
-                  <button
-                    key={zone.id}
-                    onClick={() => !disabled && setSelectedZone(zone)}
-                    disabled={disabled}
-                    title={disabled ? `${zone.name} indisponible` : `${zone.name} - ${formatMad(zone.price)}`}
-                    className={`min-w-28 rounded-xl px-3 py-2 text-xs font-semibold ${disabled ? 'cursor-not-allowed bg-slate-300 text-slate-500' : selected ? 'bg-orange-400 text-white' : 'bg-emerald-500 text-white hover:bg-emerald-600'}`}
-                  >
-                    <div>{zone.name}</div>
-                    <div>{formatMad(zone.price)}</div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          <div className="mt-3 flex gap-2 text-xs">
+          <div className="mb-3 flex gap-2 text-xs">
             <button onClick={() => setPan((p) => ({ ...p, x: p.x - 20 }))} className="rounded border border-slate-300 px-2 py-1">←</button>
             <button onClick={() => setPan((p) => ({ ...p, x: p.x + 20 }))} className="rounded border border-slate-300 px-2 py-1">→</button>
             <button onClick={() => setPan((p) => ({ ...p, y: p.y - 20 }))} className="rounded border border-slate-300 px-2 py-1">↑</button>
             <button onClick={() => setPan((p) => ({ ...p, y: p.y + 20 }))} className="rounded border border-slate-300 px-2 py-1">↓</button>
           </div>
+          <div className="mx-auto mb-5 h-7 w-52 rounded-full bg-slate-900/80 text-center text-xs font-bold tracking-[0.35em] text-white">SCENE</div>
+          <div className="overflow-hidden rounded-xl bg-white p-4">
+            <div className="grid grid-cols-12 gap-2 transition-transform duration-300" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: 'center' }}>
+              {seats.map((seat) => {
+                const isUnavailable = seat.status === 'unavailable';
+                const isSelected = seat.status === 'selected';
+                return (
+                  <button
+                    key={seat.id}
+                    onClick={() => toggleSeat(seat.id)}
+                    disabled={isUnavailable}
+                    title={isUnavailable ? `${seat.id} - Pas de places disponibles` : `${seat.id} - ${formatMad(seat.price)}`}
+                    className={`h-5 w-5 rounded-full ${isUnavailable ? 'cursor-not-allowed bg-slate-400' : isSelected ? 'ring-2 ring-slate-900' : zoneColor[seat.zone]}`}
+                  />
+                );
+              })}
+            </div>
+          </div>
         </div>
-        <button onClick={() => void continueFlow()} disabled={!selectedZone} className="mt-6 w-full rounded-full bg-white px-6 py-3 font-bold text-[#031438] disabled:opacity-50">
-          Continuer · Total {formatMad(total)}
+        <button onClick={continueFlow} disabled={selectedSeats.length === 0} className="mt-6 w-full rounded-full bg-white px-6 py-3 font-bold text-[#031438] disabled:opacity-50">
+          Continuer ({selectedSeats.length} place{selectedSeats.length > 1 ? 's' : ''})
         </button>
       </div>
     </ModalShell>

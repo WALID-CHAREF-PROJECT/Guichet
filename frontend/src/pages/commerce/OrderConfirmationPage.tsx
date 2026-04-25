@@ -1,35 +1,9 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { downloadReceipt, getLastOrder } from '../../services/commerce/orderService';
+import { getLastOrder } from '../../services/commerce/orderService';
 import { formatMad } from '../../services/commerce/utils';
-import { Order } from '../../types/commerce';
 
 export default function OrderConfirmationPage(): JSX.Element {
-  const [order, setOrder] = useState<Order | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const load = async (): Promise<void> => {
-      setOrder(await getLastOrder());
-      setLoading(false);
-    };
-    void load();
-  }, []);
-
-  const onDownloadReceipt = async (): Promise<void> => {
-    if (!order) return;
-    const blob = await downloadReceipt(order.id);
-    const href = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = href;
-    anchor.download = `recu-${order.reference}.pdf`;
-    anchor.click();
-    URL.revokeObjectURL(href);
-  };
-
-  if (loading) {
-    return <section className="mx-auto max-w-3xl rounded-3xl border border-white/10 bg-[#06173c] p-8 text-center">Chargement...</section>;
-  }
+  const order = getLastOrder();
 
   if (!order) {
     return (
@@ -63,8 +37,6 @@ export default function OrderConfirmationPage(): JSX.Element {
       <div className="mt-6 flex flex-wrap gap-3">
         <Link to="/ma-fr/billeterie" className="rounded-full bg-white px-5 py-3 font-semibold text-[#031438]">Retour à l'accueil</Link>
         <Link to="/ma-fr/account/reservations" className="rounded-full border border-white/20 px-5 py-3 font-semibold">Voir mes réservations</Link>
-        <button onClick={() => window.print()} className="rounded-full border border-white/20 px-5 py-3 font-semibold">Imprimer</button>
-        <button onClick={() => void onDownloadReceipt()} className="rounded-full border border-white/20 px-5 py-3 font-semibold">Télécharger le reçu PDF</button>
       </div>
     </section>
   );

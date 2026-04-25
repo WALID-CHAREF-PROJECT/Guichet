@@ -1,7 +1,7 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
-import { clearPendingOrder, finalizePendingOrder, getPendingOrder, initPendingPayment } from '../../services/commerce/orderService';
+import { clearPendingOrder, finalizePendingOrder, getPendingOrder } from '../../services/commerce/orderService';
 import { formatMad } from '../../services/commerce/utils';
 
 export default function PaymentPage(): JSX.Element {
@@ -35,9 +35,8 @@ export default function PaymentPage(): JSX.Element {
     setError('');
     setLoading(true);
     try {
-      await initPendingPayment({ method: method.toLowerCase(), cardHolder: holder, cardNumber, expiry, cvv });
-      await finalizePendingOrder();
-      await clearCart();
+      await finalizePendingOrder('card');
+      clearCart();
       navigate('/ma-fr/confirmation');
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Erreur de paiement');
