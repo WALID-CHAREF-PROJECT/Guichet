@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
             CategorySeeder::class,
             CitySeeder::class,
             EventSeeder::class,
+            MarketplaceSeeder::class,
         ]);
     }
 }

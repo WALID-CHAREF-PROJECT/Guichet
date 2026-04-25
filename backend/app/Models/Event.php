@@ -11,14 +11,28 @@ class Event extends Model
     use HasFactory;
 
     protected $fillable = [
+        'organizer_id',
         'category_id',
         'city_id',
         'organizer',
         'title',
+        'short_description',
         'slug',
+        'city_name',
         'venue',
+        'address',
+        'event_date',
+        'event_time',
         'description',
         'image_url',
+        'image',
+        'hero_image',
+        'type',
+        'buying_mode',
+        'has_plan',
+        'seating_enabled',
+        'status',
+        'featured',
         'starts_at',
         'price_mad',
         'is_sold_out',
@@ -27,9 +41,13 @@ class Event extends Model
 
     protected $casts = [
         'starts_at' => 'datetime',
+        'event_date' => 'date',
         'price_mad' => 'decimal:2',
         'is_sold_out' => 'boolean',
         'is_free' => 'boolean',
+        'has_plan' => 'boolean',
+        'seating_enabled' => 'boolean',
+        'featured' => 'boolean',
     ];
 
     public function category(): BelongsTo
