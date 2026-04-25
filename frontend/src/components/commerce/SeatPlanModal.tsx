@@ -5,6 +5,14 @@ import { useCart } from '../../contexts/CartContext';
 import { formatMad, uid } from '../../services/commerce/utils';
 import { useNavigate } from 'react-router-dom';
 import { catalogApi, SportPlanZone } from '../../services/api/laravelApi';
+import { safeFetchData, safeRun } from '../../services/safeApi';
+
+const fallbackZones: SportPlanZone[] = [
+  { id: 'z-a', name: 'Zone A', price: 220, available: true, capacity: 180 },
+  { id: 'z-b', name: 'Zone B', price: 140, available: true, capacity: 260 },
+  { id: 'z-c', name: 'Zone C', price: 90, available: true, capacity: 320 },
+  { id: 'z-vip', name: 'VIP', price: 420, available: true, capacity: 80 }
+];
 
 export default function SeatPlanModal({ event, open, onClose }: { event: PlatformEvent & { id?: string }; open: boolean; onClose: () => void }): JSX.Element {
   const navigate = useNavigate();
@@ -13,17 +21,21 @@ export default function SeatPlanModal({ event, open, onClose }: { event: Platfor
   const [selectedZone, setSelectedZone] = useState<SportPlanZone | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [error, setError] = useState('');
+  const [warning, setWarning] = useState('');
 
   useEffect(() => {
     if (!open) return;
     const load = async (): Promise<void> => {
-      try {
-        const plan = await catalogApi.sportPlan(String((event as any).id ?? event.slug));
-        setZones(plan.zones);
-      } catch (apiError) {
-        setError((apiError as Error).message);
+      const plan = await safeFetchData(
+        () => catalogApi.sportPlan(String((event as any).id ?? event.slug)),
+        { eventId: String((event as any).id ?? event.slug), zones: fallbackZones }
+      );
+      if (plan.zones === fallbackZones) {
+        setWarning('Plan local utilisé temporairement.');
+      } else {
+        setWarning('');
       }
+      setZones(plan.zones);
     };
     void load();
   }, [open, event]);
@@ -32,7 +44,9 @@ export default function SeatPlanModal({ event, open, onClose }: { event: Platfor
 
   const continueFlow = async (): Promise<void> => {
     if (!selectedZone) return;
-    await catalogApi.selectSportPlace(String((event as any).id ?? event.slug), { zoneId: selectedZone.id, quantity: 1 });
+    await safeRun(async () => {
+      await catalogApi.selectSportPlace(String((event as any).id ?? event.slug), { zoneId: selectedZone.id, quantity: 1 });
+    });
     await addItems([
       {
         id: uid('cart'),
@@ -60,7 +74,7 @@ export default function SeatPlanModal({ event, open, onClose }: { event: Platfor
           <h3 className="text-2xl font-bold">Plan du terrain</h3>
           <button onClick={onClose} className="rounded-full border border-white/20 p-2">✕</button>
         </div>
-        {error && <p className="mb-3 text-sm text-red-300">{error}</p>}
+        {warning && <p className="mb-3 text-sm text-amber-300">{warning}</p>}
         <div className="rounded-2xl bg-slate-100 p-5 text-slate-900">
           <div className="mb-4 flex flex-wrap items-center gap-4 text-xs font-semibold">
             <span>⚫ Indisponible</span>

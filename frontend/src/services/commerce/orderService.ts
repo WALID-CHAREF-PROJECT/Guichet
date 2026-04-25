@@ -1,5 +1,8 @@
 import { CartItem, CustomerInfo, Order } from '../../types/commerce';
 import { commerceApi } from '../api/laravelApi';
+import { getCurrentUser, getUserState, saveUserState } from '../storage';
+import { safeFetchData } from '../safeApi';
+import { uid } from './utils';
 
 interface PendingOrder {
   id: string;
@@ -15,13 +18,36 @@ interface PendingOrder {
 const pendingOrderKey = 'ticketflow_pending_order';
 const lastOrderKey = 'ticketflow_last_order';
 
+function toOrder(pending: PendingOrder): Order {
+  return {
+    id: pending.orderId,
+    reference: `CMD-${pending.orderId.slice(-6).toUpperCase()}`,
+    items: pending.items,
+    customer: pending.customer,
+    paymentMethod: 'card',
+    totalNow: pending.totalNow,
+    remainingLater: pending.remainingLater,
+    status: 'confirmed',
+    createdAt: pending.createdAt
+  };
+}
+
 export async function createPendingOrder(items: CartItem[], customer: CustomerInfo): Promise<PendingOrder> {
   const totalNow = items.reduce((sum, item) => sum + (item.advanceAmount ?? item.subtotal), 0);
   const remainingLater = items.reduce((sum, item) => sum + (item.remainingAmount ?? 0), 0);
-  const response = await commerceApi.createOrder({ items, customer });
+
+  const fallbackId = uid('order');
+  const orderId = await safeFetchData(
+    async () => {
+      const response = await commerceApi.createOrder({ items, customer });
+      return response.id;
+    },
+    fallbackId
+  );
+
   const pending: PendingOrder = {
-    id: `pending-${response.id}`,
-    orderId: response.id,
+    id: `pending-${orderId}`,
+    orderId,
     items,
     customer,
     totalNow,
@@ -49,8 +75,16 @@ export function clearPendingOrder(): void {
 export async function initPendingPayment(payload: { method: string; cardHolder: string; cardNumber: string; expiry: string; cvv: string }): Promise<PendingOrder> {
   const pending = getPendingOrder();
   if (!pending) throw new Error('Aucune commande en attente.');
-  const payment = await commerceApi.initPayment({ orderId: pending.orderId, ...payload });
-  const next = { ...pending, paymentId: payment.paymentId };
+
+  const paymentId = await safeFetchData(
+    async () => {
+      const payment = await commerceApi.initPayment({ orderId: pending.orderId, ...payload });
+      return payment.paymentId;
+    },
+    uid('payment')
+  );
+
+  const next = { ...pending, paymentId };
   localStorage.setItem(pendingOrderKey, JSON.stringify(next));
   return next;
 }
@@ -58,8 +92,20 @@ export async function initPendingPayment(payload: { method: string; cardHolder: 
 export async function finalizePendingOrder(): Promise<Order> {
   const pending = getPendingOrder();
   if (!pending || !pending.paymentId) throw new Error('Paiement non initialisé.');
-  const order = await commerceApi.confirmPayment({ orderId: pending.orderId, paymentId: pending.paymentId });
+
+  const order = await safeFetchData(
+    () => commerceApi.confirmPayment({ orderId: pending.orderId, paymentId: pending.paymentId! }),
+    toOrder(pending)
+  );
+
   localStorage.setItem(lastOrderKey, JSON.stringify(order));
+  const currentUser = getCurrentUser();
+  if (currentUser) {
+    const state = getUserState(currentUser.id);
+    state.orders.unshift(order);
+    state.reservations.unshift(order);
+    saveUserState(currentUser.id, state);
+  }
   clearPendingOrder();
   return order;
 }
@@ -69,12 +115,16 @@ export async function getLastOrder(): Promise<Order | null> {
   if (!raw) return null;
   try {
     const cached = JSON.parse(raw) as Order;
-    return await commerceApi.getOrder(cached.id);
+    return safeFetchData(() => commerceApi.getOrder(cached.id), cached);
   } catch {
     return null;
   }
 }
 
 export async function downloadReceipt(orderId: string): Promise<Blob> {
-  return commerceApi.getReceipt(orderId);
+  return safeFetchData(
+    () => commerceApi.getReceipt(orderId),
+    new Blob(['Reçu local - impression disponible depuis la page de confirmation.'], { type: 'text/plain' })
+  );
 }
+

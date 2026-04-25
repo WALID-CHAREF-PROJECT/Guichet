@@ -17,20 +17,16 @@ interface Props {
 }
 
 export default function FavoriteButton({ itemId, itemType, payload, className = '' }: Props): JSX.Element {
-  const { user, isFavorite, toggleFavorite } = useUser();
-  const active = user ? isFavorite(itemId, itemType) : false;
+  const { isFavorite, toggleFavorite } = useUser();
+  const active = isFavorite(itemId, itemType);
 
   return (
     <button
       aria-label={active ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-      title={user ? (active ? 'Retirer des favoris' : 'Ajouter aux favoris') : 'Connectez-vous pour enregistrer vos favoris'}
+      title={active ? 'Retirer des favoris' : 'Ajouter aux favoris'}
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        if (!user) {
-          window.alert('Connectez-vous pour gérer vos favoris.');
-          return;
-        }
         void toggleFavorite({ ...payload, itemId, itemType });
       }}
       className={`rounded-full border px-3 py-1.5 text-xs transition ${active ? 'border-orange-300 bg-orange-500/20 text-orange-200' : 'border-white/20 bg-white/5 text-white hover:bg-white/10'} ${className}`}
