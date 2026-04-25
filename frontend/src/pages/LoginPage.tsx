@@ -15,9 +15,9 @@ export default function LoginPage(): JSX.Element {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
 
-  function onSubmit(event: FormEvent): void {
+  async function onSubmit(event: FormEvent): Promise<void> {
     event.preventDefault();
-    const result = login(email, password);
+    const result = await login(email, password);
     if (!result.ok) {
       setMessage(result.message ?? 'Erreur');
       return;

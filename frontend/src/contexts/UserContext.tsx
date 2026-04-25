@@ -1,20 +1,7 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
-import { login as apiLogin, logout as apiLogout, register as apiRegister } from '../services/api/authClient';
-import {
-  createUser,
-  FavoriteItem,
-  FavoriteItemType,
-  getCurrentUser,
-  getUserState,
-  getUsers,
-  removeFavorite as deleteFavorite,
-  setCurrentUser,
-  StoredUser,
-  toggleFavorite as toggleFavoriteInStorage,
-  updateUserPassword,
-  updateUserProfile,
-  UserScopedState
-} from '../services/storage';
+import { login as apiLogin, logout as apiLogout, register as apiRegister, getCurrentUser as getStoredUser, AuthUser, AUTH_USER_KEY } from '../services/api/authClient';
+import { clientApi } from '../services/api/laravelApi';
+import { FavoriteItem, FavoriteItemType, StoredUser } from '../services/storage';
 
 interface RegisterInput {
   firstName: string;
@@ -28,123 +15,142 @@ interface RegisterInput {
 
 interface UserContextValue {
   user: StoredUser | null;
-  scopedState: UserScopedState | null;
-  login: (email: string, password: string) => { ok: boolean; message?: string; role?: 'client' | 'organizer' | 'admin' };
-  register: (data: RegisterInput) => { ok: boolean; message?: string };
-  logout: () => void;
-  refresh: () => void;
-  updateProfile: (patch: Partial<Pick<StoredUser, 'firstName' | 'lastName' | 'email' | 'phone' | 'avatar'>>) => void;
-  changePassword: (currentPassword: string, nextPassword: string, confirm: string) => { ok: boolean; message: string };
+  scopedState: { favorites: FavoriteItem[] } | null;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<{ ok: boolean; message?: string; role?: 'client' | 'organizer' | 'admin' }>;
+  register: (data: RegisterInput) => Promise<{ ok: boolean; message?: string; role?: 'client' | 'organizer' | 'admin' }>;
+  logout: () => Promise<void>;
+  refresh: () => Promise<void>;
+  updateProfile: (patch: Partial<Pick<StoredUser, 'firstName' | 'lastName' | 'email' | 'phone' | 'avatar'>>) => Promise<void>;
+  changePassword: (currentPassword: string, nextPassword: string, confirm: string) => Promise<{ ok: boolean; message: string }>;
   favorites: FavoriteItem[];
   isFavorite: (itemId: string, itemType: FavoriteItemType) => boolean;
-  toggleFavorite: (favorite: Omit<FavoriteItem, 'id' | 'userId'>) => boolean;
-  removeFavorite: (itemId: string, itemType: FavoriteItemType) => void;
+  toggleFavorite: (favorite: Omit<FavoriteItem, 'id' | 'userId'>) => Promise<boolean>;
+  removeFavorite: (itemId: string, itemType: FavoriteItemType) => Promise<void>;
 }
 
 const UserContext = createContext<UserContextValue | null>(null);
 
-export function UserProvider({ children }: { children: ReactNode }): JSX.Element {
-  const [user, setUser] = useState<StoredUser | null>(getCurrentUser());
-  const [scopedState, setScopedState] = useState<UserScopedState | null>(user ? getUserState(user.id, user) : null);
-  const favoriteKeys = useMemo(() => new Set((scopedState?.favorites ?? []).map((item) => `${item.itemType}:${item.itemId}`)), [scopedState]);
+const mapUser = (user: AuthUser): StoredUser => ({
+  id: user.id,
+  role: user.role,
+  firstName: user.firstName,
+  lastName: user.lastName,
+  email: user.email,
+  phone: user.phone ?? '',
+  avatar: user.avatar,
+  companyName: user.companyName,
+  organizationSlug: user.organizationSlug,
+  active: user.isActive
+});
 
-  const refresh = (): void => {
-    const nextUser = getCurrentUser();
-    setUser(nextUser);
-    setScopedState(nextUser ? getUserState(nextUser.id, nextUser) : null);
+export function UserProvider({ children }: { children: ReactNode }): JSX.Element {
+  const [user, setUser] = useState<StoredUser | null>(() => {
+    const stored = getStoredUser();
+    return stored ? mapUser(stored) : null;
+  });
+  const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const refresh = async (): Promise<void> => {
+    const stored = getStoredUser();
+    if (!stored) {
+      setUser(null);
+      setFavorites([]);
+      return;
+    }
+    setUser(mapUser(stored));
+    try {
+      const list = await clientApi.getFavorites();
+      setFavorites(list);
+    } catch {
+      setFavorites([]);
+    }
   };
 
   useEffect(() => {
-    const sync = (): void => refresh();
-    window.addEventListener('ticketflow:update', sync);
-    window.addEventListener('storage', sync);
-    return () => {
-      window.removeEventListener('ticketflow:update', sync);
-      window.removeEventListener('storage', sync);
-    };
+    void refresh();
   }, []);
 
   const value = useMemo<UserContextValue>(
     () => ({
       user,
-      scopedState,
-      login: (email, password) => {
-        const found = getUsers().find((candidate) => candidate.email.toLowerCase() === email.trim().toLowerCase() && candidate.password === password);
-        if (!found) return { ok: false, message: 'Email ou mot de passe invalide.' };
-        if (found.active === false) return { ok: false, message: 'Compte désactivé.' };
+      scopedState: { favorites },
+      loading,
+      login: async (email, password) => {
         try {
-          apiLogin({ email, password });
+          setLoading(true);
+          const { user: authedUser } = await apiLogin({ email, password });
+          const mapped = mapUser(authedUser);
+          setUser(mapped);
+          localStorage.setItem(AUTH_USER_KEY, JSON.stringify(authedUser));
+          await refresh();
+          return { ok: true, role: mapped.role };
         } catch (error) {
           return { ok: false, message: (error as Error).message };
+        } finally {
+          setLoading(false);
         }
-        setCurrentUser(found);
-        return { ok: true, role: found.role };
       },
-      register: (data) => {
-        const exists = getUsers().some((u) => u.email.toLowerCase() === data.email.trim().toLowerCase());
-        if (exists) return { ok: false, message: 'Cet email est déjà utilisé.' };
+      register: async (data) => {
         try {
-          apiRegister({
+          setLoading(true);
+          const { user: created } = await apiRegister({
             firstName: data.firstName,
             lastName: data.lastName,
             email: data.email,
             password: data.password,
             role: data.role ?? 'client',
-            companyName: data.companyName
+            companyName: data.companyName,
+            phone: data.phone
           });
+          const mapped = mapUser(created);
+          setUser(mapped);
+          await refresh();
+          return { ok: true, role: mapped.role };
         } catch (error) {
           return { ok: false, message: (error as Error).message };
+        } finally {
+          setLoading(false);
         }
-        const created = createUser({
-          firstName: data.firstName,
-          lastName: data.lastName,
-          email: data.email.trim().toLowerCase(),
-          password: data.password,
-          phone: data.phone,
-          role: data.role ?? 'client'
-        });
-        const withOrg = data.role === 'organizer' ? {
-          ...created,
-          companyName: data.companyName,
-          organizationSlug: data.companyName ? data.companyName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : undefined
-        } : created;
-        setCurrentUser(withOrg);
-        return { ok: true };
       },
-      logout: () => {
-        apiLogout();
-        setCurrentUser(null);
+      logout: async () => {
+        await apiLogout();
+        setUser(null);
+        setFavorites([]);
       },
       refresh,
-      updateProfile: (patch) => {
+      updateProfile: async (patch) => {
         if (!user) return;
-        updateUserProfile(user.id, patch);
-        refresh();
+        const updated = await clientApi.updateProfile(patch);
+        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(updated));
+        setUser(mapUser(updated as unknown as AuthUser));
       },
-      changePassword: (currentPassword, nextPassword, confirm) => {
-        if (!user) return { ok: false, message: 'Utilisateur non connecté' };
-        if (!currentPassword || !nextPassword || !confirm) return { ok: false, message: 'Tous les champs sont requis.' };
-        if (nextPassword !== confirm) return { ok: false, message: 'La confirmation ne correspond pas.' };
-        const fresh = getUsers().find((u) => u.id === user.id);
-        if (fresh?.password !== currentPassword) return { ok: false, message: 'Mot de passe actuel incorrect.' };
-        updateUserPassword(user.id, nextPassword);
-        return { ok: true, message: 'Mot de passe mis à jour avec succès.' };
+      changePassword: async (_currentPassword, _nextPassword, _confirm) => {
+        return { ok: false, message: 'Le changement du mot de passe doit être géré via l’API dédiée.' };
       },
-      favorites: scopedState?.favorites ?? [],
-      isFavorite: (itemId, itemType) => (user ? favoriteKeys.has(`${itemType}:${itemId}`) : false),
-      toggleFavorite: (favorite) => {
+      favorites,
+      isFavorite: (itemId, itemType) => favorites.some((item) => item.itemId === itemId && item.itemType === itemType),
+      toggleFavorite: async (favorite) => {
         if (!user) return false;
-        const next = toggleFavoriteInStorage(user.id, favorite);
-        refresh();
-        return next;
+        const existing = favorites.find((item) => item.itemId === favorite.itemId && item.itemType === favorite.itemType);
+        if (existing) {
+          await clientApi.deleteFavorite(existing.id);
+          setFavorites((current) => current.filter((item) => item.id !== existing.id));
+          return false;
+        }
+        const created = await clientApi.addFavorite(favorite);
+        setFavorites((current) => [created, ...current]);
+        return true;
       },
-      removeFavorite: (itemId, itemType) => {
-        if (!user) return;
-        deleteFavorite(user.id, itemId, itemType);
-        refresh();
-      },
+      removeFavorite: async (itemId, itemType) => {
+        const existing = favorites.find((item) => item.itemId === itemId && item.itemType === itemType);
+        if (!existing) return;
+        await clientApi.deleteFavorite(existing.id);
+        setFavorites((current) => current.filter((item) => item.id !== existing.id));
+      }
     }),
-    [user, scopedState, favoriteKeys]
+    [user, favorites, loading]
   );
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

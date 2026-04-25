@@ -1,22 +1,33 @@
 import { CartItem, CustomerInfo, Order } from '../../types/commerce';
-import { uid } from './utils';
-import { getCurrentUser, getUserState, saveUserState } from '../storage';
+import { commerceApi } from '../api/laravelApi';
 
 interface PendingOrder {
   id: string;
+  orderId: string;
   items: CartItem[];
   customer: CustomerInfo;
   totalNow: number;
   remainingLater: number;
   createdAt: string;
+  paymentId?: string;
 }
 
 const pendingOrderKey = 'ticketflow_pending_order';
+const lastOrderKey = 'ticketflow_last_order';
 
-export function createPendingOrder(items: CartItem[], customer: CustomerInfo): PendingOrder {
+export async function createPendingOrder(items: CartItem[], customer: CustomerInfo): Promise<PendingOrder> {
   const totalNow = items.reduce((sum, item) => sum + (item.advanceAmount ?? item.subtotal), 0);
   const remainingLater = items.reduce((sum, item) => sum + (item.remainingAmount ?? 0), 0);
-  const pending: PendingOrder = { id: uid('pending'), items, customer, totalNow, remainingLater, createdAt: new Date().toISOString() };
+  const response = await commerceApi.createOrder({ items, customer });
+  const pending: PendingOrder = {
+    id: `pending-${response.id}`,
+    orderId: response.id,
+    items,
+    customer,
+    totalNow,
+    remainingLater,
+    createdAt: new Date().toISOString()
+  };
   localStorage.setItem(pendingOrderKey, JSON.stringify(pending));
   return pending;
 }
@@ -35,56 +46,35 @@ export function clearPendingOrder(): void {
   localStorage.removeItem(pendingOrderKey);
 }
 
-export async function finalizePendingOrder(paymentMethod: 'card' = 'card'): Promise<Order> {
-  await new Promise((resolve) => setTimeout(resolve, 1200));
+export async function initPendingPayment(payload: { method: string; cardHolder: string; cardNumber: string; expiry: string; cvv: string }): Promise<PendingOrder> {
   const pending = getPendingOrder();
   if (!pending) throw new Error('Aucune commande en attente.');
+  const payment = await commerceApi.initPayment({ orderId: pending.orderId, ...payload });
+  const next = { ...pending, paymentId: payment.paymentId };
+  localStorage.setItem(pendingOrderKey, JSON.stringify(next));
+  return next;
+}
 
-  const order: Order = {
-    id: uid('order'),
-    reference: `GC-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`,
-    items: pending.items,
-    customer: pending.customer,
-    paymentMethod,
-    totalNow: pending.totalNow,
-    remainingLater: pending.remainingLater,
-    status: 'confirmed',
-    createdAt: new Date().toISOString()
-  };
-
-  const current = getCurrentUser();
-  if (current) {
-    const state = getUserState(current.id, current);
-    state.orders = [order, ...state.orders];
-    state.reservations = [order, ...state.reservations];
-    state.travelBookings = [...pending.items.filter((i) => i.productType === 'travel_booking'), ...state.travelBookings];
-    state.cinemaBookings = [...pending.items.filter((i) => i.productType === 'movie_ticket'), ...state.cinemaBookings];
-    state.balanceTransactions = [
-      { id: uid('txn'), label: `Commande ${order.reference}`, amount: -pending.totalNow, createdAt: order.createdAt },
-      ...state.balanceTransactions
-    ];
-    saveUserState(current.id, state);
-    localStorage.setItem(`ticketflow_last_order:${current.id}`, JSON.stringify(order));
-    window.dispatchEvent(new Event('ticketflow:update'));
-  }
-
+export async function finalizePendingOrder(): Promise<Order> {
+  const pending = getPendingOrder();
+  if (!pending || !pending.paymentId) throw new Error('Paiement non initialisé.');
+  const order = await commerceApi.confirmPayment({ orderId: pending.orderId, paymentId: pending.paymentId });
+  localStorage.setItem(lastOrderKey, JSON.stringify(order));
   clearPendingOrder();
   return order;
 }
 
-export async function submitOrder(items: CartItem[], customer: CustomerInfo): Promise<Order> {
-  createPendingOrder(items, customer);
-  return finalizePendingOrder('card');
-}
-
-export function getLastOrder(): Order | null {
-  const current = getCurrentUser();
-  if (!current) return null;
-  const raw = localStorage.getItem(`ticketflow_last_order:${current.id}`);
+export async function getLastOrder(): Promise<Order | null> {
+  const raw = localStorage.getItem(lastOrderKey);
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as Order;
+    const cached = JSON.parse(raw) as Order;
+    return await commerceApi.getOrder(cached.id);
   } catch {
     return null;
   }
+}
+
+export async function downloadReceipt(orderId: string): Promise<Blob> {
+  return commerceApi.getReceipt(orderId);
 }

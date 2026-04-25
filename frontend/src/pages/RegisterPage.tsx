@@ -16,14 +16,14 @@ export default function RegisterPage(): JSX.Element {
   const [marketing, setMarketing] = useState(false);
   const [message, setMessage] = useState('');
 
-  function onSubmit(event: FormEvent): void {
+  async function onSubmit(event: FormEvent): Promise<void> {
     event.preventDefault();
     if (!terms) {
       setMessage('Vous devez accepter les conditions.');
       return;
     }
 
-    const result = register({ firstName, lastName, email, password, phone, role, companyName: role === 'organizer' ? companyName : undefined });
+    const result = await register({ firstName, lastName, email, password, phone, role, companyName: role === 'organizer' ? companyName : undefined });
 
     if (!result.ok) {
       setMessage(result.message ?? 'Erreur inscription');
@@ -31,7 +31,7 @@ export default function RegisterPage(): JSX.Element {
     }
 
     void marketing;
-    navigate(role === 'organizer' ? '/ma-fr/organizer' : '/ma-fr/account');
+    navigate(result.role === 'admin' ? '/ma-fr/admin' : result.role === 'organizer' ? '/ma-fr/organizer' : '/ma-fr/account');
   }
 
   return (

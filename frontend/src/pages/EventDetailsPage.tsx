@@ -1,43 +1,83 @@
 import { Link, useParams } from 'react-router-dom';
 import PlatformTopNav from '../components/PlatformTopNav';
-import { getEventBySlug } from '../services/platformData';
-import { backofficeService } from '../services/backoffice';
 import TicketSelectionModal from '../components/commerce/TicketSelectionModal';
 import FavoriteButton from '../components/FavoriteButton';
 import SharePopover from '../components/SharePopover';
 import SeatPlanModal from '../components/commerce/SeatPlanModal';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { catalogApi } from '../services/api/laravelApi';
+
+interface EventDetailsModel {
+  id: string;
+  slug: string;
+  title: string;
+  organizer?: { name: string; logo?: string; slug?: string };
+  image: string;
+  tags?: string[];
+  location: string;
+  date: string;
+  time: string;
+  price: string;
+  description: string;
+  type?: string;
+  buyingMode?: string;
+  hasPlan?: boolean;
+  ticketTypes?: Array<{ id: string; name: string; price: number; available: number }>;
+}
 
 export default function EventDetailsPage(): JSX.Element {
   const { slug = '' } = useParams();
-  const dynamic = backofficeService.getPublicEventBySlug(slug);
-  const fallbackEvent = getEventBySlug(slug);
-  const event = dynamic ? {
-    slug: dynamic.event.slug,
-    title: dynamic.event.title,
-    organizer: dynamic.organizer?.companyName ?? 'Organisateur',
-    organizerLogo: dynamic.organizer?.logo ?? dynamic.event.image,
-    image: dynamic.event.image,
-    tags: dynamic.event.tags,
-    location: dynamic.event.location,
-    date: dynamic.event.date,
-    time: dynamic.event.time,
-    price: `${dynamic.event.ticketTypes[0]?.price ?? 0} MAD`,
-    description: dynamic.event.description
-  } : fallbackEvent;
+  const [event, setEvent] = useState<EventDetailsModel | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [ticketModalOpen, setTicketModalOpen] = useState(false);
   const [seatModalOpen, setSeatModalOpen] = useState(false);
 
-  if (!event) {
+  useEffect(() => {
+    const load = async (): Promise<void> => {
+      try {
+        const response = await catalogApi.eventBySlug(slug);
+        const payload = response.data ?? response;
+        setEvent({
+          id: String(payload.id),
+          slug: payload.slug,
+          title: payload.title,
+          organizer: payload.organizer,
+          image: payload.image,
+          tags: payload.tags,
+          location: payload.location,
+          date: payload.date,
+          time: payload.time,
+          price: payload.price ?? `${payload.ticketTypes?.[0]?.price ?? 0} MAD`,
+          description: payload.description,
+          type: payload.type,
+          buyingMode: payload.buyingMode,
+          hasPlan: payload.hasPlan,
+          ticketTypes: payload.ticketTypes
+        });
+      } catch (apiError) {
+        setError((apiError as Error).message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    void load();
+  }, [slug]);
+
+  if (loading) return <div className="min-h-screen bg-[#020b22] p-8 text-white">Chargement...</div>;
+
+  if (!event || error) {
     return (
       <div className="-mx-4 min-h-screen bg-[#020b22] text-white lg:-mx-8">
         <PlatformTopNav active="billeterie" />
         <section className="mx-auto max-w-[1200px] px-4 py-10 lg:px-8">
-          <p>Événement introuvable.</p>
+          <p>{error || 'Événement introuvable.'}</p>
         </section>
       </div>
     );
   }
+
+  const showPlanOnly = event.type === 'sport' && event.buyingMode === 'plan' && event.hasPlan;
 
   return (
     <div className="-mx-4 min-h-screen bg-[#020b22] text-white lg:-mx-8">
@@ -53,11 +93,11 @@ export default function EventDetailsPage(): JSX.Element {
         <article className="rounded-3xl border border-white/10 bg-[#06173c] p-6 lg:p-8">
           <div className="mb-6 flex items-center justify-end gap-2">
             <SharePopover title={event.title} />
-            <FavoriteButton itemId={event.slug} itemType="event" payload={{ slug: event.slug, title: event.title, image: event.image, location: event.location, date: `${event.date} · ${event.time}`, route: `/ma-fr/event/${event.slug}`, organizer: event.organizer }} />
+            <FavoriteButton itemId={event.slug} itemType={event.type === 'sport' ? 'sport' : 'event'} payload={{ slug: event.slug, title: event.title, image: event.image, location: event.location, date: `${event.date} · ${event.time}`, route: `/ma-fr/event/${event.slug}`, organizer: event.organizer?.name }} />
           </div>
           <div className="mb-5 flex items-center gap-3">
-            <img src={event.organizerLogo} alt={event.organizer} className="h-10 w-10 rounded-full object-cover" />
-            <Link to={`/ma-fr/event/producer/${event.organizer.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`} className="text-sm text-slate-200 underline">{event.organizer}</Link>
+            <img src={event.organizer?.logo ?? event.image} alt={event.organizer?.name ?? 'Organisateur'} className="h-10 w-10 rounded-full object-cover" />
+            <Link to={`/ma-fr/event/producer/${event.organizer?.slug ?? 'organisateur'}`} className="text-sm text-slate-200 underline">{event.organizer?.name ?? 'Organisateur'}</Link>
           </div>
           <h1 className="text-4xl font-bold leading-tight">{event.title}</h1>
           <p className="mt-4 text-slate-300">📍 {event.location}</p>
@@ -65,14 +105,14 @@ export default function EventDetailsPage(): JSX.Element {
           <hr className="my-6 border-white/10" />
           <p className="leading-7 text-slate-200">{event.description}</p>
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
-            <button onClick={() => setTicketModalOpen(true)} className="w-full rounded-full bg-white px-6 py-4 text-lg font-bold text-[#03143a]">Acheter maintenant · {event.price}</button>
-            <button onClick={() => setSeatModalOpen(true)} className="w-full rounded-full border border-white/30 bg-white/5 px-6 py-4 text-lg font-bold">Acheter via plan</button>
+            {!showPlanOnly && <button onClick={() => setTicketModalOpen(true)} className="w-full rounded-full bg-white px-6 py-4 text-lg font-bold text-[#03143a]">Acheter maintenant · {event.price}</button>}
+            {event.hasPlan && event.type === 'sport' && <button onClick={() => setSeatModalOpen(true)} className="w-full rounded-full border border-white/30 bg-white/5 px-6 py-4 text-lg font-bold">Acheter via plan</button>}
           </div>
         </article>
       </section>
 
-      <TicketSelectionModal event={event} open={ticketModalOpen} onClose={() => setTicketModalOpen(false)} />
-      <SeatPlanModal event={event} open={seatModalOpen} onClose={() => setSeatModalOpen(false)} />
+      <TicketSelectionModal event={event as any} open={ticketModalOpen} onClose={() => setTicketModalOpen(false)} />
+      <SeatPlanModal event={event as any} open={seatModalOpen} onClose={() => setSeatModalOpen(false)} />
     </div>
   );
 }

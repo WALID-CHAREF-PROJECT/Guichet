@@ -31,7 +31,7 @@ export default function FavoriteButton({ itemId, itemType, payload, className = 
           window.alert('Connectez-vous pour gérer vos favoris.');
           return;
         }
-        toggleFavorite({ ...payload, itemId, itemType });
+        void toggleFavorite({ ...payload, itemId, itemType });
       }}
       className={`rounded-full border px-3 py-1.5 text-xs transition ${active ? 'border-orange-300 bg-orange-500/20 text-orange-200' : 'border-white/20 bg-white/5 text-white hover:bg-white/10'} ${className}`}
     >

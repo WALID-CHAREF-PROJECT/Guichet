@@ -44,7 +44,7 @@ export default function AccountAreaPage(): JSX.Element {
         ))}
         <button
           onClick={() => {
-            logout();
+            void logout();
             navigate('/ma-fr/login');
           }}
           className="mt-3 w-full rounded-xl border border-red-300/35 bg-red-500/15 px-4 py-2.5 text-left text-sm font-semibold text-red-100 transition hover:bg-red-500/25"
@@ -98,7 +98,7 @@ export function AccountFavorites(): JSX.Element {
               {item.date ? <p className="text-slate-300">📅 {item.date}</p> : null}
               <div className="mt-2 flex items-center gap-2">
                 <Link to={item.route} className="rounded-full border border-white/40 px-3 py-1 text-xs">Ouvrir</Link>
-                <button onClick={() => removeFavorite(item.itemId, item.itemType)} className="rounded-full bg-white px-3 py-1 text-xs text-[#041743]">Retirer</button>
+                <button onClick={() => void removeFavorite(item.itemId, item.itemType)} className="rounded-full bg-white px-3 py-1 text-xs text-[#041743]">Retirer</button>
               </div>
             </div>
           </article>
@@ -150,10 +150,10 @@ export function AccountProfile(): JSX.Element {
     <section className="rounded-3xl border border-white/10 bg-[#041743] p-6">
       <h2 className="text-2xl font-bold">Mes informations</h2>
       <div className="mt-4 grid gap-3 md:grid-cols-2">
-        <input defaultValue={user.firstName} placeholder="Prénom" className="rounded bg-white/5 px-3 py-2" onBlur={(e) => updateProfile({ firstName: e.target.value })} />
-        <input defaultValue={user.lastName} placeholder="Nom" className="rounded bg-white/5 px-3 py-2" onBlur={(e) => updateProfile({ lastName: e.target.value })} />
-        <input defaultValue={user.email} placeholder="Email" className="rounded bg-white/5 px-3 py-2" onBlur={(e) => updateProfile({ email: e.target.value })} />
-        <input defaultValue={user.phone} placeholder="Téléphone" className="rounded bg-white/5 px-3 py-2" onBlur={(e) => updateProfile({ phone: e.target.value })} />
+        <input defaultValue={user.firstName} placeholder="Prénom" className="rounded bg-white/5 px-3 py-2" onBlur={(e) => void updateProfile({ firstName: e.target.value })} />
+        <input defaultValue={user.lastName} placeholder="Nom" className="rounded bg-white/5 px-3 py-2" onBlur={(e) => void updateProfile({ lastName: e.target.value })} />
+        <input defaultValue={user.email} placeholder="Email" className="rounded bg-white/5 px-3 py-2" onBlur={(e) => void updateProfile({ email: e.target.value })} />
+        <input defaultValue={user.phone} placeholder="Téléphone" className="rounded bg-white/5 px-3 py-2" onBlur={(e) => void updateProfile({ phone: e.target.value })} />
       </div>
     </section>
   );
@@ -164,10 +164,10 @@ export function AccountSecurity(): JSX.Element {
   return (
     <section className="rounded-3xl border border-white/10 bg-[#041743] p-6">
       <h2 className="text-2xl font-bold">Sécurité</h2>
-      <form className="mt-4 space-y-3" onSubmit={(e) => {
+      <form className="mt-4 space-y-3" onSubmit={async (e) => {
         e.preventDefault();
         const form = new FormData(e.currentTarget);
-        const msg = changePassword(String(form.get('currentPassword') ?? ''), String(form.get('newPassword') ?? ''), String(form.get('confirmPassword') ?? ''));
+        const msg = await changePassword(String(form.get('currentPassword') ?? ''), String(form.get('newPassword') ?? ''), String(form.get('confirmPassword') ?? ''));
         alert(msg.message);
       }}>
         <input name="currentPassword" type="password" placeholder="Mot de passe actuel" className="w-full rounded bg-white/5 px-3 py-2" />
