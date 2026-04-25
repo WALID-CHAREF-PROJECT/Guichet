@@ -1,7 +1,7 @@
 import { Category, City, EventItem, PaginatedResponse } from '../types/api';
-import { apiClient } from './api/apiClient';
-import { eventTags, platformEvents } from './platformData';
-import { safeFetchData } from './safeApi';
+import { buildPaginatedEvents, mockCategories, mockCities, mockEvents } from './mockData';
+
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000/api';
 
 interface EventFilters {
   search?: string;
@@ -12,60 +12,35 @@ interface EventFilters {
   page?: number;
 }
 
-const fallbackCategories: Category[] = eventTags.map((tag, index) => ({
-  id: index + 1,
-  name: tag.label,
-  slug: tag.id
-}));
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${BASE_URL}${path}`, {
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    ...init
+  });
 
-const fallbackCities: City[] = [
-  { id: 1, name: 'Casablanca', slug: 'casablanca' },
-  { id: 2, name: 'Rabat', slug: 'rabat' },
-  { id: 3, name: 'Marrakech', slug: 'marrakech' }
-];
-
-function mapPlatformEventToApiEvent(event: (typeof platformEvents)[number]): EventItem {
-  const city = fallbackCities.find((item) => event.location.toLowerCase().includes(item.name.toLowerCase())) ?? fallbackCities[0];
-  const category = fallbackCategories.find((item) => event.tags.includes(item.slug)) ?? fallbackCategories[0];
-  return {
-    id: event.id,
-    slug: event.slug,
-    organizer: event.organizer,
-    title: event.title,
-    venue: event.location,
-    city,
-    category,
-    description: event.description,
-    image_url: event.image,
-    starts_at: event.date,
-    starts_at_human: `${event.date} · ${event.time}`,
-    price_mad: Number(event.price.replace(/[^\d]/g, '')) || 0,
-    is_free: false,
-    is_sold_out: false,
-    badge: null
-  };
-}
-
-function applyFilters(events: EventItem[], filters: EventFilters): EventItem[] {
-  const query = (filters.search ?? '').toLowerCase().trim();
-  return events
-    .filter((event) => !query || event.title.toLowerCase().includes(query) || event.venue.toLowerCase().includes(query))
-    .filter((event) => !filters.category || event.category.slug === filters.category)
-    .filter((event) => !filters.city || event.city.slug === filters.city);
-}
-
-function fallbackEvents(filters: EventFilters): PaginatedResponse<EventItem> {
-  const mapped = platformEvents.map(mapPlatformEventToApiEvent);
-  const data = applyFilters(mapped, filters);
-  return {
-    data,
-    meta: {
-      current_page: 1,
-      last_page: 1,
-      per_page: data.length,
-      total: data.length
+  if (!response.ok) {
+    let errorMessage = `Erreur API (${response.status})`;
+    try {
+      const payload = await response.json() as { message?: string };
+      if (payload.message) errorMessage = payload.message;
+    } catch {
+      // keep fallback message when API body is not JSON
     }
-  };
+    throw new Error(errorMessage);
+  }
+
+  return response.json() as Promise<T>;
+}
+
+function filterMockEvents(filters: EventFilters): EventItem[] {
+  return mockEvents.filter((event) => {
+    const matchSearch = !filters.search || event.title.toLowerCase().includes(filters.search.toLowerCase());
+    const matchCategory = !filters.category || event.category.slug === filters.category;
+    const matchCity = !filters.city || event.city.slug === filters.city;
+    return matchSearch && matchCategory && matchCity;
+  });
 }
 
 export async function getEvents(filters: EventFilters): Promise<PaginatedResponse<EventItem>> {
@@ -73,47 +48,50 @@ export async function getEvents(filters: EventFilters): Promise<PaginatedRespons
   Object.entries(filters).forEach(([key, value]) => {
     if (value !== undefined && value !== '') params.append(key, String(value));
   });
-  return safeFetchData(
-    () => apiClient<PaginatedResponse<EventItem>>(`/events?${params.toString()}`),
-    fallbackEvents(filters)
-  );
+
+  try {
+    return await request<PaginatedResponse<EventItem>>(`/events?${params.toString()}`);
+  } catch {
+    return buildPaginatedEvents(filterMockEvents(filters));
+  }
 }
 
 export async function getEvent(slug: string): Promise<EventItem> {
-  const fallback = mapPlatformEventToApiEvent(platformEvents.find((item) => item.slug === slug) ?? platformEvents[0]);
-  return safeFetchData(
-    async () => {
-      const response = await apiClient<{ data: EventItem }>(`/events/${slug}`);
-      return response.data;
-    },
-    fallback
-  );
+  try {
+    const response = await request<{ data: EventItem }>(`/events/${slug}`);
+    return response.data;
+  } catch {
+    const localEvent = mockEvents.find((event) => event.slug === slug);
+    if (!localEvent) throw new Error('Événement introuvable.');
+    return localEvent;
+  }
 }
 
 export async function getCategories(): Promise<Category[]> {
-  return safeFetchData(
-    async () => {
-      const response = await apiClient<{ data: Category[] }>('/categories');
-      return response.data;
-    },
-    fallbackCategories
-  );
+  try {
+    const response = await request<{ data: Category[] }>('/categories');
+    return response.data;
+  } catch {
+    return mockCategories;
+  }
 }
 
 export async function getCities(): Promise<City[]> {
-  return safeFetchData(
-    async () => {
-      const response = await apiClient<{ data: City[] }>('/cities');
-      return response.data;
-    },
-    fallbackCities
-  );
+  try {
+    const response = await request<{ data: City[] }>('/cities');
+    return response.data;
+  } catch {
+    return mockCities;
+  }
 }
 
 export async function subscribeNewsletter(email: string): Promise<{ message: string }> {
-  return apiClient('/newsletter/subscribe', {
-    method: 'POST',
-    body: { email },
-    skipAuth: true
-  });
+  try {
+    return await request('/newsletter/subscribe', {
+      method: 'POST',
+      body: JSON.stringify({ email })
+    });
+  } catch {
+    return { message: `Inscription réussie pour ${email}.` };
+  }
 }

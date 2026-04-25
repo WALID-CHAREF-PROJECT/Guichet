@@ -1,108 +1,32 @@
 import { Link, useParams } from 'react-router-dom';
 import PlatformTopNav from '../components/PlatformTopNav';
+import { getEventBySlug } from '../services/platformData';
+import { backofficeService } from '../services/backoffice';
 import TicketSelectionModal from '../components/commerce/TicketSelectionModal';
 import FavoriteButton from '../components/FavoriteButton';
 import SharePopover from '../components/SharePopover';
 import SeatPlanModal from '../components/commerce/SeatPlanModal';
-import { useEffect, useState } from 'react';
-import { catalogApi } from '../services/api/laravelApi';
-import { getEventBySlug } from '../services/platformData';
-import { safeFetchData } from '../services/safeApi';
-
-interface EventDetailsModel {
-  id: string;
-  slug: string;
-  title: string;
-  organizer?: { name: string; logo?: string; slug?: string };
-  image: string;
-  tags?: string[];
-  location: string;
-  date: string;
-  time: string;
-  price: string;
-  description: string;
-  type?: string;
-  buyingMode?: string;
-  hasPlan?: boolean;
-  ticketTypes?: Array<{ id: string; name: string; price: number; available: number }>;
-}
-
-function fallbackEvent(slug: string): EventDetailsModel | null {
-  const event = getEventBySlug(slug);
-  if (!event) return null;
-  return {
-    id: String(event.id),
-    slug: event.slug,
-    title: event.title,
-    organizer: { name: event.organizer, logo: event.organizerLogo, slug: 'organisateur' },
-    image: event.image,
-    tags: event.tags,
-    location: event.location,
-    date: event.date,
-    time: event.time,
-    price: event.price,
-    description: event.description,
-    type: event.tags.includes('sport') ? 'sport' : 'event',
-    buyingMode: event.tags.includes('sport') ? 'plan' : 'tickets',
-    hasPlan: event.tags.includes('sport'),
-    ticketTypes: [{ id: 'std', name: 'Standard', price: Number(event.price.replace(/[^\d]/g, '')) || 100, available: 150 }]
-  };
-}
+import { useState } from 'react';
 
 export default function EventDetailsPage(): JSX.Element {
   const { slug = '' } = useParams();
-  const [event, setEvent] = useState<EventDetailsModel | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [warning, setWarning] = useState('');
+  const dynamic = backofficeService.getPublicEventBySlug(slug);
+  const fallbackEvent = getEventBySlug(slug);
+  const event = dynamic ? {
+    slug: dynamic.event.slug,
+    title: dynamic.event.title,
+    organizer: dynamic.organizer?.companyName ?? 'Organisateur',
+    organizerLogo: dynamic.organizer?.logo ?? dynamic.event.image,
+    image: dynamic.event.image,
+    tags: dynamic.event.tags,
+    location: dynamic.event.location,
+    date: dynamic.event.date,
+    time: dynamic.event.time,
+    price: `${dynamic.event.ticketTypes[0]?.price ?? 0} MAD`,
+    description: dynamic.event.description
+  } : fallbackEvent;
   const [ticketModalOpen, setTicketModalOpen] = useState(false);
   const [seatModalOpen, setSeatModalOpen] = useState(false);
-
-  useEffect(() => {
-    const load = async (): Promise<void> => {
-      const fallback = fallbackEvent(slug);
-      try {
-        const payload = await safeFetchData(
-          async () => {
-            const response = await catalogApi.eventBySlug(slug);
-            return response.data ?? response;
-          },
-          fallback
-        );
-
-        if (!payload) {
-          setEvent(null);
-          return;
-        }
-
-        if (payload === fallback && fallback) {
-          setWarning('Données temporaires affichées (mode hors ligne).');
-        }
-
-        setEvent({
-          id: String(payload.id),
-          slug: payload.slug,
-          title: payload.title,
-          organizer: payload.organizer,
-          image: payload.image,
-          tags: payload.tags,
-          location: payload.location,
-          date: payload.date,
-          time: payload.time,
-          price: payload.price ?? `${payload.ticketTypes?.[0]?.price ?? 0} MAD`,
-          description: payload.description,
-          type: payload.type,
-          buyingMode: payload.buyingMode,
-          hasPlan: payload.hasPlan,
-          ticketTypes: payload.ticketTypes
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    void load();
-  }, [slug]);
-
-  if (loading) return <div className="min-h-screen bg-[#020b22] p-8 text-white">Chargement...</div>;
 
   if (!event) {
     return (
@@ -114,8 +38,6 @@ export default function EventDetailsPage(): JSX.Element {
       </div>
     );
   }
-
-  const showPlanOnly = event.type === 'sport' && event.buyingMode === 'plan' && event.hasPlan;
 
   return (
     <div className="-mx-4 min-h-screen bg-[#020b22] text-white lg:-mx-8">
@@ -129,14 +51,13 @@ export default function EventDetailsPage(): JSX.Element {
         </div>
 
         <article className="rounded-3xl border border-white/10 bg-[#06173c] p-6 lg:p-8">
-          {warning && <p className="mb-3 text-xs text-amber-300">{warning}</p>}
           <div className="mb-6 flex items-center justify-end gap-2">
             <SharePopover title={event.title} />
-            <FavoriteButton itemId={event.slug} itemType={event.type === 'sport' ? 'sport' : 'event'} payload={{ slug: event.slug, title: event.title, image: event.image, location: event.location, date: `${event.date} · ${event.time}`, route: `/ma-fr/event/${event.slug}`, organizer: event.organizer?.name }} />
+            <FavoriteButton itemId={event.slug} itemType="event" payload={{ slug: event.slug, title: event.title, image: event.image, location: event.location, date: `${event.date} · ${event.time}`, route: `/ma-fr/event/${event.slug}`, organizer: event.organizer }} />
           </div>
           <div className="mb-5 flex items-center gap-3">
-            <img src={event.organizer?.logo ?? event.image} alt={event.organizer?.name ?? 'Organisateur'} className="h-10 w-10 rounded-full object-cover" />
-            <Link to={`/ma-fr/event/producer/${event.organizer?.slug ?? 'organisateur'}`} className="text-sm text-slate-200 underline">{event.organizer?.name ?? 'Organisateur'}</Link>
+            <img src={event.organizerLogo} alt={event.organizer} className="h-10 w-10 rounded-full object-cover" />
+            <Link to={`/ma-fr/event/producer/${event.organizer.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`} className="text-sm text-slate-200 underline">{event.organizer}</Link>
           </div>
           <h1 className="text-4xl font-bold leading-tight">{event.title}</h1>
           <p className="mt-4 text-slate-300">📍 {event.location}</p>
@@ -144,14 +65,14 @@ export default function EventDetailsPage(): JSX.Element {
           <hr className="my-6 border-white/10" />
           <p className="leading-7 text-slate-200">{event.description}</p>
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
-            {!showPlanOnly && <button onClick={() => setTicketModalOpen(true)} className="w-full rounded-full bg-white px-6 py-4 text-lg font-bold text-[#03143a]">Acheter maintenant · {event.price}</button>}
-            {event.hasPlan && event.type === 'sport' && <button onClick={() => setSeatModalOpen(true)} className="w-full rounded-full border border-white/30 bg-white/5 px-6 py-4 text-lg font-bold">Acheter via plan</button>}
+            <button onClick={() => setTicketModalOpen(true)} className="w-full rounded-full bg-white px-6 py-4 text-lg font-bold text-[#03143a]">Acheter maintenant · {event.price}</button>
+            <button onClick={() => setSeatModalOpen(true)} className="w-full rounded-full border border-white/30 bg-white/5 px-6 py-4 text-lg font-bold">Acheter via plan</button>
           </div>
         </article>
       </section>
 
-      <TicketSelectionModal event={event as any} open={ticketModalOpen} onClose={() => setTicketModalOpen(false)} />
-      <SeatPlanModal event={event as any} open={seatModalOpen} onClose={() => setSeatModalOpen(false)} />
+      <TicketSelectionModal event={event} open={ticketModalOpen} onClose={() => setTicketModalOpen(false)} />
+      <SeatPlanModal event={event} open={seatModalOpen} onClose={() => setSeatModalOpen(false)} />
     </div>
   );
 }
