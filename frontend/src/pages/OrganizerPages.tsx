@@ -314,7 +314,7 @@ export function OrganizerPublicPage(): JSX.Element {
         <img src={organizer.logo} alt={organizer.companyName} className="h-20 w-20 rounded-full border-4 border-[#041743] object-cover" />
         <h1 className="mt-3 text-3xl font-bold">{organizer.companyName}</h1>
         <div className="mt-4 grid gap-3 md:grid-cols-3"><Stat label="Followers" value="12.4K" /><Stat label="Active events" value={String(upcoming.length)} /><Stat label="Past events" value={String(past.length)} /></div>
-        <h2 className="mt-6 text-xl font-semibold">Upcoming events</h2>
+        <h2 className="mt-6 text-xl font-semibold">Événements en cours</h2>
         <div className="mt-3 grid gap-3 md:grid-cols-2">{upcoming.map((event) => <Link key={event.id} to={`/ma-fr/event/${event.slug}`} className="rounded-xl border border-white/10 bg-white/5 p-3">{event.title}</Link>)}</div>
       </div>
     </section>

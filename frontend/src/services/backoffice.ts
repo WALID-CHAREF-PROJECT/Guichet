@@ -114,6 +114,87 @@ interface DbShape {
 const DB_KEY = 'app:backoffice:v1';
 const uid = (prefix: string): string => `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
 const slugify = (value: string): string => value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+const normalizeSlug = (value: string): string => slugify(value);
+const organizerSlugOverrides: Record<string, string> = {
+  'nostalgia lovers': 'nostalgia-lovers',
+  'basketball africa league': 'basketball-africa-league-bal',
+  'association edom': 'association-edom'
+};
+
+function organizerSlug(value: string): string {
+  return organizerSlugOverrides[normalizeSlug(value).replace(/-/g, ' ')] ?? slugify(value);
+}
+
+function buildPublicOrganizers(existingOrganizers: OrganizerProfile[]): OrganizerProfile[] {
+  const organizerBySlug = new Map(existingOrganizers.map((organizer) => [normalizeSlug(organizer.slug), organizer]));
+  const nextOrganizers = [...existingOrganizers];
+
+  platformEvents.forEach((event) => {
+    const slug = organizerSlug(event.organizer);
+    if (organizerBySlug.has(slug)) return;
+    const generated: OrganizerProfile = {
+      id: uid('organizer'),
+      userId: `public-${slug}`,
+      companyName: event.organizer,
+      slug,
+      logo: event.organizerLogo,
+      coverImage: event.image,
+      description: `Organisateur de ${event.title}.`,
+      city: event.location.split('-').pop()?.trim() ?? 'Casablanca',
+      email: `contact+${slug}@guichet.ma`,
+      phone: '+212600000000',
+      address: event.location,
+      website: 'https://guichet.example.com',
+      socialLinks: '@guichet',
+      supportInfo: 'Support 24/7',
+      isApproved: true
+    };
+    organizerBySlug.set(slug, generated);
+    nextOrganizers.push(generated);
+  });
+
+  return nextOrganizers;
+}
+
+function buildPublicEvents(existingEvents: BackofficeEvent[], organizers: OrganizerProfile[]): BackofficeEvent[] {
+  const nextEvents = [...existingEvents];
+  const existingBySlug = new Set(existingEvents.map((event) => event.slug));
+  const organizerBySlug = new Map(organizers.map((organizer) => [normalizeSlug(organizer.slug), organizer]));
+
+  platformEvents.forEach((event, index) => {
+    if (existingBySlug.has(event.slug)) return;
+    const organizer = organizerBySlug.get(organizerSlug(event.organizer));
+    if (!organizer) return;
+    nextEvents.push({
+      id: uid('evt'),
+      organizerId: organizer.userId,
+      title: event.title,
+      slug: event.slug,
+      category: event.tags[0] ?? 'Concerts',
+      shortDescription: event.description.slice(0, 120),
+      description: event.description,
+      city: event.location.split('-').pop()?.trim() ?? 'Casablanca',
+      location: event.location,
+      date: event.date,
+      time: event.time,
+      image: event.image,
+      gallery: [event.image],
+      tags: event.tags,
+      status: index < 2 ? 'past' : 'published',
+      featured: index % 4 === 0,
+      ticketsSold: 40 + index * 22,
+      revenue: 12000 + index * 6400,
+      ticketTypes: [
+        { id: uid('ticket'), name: 'Normal', price: Number.parseInt(event.price.replace(/[^\d]/g, ''), 10) || 150, stock: 300, seatPlanRequired: false },
+        { id: uid('ticket'), name: 'VIP', price: (Number.parseInt(event.price.replace(/[^\d]/g, ''), 10) || 150) + 200, stock: 120, seatPlanRequired: true }
+      ],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+  });
+
+  return nextEvents;
+}
 
 function makeSeedData(): DbShape {
   const users = getUsers();
@@ -148,7 +229,7 @@ function makeSeedData(): DbShape {
     description: event.description,
     city: event.location.split('-').pop()?.trim() ?? 'Casablanca',
     location: event.location,
-    date: '2026-05-10',
+    date: event.date,
     time: event.time,
     image: event.image,
     gallery: [event.image],
@@ -164,6 +245,8 @@ function makeSeedData(): DbShape {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   }));
+  const publicOrganizers = buildPublicOrganizers(organizers);
+  const allEvents = buildPublicEvents(events, publicOrganizers);
 
   const orders: BackofficeOrder[] = events.flatMap((event, idx) => ([0, 1, 2].map((i) => ({
     id: uid('ord'),
@@ -204,8 +287,8 @@ function makeSeedData(): DbShape {
   ];
 
   return {
-    organizers,
-    events,
+    organizers: publicOrganizers,
+    events: allEvents,
     orders,
     payouts,
     categories,
@@ -231,7 +314,15 @@ function getDb(): DbShape {
     return seeded;
   }
   try {
-    return JSON.parse(raw) as DbShape;
+    const parsed = JSON.parse(raw) as DbShape;
+    const organizers = buildPublicOrganizers(parsed.organizers ?? []);
+    const events = buildPublicEvents(parsed.events ?? [], organizers);
+    if (organizers.length !== (parsed.organizers ?? []).length || events.length !== (parsed.events ?? []).length) {
+      const upgraded = { ...parsed, organizers, events };
+      localStorage.setItem(DB_KEY, JSON.stringify(upgraded));
+      return upgraded;
+    }
+    return parsed;
   } catch {
     const seeded = makeSeedData();
     localStorage.setItem(DB_KEY, JSON.stringify(seeded));
@@ -411,7 +502,8 @@ export const backofficeService = {
   },
   getPublicOrganizer(slug: string): { organizer: OrganizerProfile; events: BackofficeEvent[] } | null {
     const db = getDb();
-    const organizer = db.organizers.find((item) => item.slug === slug);
+    const normalized = normalizeSlug(slug);
+    const organizer = db.organizers.find((item) => normalizeSlug(item.slug) === normalized);
     if (!organizer) return null;
     return { organizer, events: db.events.filter((event) => event.organizerId === organizer.userId && event.status !== 'archived') };
   },
