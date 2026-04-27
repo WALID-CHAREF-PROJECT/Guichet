@@ -1,9 +1,13 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\PackController;
+use App\Http\Controllers\Api\Admin\ProducerController;
+use App\Http\Controllers\Api\Admin\ProducerPackSubscriptionController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CityController;
 use App\Http\Controllers\Api\MarketplaceController;
 use App\Http\Controllers\Api\NewsletterController;
+use App\Http\Controllers\Api\ProducerPortalController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
@@ -94,5 +98,15 @@ Route::middleware('auth.token')->group(function (): void {
         Route::delete('/admin/content/{id}', fn (string $id) => response()->json(['success' => DB::table('content_blocks')->where('id', $id)->delete() > 0]));
         Route::get('/admin/settings', fn () => response()->json(DB::table('settings')->pluck('value', 'key')));
         Route::put('/admin/settings', fn () => response()->json(['success' => true]));
+
+        Route::apiResource('/admin/producers', ProducerController::class);
+        Route::apiResource('/admin/packs', PackController::class);
+        Route::put('/admin/producers/{producer}/pack', [ProducerPackSubscriptionController::class, 'assignOrChange']);
+    });
+
+    Route::middleware('role:organizer,producer')->group(function (): void {
+        Route::get('/producer/dashboard/pack', [ProducerPortalController::class, 'dashboard']);
+        Route::get('/producer/events', [ProducerPortalController::class, 'events']);
+        Route::post('/producer/events', [ProducerPortalController::class, 'storeEvent']);
     });
 });
