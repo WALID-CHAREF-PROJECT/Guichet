@@ -14,6 +14,8 @@ const menu = [
   { to: '/ma-fr/admin/movies', label: 'Films' },
   { to: '/ma-fr/admin/categories', label: 'Catégories' },
   { to: '/ma-fr/admin/content', label: 'Contenu' },
+  { to: '/ma-fr/admin/producers', label: 'Producteurs (packs)' },
+  { to: '/ma-fr/admin/packs', label: 'Packs producteurs' },
   { to: '/ma-fr/admin/settings', label: 'Paramètres' }
 ];
 
