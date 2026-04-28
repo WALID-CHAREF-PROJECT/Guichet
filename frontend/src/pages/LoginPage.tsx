@@ -15,9 +15,9 @@ export default function LoginPage(): JSX.Element {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
 
-  function onSubmit(event: FormEvent): void {
+  async function onSubmit(event: FormEvent): Promise<void> {
     event.preventDefault();
-    const result = login(email, password);
+    const result = await login(email, password);
     if (!result.ok) {
       setMessage(result.message ?? 'Erreur');
       return;
@@ -29,7 +29,7 @@ export default function LoginPage(): JSX.Element {
     <section className="mx-auto max-w-xl rounded-2xl border border-white/10 bg-[#041743] p-8 shadow-sm">
       <h1 className="text-3xl font-bold text-white">Connexion</h1>
       <p className="mt-2 text-slate-300">Connectez-vous pour gérer vos billets facilement.</p>
-      <form onSubmit={onSubmit} className="mt-6 space-y-4">
+      <form onSubmit={(event) => void onSubmit(event)} className="mt-6 space-y-4">
         <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Votre email" className="w-full rounded border border-white/20 bg-white/5 px-3 py-2" />
         <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mot de passe" className="w-full rounded border border-white/20 bg-white/5 px-3 py-2" />
         <button type="submit" className="w-full rounded bg-brand-600 px-4 py-2 font-medium text-white hover:bg-brand-700">Se connecter</button>

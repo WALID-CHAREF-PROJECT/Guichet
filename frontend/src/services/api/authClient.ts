@@ -3,6 +3,8 @@ import { UserRole } from './models';
 
 export const AUTH_TOKEN_KEY = 'app:auth:token';
 export const AUTH_USER_KEY = 'app:auth:user';
+export const LEGACY_AUTH_TOKEN_KEYS = ['auth_token'];
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000/api';
 
 export interface AuthUser {
   id: string;
@@ -26,29 +28,76 @@ function parse<T>(value: string | null): T | null {
   }
 }
 
-export function login(input: { email: string; password: string }): { user: AuthUser; token: string } {
-  const response = apiRouter({ path: '/api/auth/login', method: 'POST', body: input }) as unknown as { user: AuthUser; token: string };
-  localStorage.setItem(AUTH_TOKEN_KEY, response.token);
+function persistToken(token: string): void {
+  localStorage.setItem(AUTH_TOKEN_KEY, token);
+  LEGACY_AUTH_TOKEN_KEYS.forEach((legacyKey) => localStorage.setItem(legacyKey, token));
+}
+
+function clearToken(): void {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  LEGACY_AUTH_TOKEN_KEYS.forEach((legacyKey) => localStorage.removeItem(legacyKey));
+}
+
+export function getAuthToken(): string | null {
+  const primaryToken = localStorage.getItem(AUTH_TOKEN_KEY);
+  if (primaryToken) return primaryToken;
+  const legacyToken = LEGACY_AUTH_TOKEN_KEYS.map((key) => localStorage.getItem(key)).find(Boolean) ?? null;
+  if (legacyToken) {
+    localStorage.setItem(AUTH_TOKEN_KEY, legacyToken);
+  }
+  return legacyToken;
+}
+
+async function requestAuth<T>(path: string, input: unknown): Promise<T> {
+  const response = await fetch(`${BASE_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({ message: `Erreur API (${response.status})` }));
+    throw new Error(payload.message ?? `Erreur API (${response.status})`);
+  }
+  return response.json() as Promise<T>;
+}
+
+export async function login(input: { email: string; password: string }): Promise<{ user: AuthUser; token: string }> {
+  let response: { user: AuthUser; token: string };
+  try {
+    response = await requestAuth<{ user: AuthUser; token: string }>('/login', input);
+  } catch {
+    response = apiRouter({ path: '/api/auth/login', method: 'POST', body: input }) as { user: AuthUser; token: string };
+  }
+  persistToken(response.token);
   localStorage.setItem(AUTH_USER_KEY, JSON.stringify(response.user));
   return response;
 }
 
-export function register(input: {
+export async function register(input: {
   firstName: string;
   lastName: string;
   email: string;
   password: string;
   role: 'client';
-}): { user: AuthUser; token: string } {
-  const response = apiRouter({ path: '/api/auth/register', method: 'POST', body: input }) as unknown as { user: AuthUser; token: string };
-  localStorage.setItem(AUTH_TOKEN_KEY, response.token);
+}): Promise<{ user: AuthUser; token: string }> {
+  let response: { user: AuthUser; token: string };
+  try {
+    response = await requestAuth<{ user: AuthUser; token: string }>('/register', input);
+  } catch {
+    response = apiRouter({ path: '/api/auth/register', method: 'POST', body: input }) as { user: AuthUser; token: string };
+  }
+  persistToken(response.token);
   localStorage.setItem(AUTH_USER_KEY, JSON.stringify(response.user));
   return response;
 }
 
 export function logout(): void {
-  void apiRouter({ path: '/api/auth/logout', method: 'POST' });
-  localStorage.removeItem(AUTH_TOKEN_KEY);
+  const token = getAuthToken();
+  void fetch(`${BASE_URL}/logout`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  }).catch(() => apiRouter({ path: '/api/auth/logout', method: 'POST' }));
+  clearToken();
   localStorage.removeItem(AUTH_USER_KEY);
 }
 
@@ -61,5 +110,5 @@ export function getRole(): UserRole | null {
 }
 
 export function isAuthenticated(): boolean {
-  return Boolean(localStorage.getItem(AUTH_TOKEN_KEY));
+  return Boolean(getAuthToken());
 }

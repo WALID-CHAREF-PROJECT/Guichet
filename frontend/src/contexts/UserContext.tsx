@@ -8,6 +8,7 @@ import {
   getUserState,
   getUsers,
   removeFavorite as deleteFavorite,
+  saveUsers,
   setCurrentUser,
   StoredUser,
   toggleFavorite as toggleFavoriteInStorage,
@@ -28,8 +29,8 @@ interface RegisterInput {
 interface UserContextValue {
   user: StoredUser | null;
   scopedState: UserScopedState | null;
-  login: (email: string, password: string) => { ok: boolean; message?: string; role?: 'client' | 'organizer' | 'producer' | 'admin' };
-  register: (data: RegisterInput) => { ok: boolean; message?: string };
+  login: (email: string, password: string) => Promise<{ ok: boolean; message?: string; role?: 'client' | 'organizer' | 'producer' | 'admin' }>;
+  register: (data: RegisterInput) => Promise<{ ok: boolean; message?: string }>;
   logout: () => void;
   refresh: () => void;
   updateProfile: (patch: Partial<Pick<StoredUser, 'firstName' | 'lastName' | 'email' | 'phone' | 'avatar'>>) => void;
@@ -67,23 +68,41 @@ export function UserProvider({ children }: { children: ReactNode }): JSX.Element
     () => ({
       user,
       scopedState,
-      login: (email, password) => {
-        const found = getUsers().find((candidate) => candidate.email.toLowerCase() === email.trim().toLowerCase() && candidate.password === password);
-        if (!found) return { ok: false, message: 'Email ou mot de passe invalide.' };
-        if (found.active === false) return { ok: false, message: 'Compte désactivé.' };
+      login: async (email, password) => {
         try {
-          apiLogin({ email, password });
+          const { user: apiUser } = await apiLogin({ email, password });
+          const users = getUsers();
+          const existingIdx = users.findIndex((candidate) => candidate.email.toLowerCase() === apiUser.email.toLowerCase());
+          const mappedUser: StoredUser = {
+            id: String(apiUser.id),
+            firstName: apiUser.firstName,
+            lastName: apiUser.lastName,
+            email: apiUser.email,
+            phone: apiUser.phone ?? '',
+            avatar: apiUser.avatar,
+            role: apiUser.role,
+            companyName: apiUser.companyName,
+            organizationSlug: apiUser.organizationSlug,
+            active: apiUser.isActive,
+            password
+          };
+          if (existingIdx >= 0) {
+            users[existingIdx] = { ...users[existingIdx], ...mappedUser };
+          } else {
+            users.push(mappedUser);
+          }
+          saveUsers(users);
+          setCurrentUser(mappedUser);
+          return { ok: true, role: mappedUser.role };
         } catch (error) {
-          return { ok: false, message: (error as Error).message };
+          return { ok: false, message: (error as Error).message || 'Email ou mot de passe invalide.' };
         }
-        setCurrentUser(found);
-        return { ok: true, role: found.role };
       },
-      register: (data) => {
+      register: async (data) => {
         const exists = getUsers().some((u) => u.email.toLowerCase() === data.email.trim().toLowerCase());
         if (exists) return { ok: false, message: 'Cet email est déjà utilisé.' };
         try {
-          apiRegister({
+          await apiRegister({
             firstName: data.firstName,
             lastName: data.lastName,
             email: data.email,
