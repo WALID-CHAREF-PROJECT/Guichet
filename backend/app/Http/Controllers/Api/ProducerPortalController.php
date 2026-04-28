@@ -70,15 +70,30 @@ class ProducerPortalController extends Controller
             'category_id' => ['required', 'integer', 'exists:categories,id'],
             'city_id' => ['required', 'integer', 'exists:cities,id'],
             'title' => ['required', 'string', 'max:255'],
+            'slug' => ['nullable', 'string', 'max:255'],
             'venue' => ['required', 'string', 'max:255'],
+            'city_name' => ['nullable', 'string', 'max:255'],
+            'short_description' => ['nullable', 'string', 'max:500'],
             'description' => ['required', 'string'],
             'starts_at' => ['required', 'date'],
+            'event_date' => ['nullable', 'date'],
+            'event_time' => ['nullable', 'date_format:H:i'],
             'price_mad' => ['nullable', 'numeric', 'min:0'],
             'image_url' => ['nullable', 'string', 'max:2048'],
+            'featured_image' => ['nullable', 'string', 'max:2048'],
+            'status' => ['nullable', 'in:draft,published,archived'],
+            'ticket_types' => ['nullable', 'array'],
+            'ticket_types.*.stock' => ['nullable', 'integer', 'min:0'],
             'is_free' => ['sometimes', 'boolean'],
         ]);
 
-        $slugBase = Str::slug($data['title']);
+        $ticketStock = collect($data['ticket_types'] ?? [])->sum(fn ($ticket) => (int) ($ticket['stock'] ?? 0));
+        $stockLimit = ($subscription?->pack?->max_active_events ?? 0) * 1000;
+        if ($stockLimit > 0 && $ticketStock > $stockLimit) {
+            return response()->json(['message' => 'Votre pack ne permet pas d’ajouter autant de tickets.'], 422);
+        }
+
+        $slugBase = Str::slug($data['slug'] ?? $data['title']);
         $slug = $slugBase;
         $suffix = 1;
         while (Event::query()->where('slug', $slug)->exists()) {
@@ -93,12 +108,19 @@ class ProducerPortalController extends Controller
             'city_id' => $data['city_id'],
             'title' => $data['title'],
             'slug' => $slug,
+            'short_description' => $data['short_description'] ?? null,
+            'city_name' => $data['city_name'] ?? null,
             'venue' => $data['venue'],
             'description' => $data['description'],
             'starts_at' => $data['starts_at'],
+            'event_date' => $data['event_date'] ?? date('Y-m-d', strtotime($data['starts_at'])),
+            'event_time' => $data['event_time'] ?? date('H:i', strtotime($data['starts_at'])),
             'price_mad' => $data['price_mad'] ?? 0,
             'is_free' => $data['is_free'] ?? false,
+            'status' => $data['status'] ?? 'draft',
             'image_url' => $data['image_url'] ?? 'https://placehold.co/1200x800?text=Event',
+            'hero_image' => $data['featured_image'] ?? ($data['image_url'] ?? 'https://placehold.co/1200x800?text=Event'),
+            'image' => $data['image_url'] ?? 'https://placehold.co/1200x800?text=Event',
         ]);
 
         return response()->json(['event' => $event, 'quota' => $this->buildQuota($request->user()->id, $subscription)], 201);

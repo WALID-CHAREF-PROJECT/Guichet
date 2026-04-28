@@ -36,35 +36,22 @@ class MarketplaceController extends Controller
             'lastName' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:6',
-            'role' => 'nullable|in:client,organizer',
             'phone' => 'nullable|string',
-            'companyName' => 'nullable|string',
         ]);
 
         $user = User::query()->create([
             'name' => trim($data['firstName'].' '.$data['lastName']),
-            'role' => $data['role'] ?? 'client',
+            'role' => 'client',
             'first_name' => $data['firstName'],
             'last_name' => $data['lastName'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
             'phone' => $data['phone'] ?? null,
-            'company_name' => $data['companyName'] ?? null,
-            'organization_slug' => isset($data['companyName']) ? Str::slug($data['companyName']) : null,
+            'company_name' => null,
+            'organization_slug' => null,
             'is_active' => true,
             'api_token' => Str::random(60),
         ]);
-
-        if ($user->role === 'organizer') {
-            DB::table('organizers')->insert([
-                'user_id' => $user->id,
-                'company_name' => $user->company_name ?? ($user->first_name.' '.$user->last_name),
-                'slug' => $user->organization_slug ?? Str::slug($user->first_name.'-'.$user->id),
-                'is_approved' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
 
         return response()->json(['user' => $this->userPayload($user), 'token' => $user->api_token], 201);
     }
@@ -393,15 +380,16 @@ class MarketplaceController extends Controller
         return response($html, 200, ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'inline; filename="receipt-'.$order->reference.'.pdf"']);
     }
 
-    public function events(Request $request): JsonResponse
+    public function events(Request $request, ?string $slug = null): JsonResponse
     {
         $type = $request->query('type');
         $query = Event::query()->with('category', 'city')->where('status', 'published');
         if ($type) {
             $query->where('type', $type);
         }
-        if ($request->filled('category')) {
-            $cat = (string) $request->query('category');
+        $categorySlug = $slug ?: ($request->filled('category') ? (string) $request->query('category') : null);
+        if ($categorySlug) {
+            $cat = (string) $categorySlug;
             $query->whereHas('category', fn ($q) => $q->where('slug', $cat));
         }
         $data = $query->orderBy('event_date')->get()->map(fn ($event) => [
@@ -425,7 +413,7 @@ class MarketplaceController extends Controller
 
     public function eventBySlug(string $slug): JsonResponse
     {
-        $event = Event::query()->where('slug', $slug)->firstOrFail();
+        $event = Event::query()->where('slug', $slug)->where('status', 'published')->firstOrFail();
         return response()->json(['data' => [
             'id' => (string) $event->id,
             'slug' => $event->slug,
@@ -441,6 +429,25 @@ class MarketplaceController extends Controller
             'buyingMode' => $event->buying_mode,
             'hasPlan' => (bool) $event->has_plan,
         ]]);
+    }
+
+    public function organizerBySlug(string $slug): JsonResponse
+    {
+        $organizer = DB::table('organizers')->where('slug', $slug)->first();
+        if (!$organizer) {
+            return response()->json(['message' => 'Organisateur introuvable'], 404);
+        }
+
+        $events = Event::query()
+            ->where('organizer_id', $organizer->user_id)
+            ->where('status', 'published')
+            ->orderBy('event_date')
+            ->get();
+
+        return response()->json([
+            'organizer' => $organizer,
+            'events' => $events,
+        ]);
     }
 
     public function sportPlan(string $id): JsonResponse

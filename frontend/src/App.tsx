@@ -47,7 +47,7 @@ import VoyagesPage from './pages/VoyagesPage';
 import CheckoutPage from './pages/commerce/CheckoutPage';
 import OrderConfirmationPage from './pages/commerce/OrderConfirmationPage';
 import PaymentPage from './pages/commerce/PaymentPage';
-import { AdminPacksPage, AdminProducersPage, ProducerCreateEventPage, ProducerDashboardPackPage } from './pages/ProducerPacksPages';
+import { AdminPacksPage, AdminProducerCreatePage, AdminProducersPage, ProducerCreateEventPage, ProducerDashboardPackPage } from './pages/ProducerPacksPages';
 
 export default function App(): JSX.Element {
   return (
@@ -112,6 +112,7 @@ export default function App(): JSX.Element {
         <Route path="/ma-fr/admin/settings" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
 
         <Route path="/ma-fr/admin/producers" element={<RequireAdmin><AdminProducersPage /></RequireAdmin>} />
+        <Route path="/ma-fr/admin/producers/new" element={<RequireAdmin><AdminProducerCreatePage /></RequireAdmin>} />
         <Route path="/ma-fr/admin/packs" element={<RequireAdmin><AdminPacksPage /></RequireAdmin>} />
 
         <Route path="/ma-fr/producer/dashboard" element={<RequireOrganizer><ProducerDashboardPackPage /></RequireOrganizer>} />

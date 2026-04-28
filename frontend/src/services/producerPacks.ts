@@ -10,6 +10,24 @@ export interface ProducerRecord {
   email: string | null;
   phone: string | null;
   is_active: boolean;
+  logo?: string;
+  cover_image?: string;
+  city?: string;
+  address?: string;
+  support_email?: string;
+  support_phone?: string;
+  description?: string;
+}
+
+export interface ProducerCreatePayload extends Partial<ProducerRecord> {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  phone: string;
+  pack_id?: number;
+  subscription_starts_at?: string;
+  subscription_ends_at?: string;
 }
 
 export interface PackRecord {
@@ -61,7 +79,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const producerPacksService = {
   listProducers: () => request<ProducerRecord[]>('/admin/producers'),
-  createProducer: (payload: Partial<ProducerRecord>) => request<ProducerRecord>('/admin/producers', { method: 'POST', body: JSON.stringify(payload) }),
+  createProducer: (payload: ProducerCreatePayload) => request<ProducerRecord>('/admin/producers', { method: 'POST', body: JSON.stringify(payload) }),
   updateProducer: (id: number, payload: Partial<ProducerRecord>) => request<ProducerRecord>(`/admin/producers/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteProducer: (id: number) => request<{ success: boolean }>(`/admin/producers/${id}`, { method: 'DELETE' }),
 

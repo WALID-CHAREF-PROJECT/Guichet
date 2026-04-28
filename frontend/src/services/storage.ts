@@ -1,6 +1,6 @@
 import { CartItem, Order } from '../types/commerce';
 
-export type UserRole = 'client' | 'organizer' | 'admin';
+export type UserRole = 'client' | 'organizer' | 'producer' | 'admin';
 export type FavoriteItemType = 'event' | 'movie' | 'travel' | 'sport';
 
 export interface StoredUser {

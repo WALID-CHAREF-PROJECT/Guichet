@@ -22,14 +22,13 @@ interface RegisterInput {
   email: string;
   password: string;
   phone: string;
-  role?: 'client' | 'organizer';
-  companyName?: string;
+  role?: 'client';
 }
 
 interface UserContextValue {
   user: StoredUser | null;
   scopedState: UserScopedState | null;
-  login: (email: string, password: string) => { ok: boolean; message?: string; role?: 'client' | 'organizer' | 'admin' };
+  login: (email: string, password: string) => { ok: boolean; message?: string; role?: 'client' | 'organizer' | 'producer' | 'admin' };
   register: (data: RegisterInput) => { ok: boolean; message?: string };
   logout: () => void;
   refresh: () => void;
@@ -89,8 +88,7 @@ export function UserProvider({ children }: { children: ReactNode }): JSX.Element
             lastName: data.lastName,
             email: data.email,
             password: data.password,
-            role: data.role ?? 'client',
-            companyName: data.companyName
+            role: 'client'
           });
         } catch (error) {
           return { ok: false, message: (error as Error).message };
@@ -101,14 +99,9 @@ export function UserProvider({ children }: { children: ReactNode }): JSX.Element
           email: data.email.trim().toLowerCase(),
           password: data.password,
           phone: data.phone,
-          role: data.role ?? 'client'
+          role: 'client'
         });
-        const withOrg = data.role === 'organizer' ? {
-          ...created,
-          companyName: data.companyName,
-          organizationSlug: data.companyName ? data.companyName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : undefined
-        } : created;
-        setCurrentUser(withOrg);
+        setCurrentUser(created);
         return { ok: true };
       },
       logout: () => {

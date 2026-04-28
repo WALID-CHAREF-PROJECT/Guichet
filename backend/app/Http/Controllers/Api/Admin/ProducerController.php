@@ -4,8 +4,13 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Producer;
+use App\Models\ProducerPackSubscription;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class ProducerController extends Controller
 {
@@ -17,15 +22,87 @@ class ProducerController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'user_id' => ['nullable', 'integer', 'exists:users,id', 'unique:producers,user_id'],
+            'firstName' => ['required', 'string', 'max:255'],
+            'lastName' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'string', 'min:6'],
+            'phone' => ['nullable', 'string', 'max:50'],
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['required', 'string', 'max:255', 'unique:producers,slug'],
-            'email' => ['nullable', 'email', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:50'],
+            'logo' => ['nullable', 'string', 'max:2048'],
+            'cover_image' => ['nullable', 'string', 'max:2048'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'address' => ['nullable', 'string', 'max:255'],
+            'support_email' => ['nullable', 'email', 'max:255'],
+            'support_phone' => ['nullable', 'string', 'max:50'],
+            'description' => ['nullable', 'string'],
             'is_active' => ['sometimes', 'boolean'],
+            'pack_id' => ['nullable', 'integer', 'exists:packs,id'],
+            'subscription_starts_at' => ['nullable', 'date'],
+            'subscription_ends_at' => ['nullable', 'date', 'after_or_equal:subscription_starts_at'],
         ]);
 
-        $producer = Producer::query()->create($data);
+        $producer = DB::transaction(function () use ($data): Producer {
+            $user = User::query()->create([
+                'name' => trim($data['firstName'] . ' ' . $data['lastName']),
+                'role' => 'producer',
+                'first_name' => $data['firstName'],
+                'last_name' => $data['lastName'],
+                'email' => $data['email'],
+                'password' => Hash::make($data['password']),
+                'phone' => $data['phone'] ?? null,
+                'company_name' => $data['name'],
+                'organization_slug' => $data['slug'],
+                'is_active' => $data['is_active'] ?? true,
+                'api_token' => Str::random(60),
+            ]);
+
+            DB::table('organizers')->updateOrInsert(
+                ['user_id' => $user->id],
+                [
+                    'company_name' => $data['name'],
+                    'slug' => $data['slug'],
+                    'logo' => $data['logo'] ?? null,
+                    'cover_image' => $data['cover_image'] ?? null,
+                    'city' => $data['city'] ?? null,
+                    'address' => $data['address'] ?? null,
+                    'email' => $data['support_email'] ?? $data['email'],
+                    'phone' => $data['support_phone'] ?? ($data['phone'] ?? null),
+                    'description' => $data['description'] ?? null,
+                    'is_approved' => true,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
+
+            $producer = Producer::query()->create([
+                'user_id' => $user->id,
+                'name' => $data['name'],
+                'slug' => $data['slug'],
+                'email' => $data['email'],
+                'phone' => $data['phone'] ?? null,
+                'logo' => $data['logo'] ?? null,
+                'cover_image' => $data['cover_image'] ?? null,
+                'city' => $data['city'] ?? null,
+                'address' => $data['address'] ?? null,
+                'support_email' => $data['support_email'] ?? null,
+                'support_phone' => $data['support_phone'] ?? null,
+                'description' => $data['description'] ?? null,
+                'is_active' => $data['is_active'] ?? true,
+            ]);
+
+            if (!empty($data['pack_id'])) {
+                ProducerPackSubscription::query()->create([
+                    'producer_id' => $producer->id,
+                    'pack_id' => $data['pack_id'],
+                    'starts_at' => $data['subscription_starts_at'] ?? now(),
+                    'ends_at' => $data['subscription_ends_at'] ?? null,
+                    'status' => 'active',
+                ]);
+            }
+
+            return $producer;
+        });
 
         return response()->json($producer, 201);
     }
@@ -43,6 +120,13 @@ class ProducerController extends Controller
             'slug' => ['sometimes', 'string', 'max:255', 'unique:producers,slug,' . $producer->id],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:50'],
+            'logo' => ['nullable', 'string', 'max:2048'],
+            'cover_image' => ['nullable', 'string', 'max:2048'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'address' => ['nullable', 'string', 'max:255'],
+            'support_email' => ['nullable', 'email', 'max:255'],
+            'support_phone' => ['nullable', 'string', 'max:50'],
+            'description' => ['nullable', 'string'],
             'is_active' => ['sometimes', 'boolean'],
         ]);
 

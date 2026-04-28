@@ -38,8 +38,7 @@ export function register(input: {
   lastName: string;
   email: string;
   password: string;
-  role: 'client' | 'organizer';
-  companyName?: string;
+  role: 'client';
 }): { user: AuthUser; token: string } {
   const response = apiRouter({ path: '/api/auth/register', method: 'POST', body: input }) as unknown as { user: AuthUser; token: string };
   localStorage.setItem(AUTH_TOKEN_KEY, response.token);

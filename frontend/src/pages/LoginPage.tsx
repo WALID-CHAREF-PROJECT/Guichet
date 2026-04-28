@@ -2,8 +2,8 @@ import { FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 
-function roleHome(role: 'client' | 'organizer' | 'admin'): string {
-  if (role === 'organizer') return '/ma-fr/organizer';
+function roleHome(role: 'client' | 'organizer' | 'producer' | 'admin'): string {
+  if (role === 'organizer' || role === 'producer') return '/ma-fr/organizer';
   if (role === 'admin') return '/ma-fr/admin';
   return '/ma-fr/account';
 }
