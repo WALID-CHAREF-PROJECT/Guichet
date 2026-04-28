@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 
 function roleHome(role: 'client' | 'organizer' | 'producer' | 'admin'): string {
-  if (role === 'organizer' || role === 'producer') return '/ma-fr/organizer';
+  if (role === 'organizer' || role === 'producer') return '/ma-fr/organizer/dashboard';
   if (role === 'admin') return '/ma-fr/admin';
   return '/ma-fr/account';
 }
