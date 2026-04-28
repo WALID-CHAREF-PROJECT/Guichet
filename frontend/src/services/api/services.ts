@@ -3,7 +3,7 @@ import { mockDb, createUser } from './mockDb';
 import { ApiUser, UserRole } from './models';
 
 interface LoginInput { email: string; password: string }
-interface RegisterInput { firstName: string; lastName: string; email: string; password: string; role: 'client' | 'organizer'; companyName?: string }
+interface RegisterInput { firstName: string; lastName: string; email: string; password: string; role: 'client' }
 
 const sanitizeUser = (user: ApiUser): Omit<ApiUser, 'password'> => {
   const { password: _password, ...safe } = user;
@@ -20,15 +20,12 @@ export const authService = {
   register(payload: RegisterInput): { user: Omit<ApiUser, 'password'>; token: string } {
     const exists = mockDb.users.some((u) => u.email.toLowerCase() === payload.email.trim().toLowerCase());
     if (exists) throw new Error('Cet email est déjà utilisé.');
-    const companyName = payload.role === 'organizer' ? payload.companyName?.trim() : undefined;
     const created = createUser({
       firstName: payload.firstName.trim(),
       lastName: payload.lastName.trim(),
       email: payload.email.trim().toLowerCase(),
       password: payload.password,
       role: payload.role,
-      companyName,
-      organizationSlug: companyName ? companyName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : undefined
     });
     return { user: sanitizeUser(created), token: `fake-jwt-token-${created.id}` };
   },

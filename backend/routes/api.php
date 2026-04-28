@@ -16,6 +16,7 @@ Route::post('/register', [MarketplaceController::class, 'register']);
 Route::get('/events', [MarketplaceController::class, 'events']);
 Route::get('/events/{slug}', [MarketplaceController::class, 'eventBySlug']);
 Route::get('/events/category/{slug}', [MarketplaceController::class, 'events']);
+Route::get('/organizers/{slug}', [MarketplaceController::class, 'organizerBySlug']);
 Route::get('/travels', [MarketplaceController::class, 'travels']);
 Route::get('/travels/{slug}', [MarketplaceController::class, 'travelBySlug']);
 Route::get('/travels/category/{slug}', [MarketplaceController::class, 'travels']);

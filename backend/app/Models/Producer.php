@@ -17,6 +17,13 @@ class Producer extends Model
         'slug',
         'email',
         'phone',
+        'logo',
+        'cover_image',
+        'city',
+        'address',
+        'support_email',
+        'support_phone',
+        'description',
         'is_active',
     ];
 

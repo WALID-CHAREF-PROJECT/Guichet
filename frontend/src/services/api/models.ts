@@ -1,4 +1,4 @@
-export type UserRole = 'client' | 'organizer' | 'admin';
+export type UserRole = 'client' | 'organizer' | 'producer' | 'admin';
 
 export interface ApiUser {
   id: string;
