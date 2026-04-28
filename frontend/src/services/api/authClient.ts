@@ -1,4 +1,3 @@
-import { apiRouter } from './router';
 import { UserRole } from './models';
 
 export const AUTH_TOKEN_KEY = 'app:auth:token';
@@ -62,12 +61,7 @@ async function requestAuth<T>(path: string, input: unknown): Promise<T> {
 }
 
 export async function login(input: { email: string; password: string }): Promise<{ user: AuthUser; token: string }> {
-  let response: { user: AuthUser; token: string };
-  try {
-    response = await requestAuth<{ user: AuthUser; token: string }>('/login', input);
-  } catch {
-    response = apiRouter({ path: '/api/auth/login', method: 'POST', body: input }) as { user: AuthUser; token: string };
-  }
+  const response = await requestAuth<{ user: AuthUser; token: string }>('/login', input);
   persistToken(response.token);
   localStorage.setItem(AUTH_USER_KEY, JSON.stringify(response.user));
   return response;
@@ -80,12 +74,7 @@ export async function register(input: {
   password: string;
   role: 'client';
 }): Promise<{ user: AuthUser; token: string }> {
-  let response: { user: AuthUser; token: string };
-  try {
-    response = await requestAuth<{ user: AuthUser; token: string }>('/register', input);
-  } catch {
-    response = apiRouter({ path: '/api/auth/register', method: 'POST', body: input }) as { user: AuthUser; token: string };
-  }
+  const response = await requestAuth<{ user: AuthUser; token: string }>('/register', input);
   persistToken(response.token);
   localStorage.setItem(AUTH_USER_KEY, JSON.stringify(response.user));
   return response;
@@ -96,7 +85,7 @@ export function logout(): void {
   void fetch(`${BASE_URL}/logout`, {
     method: 'POST',
     headers: token ? { Authorization: `Bearer ${token}` } : {},
-  }).catch(() => apiRouter({ path: '/api/auth/logout', method: 'POST' }));
+  }).catch(() => undefined);
   clearToken();
   localStorage.removeItem(AUTH_USER_KEY);
 }
