@@ -1,4 +1,4 @@
-import { AUTH_TOKEN_KEY } from './api/authClient';
+import { getAuthToken } from './api/authClient';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000/api';
 
@@ -53,7 +53,7 @@ export interface ProducerDashboardData {
 }
 
 function authHeaders(): HeadersInit {
-  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  const token = getAuthToken();
   return {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -61,6 +61,10 @@ function authHeaders(): HeadersInit {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  if (!getAuthToken()) {
+    throw new Error('Veuillez vous reconnecter pour accéder à cette page.');
+  }
+
   const response = await fetch(`${BASE_URL}${path}`, {
     ...init,
     headers: {
@@ -71,7 +75,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const payload = await response.json().catch(() => ({ message: `API error ${response.status}` }));
-    throw new Error(payload.message ?? `API error ${response.status}`);
+    const message = payload.message ?? `API error ${response.status}`;
+    if (response.status === 401 || message.toLowerCase().includes('unauthenticated')) {
+      throw new Error('Veuillez vous reconnecter pour accéder à cette page.');
+    }
+    throw new Error(message);
   }
 
   return response.json() as Promise<T>;

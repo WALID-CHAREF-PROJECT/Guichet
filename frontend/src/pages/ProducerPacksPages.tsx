@@ -147,7 +147,12 @@ export function AdminProducerCreatePage(): JSX.Element {
   const canSubmit = useMemo(() => !!form.name && !!form.slug && !!form.firstName && !!form.lastName && !!form.email, [form]);
 
   useEffect(() => {
-    producerPacksService.listPacks().then(setPacks).catch(() => setPacks([]));
+    producerPacksService.listPacks()
+      .then(setPacks)
+      .catch((e) => {
+        setPacks([]);
+        setError((e as Error).message || 'Veuillez vous reconnecter pour accéder à cette page.');
+      });
   }, []);
 
   const submit = async (event: FormEvent): Promise<void> => {
@@ -155,9 +160,11 @@ export function AdminProducerCreatePage(): JSX.Element {
     setError('');
     setOk('');
     try {
-      const producer = await producerPacksService.createProducer({
+      const payload = {
         ...form,
-      });
+        ...(form.pack_id === '' ? { pack_id: undefined } : { pack_id: form.pack_id }),
+      };
+      const producer = await producerPacksService.createProducer(payload);
       if (form.pack_id) {
         await producerPacksService.assignPack(producer.id, Number(form.pack_id));
       }
