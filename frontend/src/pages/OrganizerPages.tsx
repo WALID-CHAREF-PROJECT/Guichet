@@ -1,4 +1,4 @@
-import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { backofficeService, BackofficeEvent, TicketType } from '../services/backoffice';
 import { useUser } from '../contexts/UserContext';
@@ -148,6 +148,17 @@ function EventForm({ initial, onSubmit }: { initial?: BackofficeEvent; onSubmit:
     { id: 'normal', name: 'Normal', price: 100, stock: 100, seatPlanRequired: false },
     { id: 'vip', name: 'VIP', price: 300, stock: 50, seatPlanRequired: true }
   ]);
+  const handleImageUpload = (key: 'image' | 'featuredImage') => async (e: ChangeEvent<HTMLInputElement>): Promise<void> => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') return;
+      setForm((prev) => ({ ...prev, [key]: reader.result }));
+    };
+    reader.readAsDataURL(file);
+  };
   const submit = (e: FormEvent): void => {
     e.preventDefault();
     if (!form.title || !form.slug || !form.date || !form.city || !form.location) return;
@@ -167,7 +178,16 @@ function EventForm({ initial, onSubmit }: { initial?: BackofficeEvent; onSubmit:
     <form onSubmit={submit} className="space-y-4 rounded-2xl border border-white/10 bg-[#041743] p-4">
       <div className="grid gap-3 md:grid-cols-2">
         {Object.entries(form).filter(([k]) => !['status', 'description', 'shortDescription', 'terms', 'tags'].includes(k)).map(([key, value]) => (
-          <label key={key} className="space-y-1 text-sm"><span className="capitalize">{key}</span><input value={String(value)} onChange={(e) => setForm((prev) => ({ ...prev, [key]: e.target.value }))} className="w-full rounded-xl border border-white/20 bg-white/5 px-3 py-2" /></label>
+          key === 'image' || key === 'featuredImage'
+            ? (
+              <label key={key} className="space-y-2 text-sm">
+                <span className="capitalize">{key}</span>
+                <input type="file" accept="image/*" onChange={handleImageUpload(key)} className="w-full rounded-xl border border-white/20 bg-white/5 px-3 py-2 file:mr-3 file:rounded-md file:border-0 file:bg-white file:px-2 file:py-1 file:text-[#041743]" />
+                <input value={String(value)} placeholder="Or paste image URL" onChange={(e) => setForm((prev) => ({ ...prev, [key]: e.target.value }))} className="w-full rounded-xl border border-white/20 bg-white/5 px-3 py-2" />
+                {typeof value === 'string' && value ? <img src={value} alt={`${key} preview`} className="h-20 w-full rounded-lg object-cover" /> : null}
+              </label>
+            )
+            : <label key={key} className="space-y-1 text-sm"><span className="capitalize">{key}</span><input value={String(value)} onChange={(e) => setForm((prev) => ({ ...prev, [key]: e.target.value }))} className="w-full rounded-xl border border-white/20 bg-white/5 px-3 py-2" /></label>
         ))}
       </div>
       <label className="block text-sm">Short description<textarea value={form.shortDescription} onChange={(e) => setForm((prev) => ({ ...prev, shortDescription: e.target.value }))} className="mt-1 w-full rounded-xl border border-white/20 bg-white/5 px-3 py-2" /></label>
