@@ -11,6 +11,8 @@ use App\Http\Controllers\Api\ProducerPortalController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/health', fn () => response()->json(['ok' => true, 'service' => 'laravel-api']));
+Route::options('/{any}', fn () => response()->noContent())->where('any', '.*');
 Route::post('/login', [MarketplaceController::class, 'login']);
 Route::post('/register', [MarketplaceController::class, 'register']);
 Route::post('/forgot-password', [MarketplaceController::class, 'forgotPassword']);

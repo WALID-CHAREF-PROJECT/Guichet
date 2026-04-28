@@ -1,6 +1,5 @@
 import { getAuthToken } from './api/authClient';
-
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000/api';
+import { API_BASE_URL } from './api/config';
 
 export interface ProducerRecord {
   id: number;
@@ -56,6 +55,7 @@ function authHeaders(): HeadersInit {
   const token = getAuthToken();
   return {
     'Content-Type': 'application/json',
+    Accept: 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 }
@@ -65,13 +65,19 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error('Veuillez vous reconnecter pour accéder à cette page.');
   }
 
-  const response = await fetch(`${BASE_URL}${path}`, {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
       ...authHeaders(),
       ...(init?.headers ?? {}),
     },
   });
+
+  } catch {
+    throw new Error('Impossible de contacter le serveur Laravel. Vérifiez que php artisan serve fonctionne sur http://127.0.0.1:8000.');
+  }
 
   if (!response.ok) {
     const payload = await response.json().catch(() => ({ message: `API error ${response.status}` }));

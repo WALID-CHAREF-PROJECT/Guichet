@@ -1,9 +1,9 @@
 import { UserRole } from './models';
+import { API_BASE_URL } from './config';
 
 export const AUTH_TOKEN_KEY = 'app:auth:token';
 export const AUTH_USER_KEY = 'app:auth:user';
 export const LEGACY_AUTH_TOKEN_KEYS = ['auth_token'];
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000/api';
 
 export interface AuthUser {
   id: string;
@@ -48,15 +48,28 @@ export function getAuthToken(): string | null {
 }
 
 async function requestAuth<T>(path: string, input: unknown): Promise<T> {
-  const response = await fetch(`${BASE_URL}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(input),
+    });
+  } catch {
+    throw new Error('Impossible de contacter le serveur Laravel. Vérifiez que php artisan serve fonctionne sur http://127.0.0.1:8000.');
+  }
+
   if (!response.ok) {
     const payload = await response.json().catch(() => ({ message: `Erreur API (${response.status})` }));
+    if (response.status === 401 || response.status === 422) {
+      throw new Error('Email ou mot de passe invalide.');
+    }
+    if (response.status === 403) {
+      throw new Error('Votre compte est désactivé.');
+    }
     throw new Error(payload.message ?? `Erreur API (${response.status})`);
   }
+
   return response.json() as Promise<T>;
 }
 
@@ -82,9 +95,13 @@ export async function register(input: {
 
 export function logout(): void {
   const token = getAuthToken();
-  void fetch(`${BASE_URL}/logout`, {
+  void fetch(`${API_BASE_URL}/logout`, {
     method: 'POST',
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
   }).catch(() => undefined);
   clearToken();
   localStorage.removeItem(AUTH_USER_KEY);
