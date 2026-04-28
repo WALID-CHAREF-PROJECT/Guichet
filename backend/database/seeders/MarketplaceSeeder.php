@@ -15,13 +15,13 @@ class MarketplaceSeeder extends Seeder
 {
     public function run(): void
     {
-        $admin = User::query()->updateOrCreate(['email' => 'admin@guichet.com'], [
+        $admin = User::query()->updateOrCreate(['email' => 'admin@guichet.ma'], [
             'name' => 'Admin User', 'first_name' => 'Admin', 'last_name' => 'User', 'role' => 'admin', 'password' => Hash::make('Admin123!'), 'phone' => '+212600000001', 'is_active' => true,
         ]);
-        $organizer = User::query()->updateOrCreate(['email' => 'organizer@guichet.com'], [
-            'name' => 'Organizer User', 'first_name' => 'Organizer', 'last_name' => 'User', 'role' => 'organizer', 'password' => Hash::make('Organizer123!'), 'phone' => '+212600000002', 'is_active' => true, 'company_name' => 'Guichet Organizer', 'organization_slug' => 'guichet-organizer',
+        $organizer = User::query()->updateOrCreate(['email' => 'fournisseur@guichet.ma'], [
+            'name' => 'Fournisseur Guichet', 'first_name' => 'Fournisseur', 'last_name' => 'User', 'role' => 'producer', 'password' => Hash::make('Organizer123!'), 'phone' => '+212600000002', 'is_active' => true, 'company_name' => 'Guichet Organizer', 'organization_slug' => 'guichet-organizer',
         ]);
-        $client = User::query()->updateOrCreate(['email' => 'client@guichet.com'], [
+        $client = User::query()->updateOrCreate(['email' => 'client@guichet.ma'], [
             'name' => 'Client User', 'first_name' => 'Client', 'last_name' => 'User', 'role' => 'client', 'password' => Hash::make('Client123!'), 'phone' => '+212600000003', 'is_active' => true,
         ]);
 

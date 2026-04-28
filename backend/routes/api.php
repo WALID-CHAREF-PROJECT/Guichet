@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [MarketplaceController::class, 'login']);
 Route::post('/register', [MarketplaceController::class, 'register']);
+Route::post('/forgot-password', [MarketplaceController::class, 'forgotPassword']);
+Route::post('/reset-password', [MarketplaceController::class, 'resetPassword']);
 Route::get('/events', [MarketplaceController::class, 'events']);
 Route::get('/events/{slug}', [MarketplaceController::class, 'eventBySlug']);
 Route::get('/events/category/{slug}', [MarketplaceController::class, 'events']);
