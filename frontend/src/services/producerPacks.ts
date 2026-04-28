@@ -77,6 +77,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const payload = await response.json().catch(() => ({ message: `API error ${response.status}` }));
     const message = payload.message ?? `API error ${response.status}`;
     if (response.status === 401 || message.toLowerCase().includes('unauthenticated')) {
+      localStorage.removeItem('app:auth:token');
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('app:auth:user');
       throw new Error('Veuillez vous reconnecter pour accéder à cette page.');
     }
     throw new Error(message);
