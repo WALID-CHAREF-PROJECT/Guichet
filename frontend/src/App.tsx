@@ -40,6 +40,8 @@ import {
   OrganizerSettingsPage
 } from './pages/OrganizerPages';
 import RegisterPage from './pages/RegisterPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import SportPage from './pages/SportPage';
 import StorePage from './pages/StorePage';
 import VoyageDetailsPage from './pages/VoyageDetailsPage';
@@ -122,6 +124,8 @@ export default function App(): JSX.Element {
         <Route path="/register" element={<Navigate to="/ma-fr/signup" replace />} />
         <Route path="/ma-fr/login" element={<LoginPage />} />
         <Route path="/ma-fr/signup" element={<RegisterPage />} />
+        <Route path="/ma-fr/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/ma-fr/reset-password" element={<ResetPasswordPage />} />
 
         <Route path="/events" element={<EventsPage />} />
         <Route path="/about" element={<AboutPage />} />

@@ -36,6 +36,9 @@ export default function LoginPage(): JSX.Element {
       </form>
       {message && <p className="mt-3 text-sm text-red-400">{message}</p>}
       <p className="mt-4 text-sm text-slate-300">
+        <Link to="/ma-fr/forgot-password" className="font-semibold text-brand-300">Mot de passe oublié ?</Link>
+      </p>
+      <p className="mt-2 text-sm text-slate-300">
         Nouveau sur Guichet ?{' '}
         <Link to="/ma-fr/signup" className="font-semibold text-brand-300">Créer un compte</Link>
       </p>

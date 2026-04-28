@@ -101,3 +101,16 @@ export function getRole(): UserRole | null {
 export function isAuthenticated(): boolean {
   return Boolean(getAuthToken());
 }
+
+export async function forgotPassword(email: string): Promise<{ message: string; devNote?: string }> {
+  return requestAuth('/forgot-password', { email });
+}
+
+export async function resetPassword(input: {
+  email: string;
+  token: string;
+  password: string;
+  password_confirmation: string;
+}): Promise<{ message: string }> {
+  return requestAuth('/reset-password', input);
+}

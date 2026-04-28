@@ -9,6 +9,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 
 class MarketplaceController extends Controller
@@ -16,7 +18,7 @@ class MarketplaceController extends Controller
     private function userPayload(User $user): array
     {
         return [
-            'id' => (string) $user->id,
+            'id' => $user->id,
             'role' => $user->role,
             'firstName' => $user->first_name ?? $user->name,
             'lastName' => $user->last_name ?? '',
@@ -71,6 +73,55 @@ class MarketplaceController extends Controller
         $user->save();
 
         return response()->json(['user' => $this->userPayload($user), 'token' => $user->api_token]);
+    }
+
+
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $data = $request->validate(['email' => 'required|email']);
+
+        try {
+            Password::sendResetLink(['email' => $data['email']]);
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+
+        $payload = ['message' => 'Si cet email existe, un lien de réinitialisation a été envoyé.'];
+        if (config('mail.default') === 'log') {
+            $payload['devNote'] = 'Mode développement: le lien de réinitialisation est écrit dans les logs Laravel.';
+        }
+
+        return response()->json($payload);
+    }
+
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'email' => 'required|email',
+            'token' => 'required|string',
+            'password' => 'required|string|min:6|confirmed',
+        ]);
+
+        $status = Password::reset(
+            [
+                'email' => $data['email'],
+                'password' => $data['password'],
+                'password_confirmation' => $data['password_confirmation'],
+                'token' => $data['token'],
+            ],
+            function (User $user, string $password): void {
+                $user->forceFill([
+                    'password' => Hash::make($password),
+                    'api_token' => null,
+                ])->save();
+            }
+        );
+
+        if ($status !== Password::PASSWORD_RESET) {
+            return response()->json(['message' => 'Token de réinitialisation invalide ou expiré.'], 422);
+        }
+
+        return response()->json(['message' => 'Mot de passe réinitialisé avec succès.']);
     }
 
     public function logout(Request $request): JsonResponse
