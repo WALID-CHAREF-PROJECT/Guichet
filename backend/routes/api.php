@@ -35,7 +35,7 @@ Route::middleware('auth.token')->group(function (): void {
     Route::post('/logout', [MarketplaceController::class, 'logout']);
     Route::get('/me', [MarketplaceController::class, 'me']);
 
-    Route::middleware('role:client,organizer,admin')->group(function (): void {
+    Route::middleware('role:client,producer,admin')->group(function (): void {
         Route::get('/client/profile', [MarketplaceController::class, 'clientProfile']);
         Route::put('/client/profile', [MarketplaceController::class, 'updateClientProfile']);
         Route::get('/client/favorites', [MarketplaceController::class, 'favorites']);
@@ -57,7 +57,7 @@ Route::middleware('auth.token')->group(function (): void {
         Route::get('/orders/{id}/receipt', [MarketplaceController::class, 'receipt']);
     });
 
-    Route::middleware('role:organizer')->group(function (): void {
+    Route::middleware('role:organizer,producer')->group(function (): void {
         Route::get('/organizer/dashboard', [MarketplaceController::class, 'organizerDashboard']);
         Route::get('/organizer/profile', [MarketplaceController::class, 'clientProfile']);
         Route::put('/organizer/profile', [MarketplaceController::class, 'updateClientProfile']);

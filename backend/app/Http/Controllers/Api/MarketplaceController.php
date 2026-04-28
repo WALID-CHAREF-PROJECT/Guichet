@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
@@ -61,11 +62,27 @@ class MarketplaceController extends Controller
     public function login(Request $request): JsonResponse
     {
         $data = $request->validate(['email' => 'required|email', 'password' => 'required|string']);
-        $user = User::query()->where('email', $data['email'])->first();
-        if (!$user || !Hash::check($data['password'], $user->password)) {
+        $email = mb_strtolower(trim($data['email']));
+        $user = User::query()->whereRaw('LOWER(email) = ?', [$email])->first();
+        $passwordMatches = $user ? Hash::check($data['password'], $user->password) : false;
+        if (!$user || !$passwordMatches) {
+            Log::warning('Login failed', [
+                'email' => $email,
+                'user_found' => (bool) $user,
+                'user_role' => $user?->role,
+                'is_active' => $user?->is_active,
+                'password_match' => $passwordMatches,
+            ]);
             return response()->json(['message' => 'Email ou mot de passe invalide.'], 422);
         }
         if (!$user->is_active) {
+            Log::warning('Login rejected inactive user', [
+                'email' => $email,
+                'user_found' => true,
+                'user_role' => $user->role,
+                'is_active' => (bool) $user->is_active,
+                'password_match' => true,
+            ]);
             return response()->json(['message' => 'Compte inactif.'], 403);
         }
 
