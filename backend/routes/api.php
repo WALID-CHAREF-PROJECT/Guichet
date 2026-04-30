@@ -17,6 +17,11 @@ Route::post('/login', [MarketplaceController::class, 'login']);
 Route::post('/register', [MarketplaceController::class, 'register']);
 Route::post('/forgot-password', [MarketplaceController::class, 'forgotPassword']);
 Route::post('/reset-password', [MarketplaceController::class, 'resetPassword']);
+
+if (app()->environment('local')) {
+    Route::get('/debug/users', [MarketplaceController::class, 'debugUsers']);
+    Route::post('/debug/check-login', [MarketplaceController::class, 'debugCheckLogin']);
+}
 Route::get('/events', [MarketplaceController::class, 'events']);
 Route::get('/events/{slug}', [MarketplaceController::class, 'eventBySlug']);
 Route::get('/events/category/{slug}', [MarketplaceController::class, 'events']);

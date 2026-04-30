@@ -32,9 +32,10 @@ function persistToken(token: string): void {
   LEGACY_AUTH_TOKEN_KEYS.forEach((legacyKey) => localStorage.setItem(legacyKey, token));
 }
 
-function clearToken(): void {
+export function clearAuthStorage(): void {
   localStorage.removeItem(AUTH_TOKEN_KEY);
   LEGACY_AUTH_TOKEN_KEYS.forEach((legacyKey) => localStorage.removeItem(legacyKey));
+  localStorage.removeItem(AUTH_USER_KEY);
 }
 
 export function getAuthToken(): string | null {
@@ -62,7 +63,7 @@ async function requestAuth<T>(path: string, input: unknown): Promise<T> {
   if (!response.ok) {
     const payload = await response.json().catch(() => ({ message: `Erreur API (${response.status})` }));
     if (response.status === 401 || response.status === 422) {
-      throw new Error('Email ou mot de passe invalide.');
+      throw new Error(payload.message ?? 'Email ou mot de passe invalide.');
     }
     if (response.status === 403) {
       throw new Error('Votre compte est désactivé.');
@@ -103,8 +104,7 @@ export function logout(): void {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   }).catch(() => undefined);
-  clearToken();
-  localStorage.removeItem(AUTH_USER_KEY);
+  clearAuthStorage();
 }
 
 export function getCurrentUser(): AuthUser | null {

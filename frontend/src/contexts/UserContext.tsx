@@ -1,5 +1,5 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
-import { login as apiLogin, logout as apiLogout, register as apiRegister } from '../services/api/authClient';
+import { clearAuthStorage, login as apiLogin, logout as apiLogout, register as apiRegister } from '../services/api/authClient';
 import {
   createUser,
   FavoriteItem,
@@ -55,6 +55,13 @@ export function UserProvider({ children }: { children: ReactNode }): JSX.Element
   };
 
   useEffect(() => {
+    if (!getCurrentUser()) {
+      clearAuthStorage();
+      setCurrentUser(null);
+    }
+  }, []);
+
+  useEffect(() => {
     const sync = (): void => refresh();
     window.addEventListener('ticketflow:update', sync);
     window.addEventListener('storage', sync);
@@ -95,7 +102,11 @@ export function UserProvider({ children }: { children: ReactNode }): JSX.Element
           setCurrentUser(mappedUser);
           return { ok: true, role: mappedUser.role };
         } catch (error) {
-          return { ok: false, message: (error as Error).message || 'Email ou mot de passe invalide.' };
+          clearAuthStorage();
+          setCurrentUser(null);
+          const message = (error as Error).message || 'Email ou mot de passe invalide.';
+          console.error('Login failed:', message);
+          return { ok: false, message };
         }
       },
       register: async (data) => {
