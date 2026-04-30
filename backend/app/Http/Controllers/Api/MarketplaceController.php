@@ -21,8 +21,8 @@ class MarketplaceController extends Controller
         return [
             'id' => $user->id,
             'role' => $user->role,
-            'firstName' => $user->first_name ?? $user->name,
-            'lastName' => $user->last_name ?? '',
+            'firstName' => $user->first_name ?? $user->firstName ?? '',
+            'lastName' => $user->last_name ?? $user->lastName ?? '',
             'email' => $user->email,
             'phone' => $user->phone,
             'avatar' => $user->avatar,
@@ -62,27 +62,26 @@ class MarketplaceController extends Controller
     public function login(Request $request): JsonResponse
     {
         $data = $request->validate(['email' => 'required|email', 'password' => 'required|string']);
-        $email = mb_strtolower(trim($data['email']));
+        $email = mb_strtolower(trim($request->input('email')));
         $user = User::query()->whereRaw('LOWER(email) = ?', [$email])->first();
-        $passwordMatches = $user ? Hash::check($data['password'], $user->password) : false;
+        $hasPasswordHash = $user && !empty($user->password);
+        $passwordMatches = $hasPasswordHash ? Hash::check($data['password'], $user->password) : false;
+
+        Log::info('Login attempt debug', [
+            'email' => $email,
+            'user_found' => (bool) $user,
+            'user_id' => $user?->id,
+            'role' => $user?->role,
+            'is_active' => $user?->is_active,
+            'has_password_hash' => $hasPasswordHash,
+            'hash_check' => $passwordMatches,
+        ]);
+
         if (!$user || !$passwordMatches) {
-            Log::warning('Login failed', [
-                'email' => $email,
-                'user_found' => (bool) $user,
-                'user_role' => $user?->role,
-                'is_active' => $user?->is_active,
-                'password_match' => $passwordMatches,
-            ]);
             return response()->json(['message' => 'Email ou mot de passe invalide.'], 422);
         }
+
         if (!$user->is_active) {
-            Log::warning('Login rejected inactive user', [
-                'email' => $email,
-                'user_found' => true,
-                'user_role' => $user->role,
-                'is_active' => (bool) $user->is_active,
-                'password_match' => true,
-            ]);
             return response()->json(['message' => 'Compte inactif.'], 403);
         }
 
@@ -90,6 +89,35 @@ class MarketplaceController extends Controller
         $user->save();
 
         return response()->json(['user' => $this->userPayload($user), 'token' => $user->api_token]);
+    }
+
+    public function debugUsers(): JsonResponse
+    {
+        $users = User::query()->select(['email', 'role', 'is_active', 'password'])->get()
+            ->map(fn (User $user): array => [
+                'email' => $user->email,
+                'role' => $user->role,
+                'is_active' => (bool) $user->is_active,
+                'has_password' => !empty($user->password),
+            ]);
+
+        return response()->json($users);
+    }
+
+    public function debugCheckLogin(Request $request): JsonResponse
+    {
+        $data = $request->validate(['email' => 'required|email', 'password' => 'required|string']);
+        $email = mb_strtolower(trim($request->input('email')));
+        $user = User::query()->whereRaw('LOWER(email) = ?', [$email])->first();
+        $hasPasswordHash = $user && !empty($user->password);
+        $hashCheck = $hasPasswordHash ? Hash::check($data['password'], $user->password) : false;
+
+        return response()->json([
+            'user_found' => (bool) $user,
+            'role' => $user?->role,
+            'is_active' => $user ? (bool) $user->is_active : null,
+            'hash_check' => $hashCheck,
+        ]);
     }
 
 
