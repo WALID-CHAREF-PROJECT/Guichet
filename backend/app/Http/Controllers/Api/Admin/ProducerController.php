@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ProducerController extends Controller
@@ -29,8 +30,8 @@ class ProducerController extends Controller
             'phone' => ['nullable', 'string', 'max:50'],
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['required', 'string', 'max:255', 'unique:producers,slug'],
-            'logo' => ['nullable', 'string', 'max:2048'],
-            'cover_image' => ['nullable', 'string', 'max:2048'],
+            'logo' => ['nullable'],
+            'cover_image' => ['nullable'],
             'city' => ['nullable', 'string', 'max:255'],
             'address' => ['nullable', 'string', 'max:255'],
             'support_email' => ['nullable', 'email', 'max:255'],
@@ -41,6 +42,13 @@ class ProducerController extends Controller
             'subscription_starts_at' => ['nullable', 'date'],
             'subscription_ends_at' => ['nullable', 'date', 'after_or_equal:subscription_starts_at'],
         ]);
+
+        if ($request->hasFile('logo')) {
+            $data['logo'] = Storage::url($request->file('logo')->store('admin/producers/logos', 'public'));
+        }
+        if ($request->hasFile('cover_image')) {
+            $data['cover_image'] = Storage::url($request->file('cover_image')->store('admin/producers/covers', 'public'));
+        }
 
         $producer = DB::transaction(function () use ($data): Producer {
             $user = User::query()->create([
@@ -120,8 +128,8 @@ class ProducerController extends Controller
             'slug' => ['sometimes', 'string', 'max:255', 'unique:producers,slug,' . $producer->id],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:50'],
-            'logo' => ['nullable', 'string', 'max:2048'],
-            'cover_image' => ['nullable', 'string', 'max:2048'],
+            'logo' => ['nullable'],
+            'cover_image' => ['nullable'],
             'city' => ['nullable', 'string', 'max:255'],
             'address' => ['nullable', 'string', 'max:255'],
             'support_email' => ['nullable', 'email', 'max:255'],
@@ -129,6 +137,13 @@ class ProducerController extends Controller
             'description' => ['nullable', 'string'],
             'is_active' => ['sometimes', 'boolean'],
         ]);
+
+        if ($request->hasFile('logo')) {
+            $data['logo'] = Storage::url($request->file('logo')->store('admin/producers/logos', 'public'));
+        }
+        if ($request->hasFile('cover_image')) {
+            $data['cover_image'] = Storage::url($request->file('cover_image')->store('admin/producers/covers', 'public'));
+        }
 
         $producer->update($data);
 

@@ -1,212 +1,55 @@
-import { Component, ReactNode, useEffect, useMemo, useState } from 'react';
+import { Component, FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { backofficeService } from '../services/backoffice';
+import { backofficeService, CategoryModel, ContentBlock, MovieModel, TravelModel } from '../services/backoffice';
 import { getUsers } from '../services/storage';
 import { useUser } from '../contexts/UserContext';
 
 const menu = [
-  { to: '/ma-fr/admin/dashboard', label: 'Tableau de bord' },
-  { to: '/ma-fr/admin/users', label: 'Utilisateurs' },
-  { to: '/ma-fr/admin/organizers', label: 'Fournisseurs / Organisateurs' },
-  { to: '/ma-fr/admin/events', label: 'Événements' },
-  { to: '/ma-fr/admin/orders', label: 'Commandes' },
-  { to: '/ma-fr/admin/travels', label: 'Voyages' },
-  { to: '/ma-fr/admin/movies', label: 'Films' },
-  { to: '/ma-fr/admin/categories', label: 'Catégories' },
-  { to: '/ma-fr/admin/content', label: 'Contenu' },
-  { to: '/ma-fr/admin/producers', label: 'Producteurs (packs)' },
-  { to: '/ma-fr/admin/packs', label: 'Packs producteurs' },
-  { to: '/ma-fr/admin/settings', label: 'Paramètres' }
+  { to: '/ma-fr/admin/dashboard', label: 'Tableau de bord', icon: '⌘' }, { to: '/ma-fr/admin/users', label: 'Utilisateurs', icon: '👥' },
+  { to: '/ma-fr/admin/organizers', label: 'Fournisseurs', icon: '🏢' }, { to: '/ma-fr/admin/events', label: 'Événements', icon: '🎟️' },
+  { to: '/ma-fr/admin/orders', label: 'Commandes', icon: '🧾' }, { to: '/ma-fr/admin/travels', label: 'Voyages', icon: '✈️' },
+  { to: '/ma-fr/admin/movies', label: 'Films', icon: '🎬' }, { to: '/ma-fr/admin/categories', label: 'Catégories', icon: '🏷️' },
+  { to: '/ma-fr/admin/content', label: 'Contenu', icon: '🧩' }, { to: '/ma-fr/admin/producers', label: 'Producteurs (packs)', icon: '💼' },
+  { to: '/ma-fr/admin/packs', label: 'Packs producteurs', icon: '📦' }, { to: '/ma-fr/admin/settings', label: 'Paramètres', icon: '⚙️' }
 ];
+const panel = 'rounded-[2rem] border border-white/10 bg-white/[0.065] p-5 shadow-2xl shadow-black/25 backdrop-blur-xl';
+const input = 'w-full rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300/60 focus:ring-2 focus:ring-cyan-300/20';
+const btn = 'rounded-2xl bg-gradient-to-r from-cyan-300 to-blue-400 px-4 py-2.5 text-sm font-bold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:-translate-y-0.5';
+const ghost = 'rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/12';
+const danger = 'rounded-2xl border border-red-300/20 bg-red-500/15 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/25';
 
-function Shell({ title, children }: { title: string; children: ReactNode }): JSX.Element {
-  const { logout } = useUser();
-  const [open, setOpen] = useState(false);
-  return (
-    <section className="grid gap-6 lg:grid-cols-[280px_1fr]">
-      <aside className={`rounded-3xl border border-white/15 bg-gradient-to-b from-[#0a1f56] to-[#050f2b] p-5 shadow-[0_18px_60px_rgba(2,8,28,0.6)] backdrop-blur-xl ${open ? 'block' : 'hidden'} lg:block`}>
-        <h2 className="mb-4 text-xl font-semibold">Administration</h2>
-        <nav className="space-y-1">{menu.map((item) => <NavLink key={item.to} to={item.to} className={({ isActive }) => `block rounded-2xl px-3 py-2 text-sm transition-all duration-300 ${isActive ? 'bg-white text-[#041743] font-semibold shadow-lg shadow-white/20' : 'hover:bg-white/10 hover:scale-[1.02]'}`}>{item.label}</NavLink>)}</nav>
-        <button onClick={logout} className="mt-4 w-full rounded-2xl border border-red-300/20 bg-red-500/10 px-3 py-2 text-red-200 transition-transform duration-300 hover:scale-[1.02]">Déconnexion</button>
-      </aside>
-      <div className="space-y-6">
-        <div className="rounded-3xl border border-white/10 bg-gradient-to-r from-[#0a1f56]/80 to-[#0b2f7f]/70 p-5 shadow-[0_10px_40px_rgba(15,23,42,0.45)] backdrop-blur-xl"><button onClick={() => setOpen((v) => !v)} className="rounded-xl border border-white/20 px-3 py-1 text-sm lg:hidden">Menu</button><h1 className="mt-2 text-2xl font-bold">{title}</h1></div>
-        {children}
-      </div>
-    </section>
-  );
-}
+type EditableKind = 'travel' | 'movie' | 'category' | 'content';
+type Editable = Record<string, any> & { id?: string; kind?: EditableKind };
+const emptyTravel: Editable = { kind: 'travel', title: '', category: 'Voyage organisé', destination: '', departureDate: '', price: 0, image: '', description: '', status: 'draft', featured: false };
+const emptyMovie: Editable = { kind: 'movie', title: '', genre: '', duration: '', releaseDate: '', cinemas: '', poster: '', description: '', status: 'draft', featured: false };
+const emptyCategory: Editable = { kind: 'category', type: 'event', name: '', slug: '', icon: '', image: '', isActive: true, order: 1 };
+const emptyContent: Editable = { kind: 'content', type: 'section', title: '', subtitle: '', description: '', ctaLabel: '', ctaLink: '', image: '', visible: true, order: 1 };
 
-function StatCard({ label, value, icon, gradient }: { label: string; value: string; icon: string; gradient: string }): JSX.Element {
-  return <article className={`group rounded-2xl border border-white/15 ${gradient} p-5 shadow-[0_16px_32px_rgba(2,6,23,0.4)] backdrop-blur-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_22px_40px_rgba(2,6,23,0.65)]`}><div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-xl">{icon}</div><p className="text-sm text-slate-200">{label}</p><p className="text-3xl font-semibold tracking-tight">{value}</p></article>;
-}
+async function fileToDataUrl(file: File): Promise<string> { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(reader.error); reader.readAsDataURL(file); }); }
+function MediaInput({ label, value, onChange }: { label: string; value?: string; onChange: (value: string) => void }): JSX.Element { return <label className="space-y-2 text-sm text-slate-200"><span>{label}</span><input className={input} type="file" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) void fileToDataUrl(file).then(onChange); }} />{value ? <img src={value} alt="" className="h-32 w-full rounded-2xl object-cover" /> : <div className="flex h-32 items-center justify-center rounded-2xl border border-dashed border-white/15 text-xs text-slate-400">Aperçu média</div>}</label>; }
+function Shell({ title, children }: { title: string; children: ReactNode }): JSX.Element { const { logout } = useUser(); const [open, setOpen] = useState(false); return <section className="grid min-h-[70vh] gap-6 text-white lg:grid-cols-[292px_1fr]"><aside className={`${open ? 'block' : 'hidden'} ${panel} sticky top-4 h-fit bg-gradient-to-b from-slate-950 via-[#071d55] to-slate-950 lg:block`}><div className="mb-6 rounded-3xl bg-gradient-to-br from-cyan-300/15 to-blue-500/10 p-4"><p className="text-xs uppercase tracking-[0.28em] text-cyan-200/70">TicketFlow</p><h2 className="text-2xl font-black">Backoffice</h2></div><nav className="space-y-1">{menu.map((item) => <NavLink key={item.to} to={item.to} className={({ isActive }) => `flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition ${isActive ? 'bg-white text-[#041743] shadow-lg shadow-cyan-200/20' : 'text-slate-200 hover:bg-white/10'}`}><span>{item.icon}</span>{item.label}</NavLink>)}</nav><button onClick={logout} className="mt-5 w-full rounded-2xl border border-red-300/20 bg-red-500/10 px-3 py-2 text-red-100">Déconnexion</button></aside><main className="space-y-6"><div className="rounded-[2rem] border border-white/10 bg-gradient-to-r from-[#061a4d] via-slate-950 to-[#071d55] p-6 shadow-2xl shadow-black/30"><button onClick={() => setOpen((v) => !v)} className={ghost + ' lg:hidden'}>Menu</button><p className="mt-3 text-sm uppercase tracking-[0.28em] text-cyan-200/70">Administration premium</p><h1 className="text-3xl font-black md:text-4xl">{title}</h1></div>{children}</main></section>; }
+function StatCard({ label, value, icon }: { label: string; value: string; icon: string }): JSX.Element { return <article className="rounded-[1.75rem] border border-white/10 bg-gradient-to-br from-white/12 to-white/[0.04] p-5 shadow-xl shadow-black/20"><div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-300/15 text-xl">{icon}</div><p className="text-sm text-slate-300">{label}</p><p className="mt-1 text-3xl font-black">{value}</p></article>; }
 
-function Panel({ title, children }: { title: string; children: ReactNode }): JSX.Element {
-  return <article className="space-y-3 rounded-2xl border border-white/10 bg-gradient-to-br from-white/10 to-white/5 p-5 shadow-[0_16px_40px_rgba(1,7,22,0.45)] backdrop-blur-xl transition-all duration-300 hover:scale-[1.02]"><h3 className="font-semibold text-slate-100">{title}</h3>{children}</article>;
-}
+class AdminPageErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> { constructor(props: { children: ReactNode }) { super(props); this.state = { hasError: false }; } static getDerivedStateFromError(): { hasError: boolean } { return { hasError: true }; } render(): ReactNode { return this.state.hasError ? <Shell title="Tableau de bord admin"><div className={panel}>Impossible de charger le tableau de bord admin.</div></Shell> : this.props.children; } }
 
-
-
-class AdminPageErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
-  constructor(props: { children: ReactNode }) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError(): { hasError: boolean } {
-    return { hasError: true };
-  }
-
-  render(): ReactNode {
-    if (this.state.hasError) {
-      return (
-        <Shell title="Tableau de bord admin">
-          <Panel title="Erreur">Impossible de charger le tableau de bord admin.</Panel>
-        </Shell>
-      );
-    }
-
-    return this.props.children;
-  }
-}
-
+export default function AdminPage(): JSX.Element { return <AdminPageErrorBoundary><AdminPageContent /></AdminPageErrorBoundary>; }
 function AdminPageContent(): JSX.Element {
-  const { pathname } = useLocation();
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    const sync = (): void => setTick((n) => n + 1);
-    window.addEventListener('ticketflow:update', sync);
-    return () => window.removeEventListener('ticketflow:update', sync);
-  }, []);
-  void tick;
-
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [db, setDb] = useState<ReturnType<typeof backofficeService.getAdminData> | null>(null);
-
-  useEffect(() => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      setDb(backofficeService.getAdminData());
-    } catch (err) {
-      setError('Impossible de charger le tableau de bord admin.');
-      setDb(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [tick]);
-
-  const users = getUsers() ?? [];
-  const section = pathname.split('/')[3] ?? 'dashboard';
-  const events = db?.events ?? [];
-  const orders = db?.orders ?? [];
-  const producers = db?.organizers ?? [];
-  const packs = db?.packs ?? [];
-  const travels = db?.travels ?? [];
-  const movies = db?.movies ?? [];
-  const categories = db?.categories ?? [];
-  const contentItems = db?.content ?? [];
-  const settings = db?.settings ?? { platformName: '', supportEmail: '', currency: '' };
-
-  const revenueTotal = orders.reduce((sum, order) => sum + order.total, 0);
-  const producerCount = producers.length;
-  const activePackCount = packs.filter((pack) => pack.isActive).length;
-  const revenueSeries = useMemo(() => {
-    const buckets = new Map<string, number>();
-    orders.forEach((order) => {
-      const key = order.createdAt.slice(0, 7);
-      buckets.set(key, (buckets.get(key) ?? 0) + order.total);
-    });
-    return Array.from(buckets.entries()).sort(([a], [b]) => a.localeCompare(b)).slice(-6);
-  }, [orders]);
-
-  const categorySeries = useMemo(() => {
-    const counter = new Map<string, number>();
-    events.forEach((event) => counter.set(event.category, (counter.get(event.category) ?? 0) + 1));
-    return Array.from(counter.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6);
-  }, [events]);
-
-  if (section === 'dashboard' || pathname === '/ma-fr/admin') {
-    const chartWidth = 520;
-    const chartHeight = 220;
-    const maxRevenue = Math.max(...revenueSeries.map(([, v]) => v), 1);
-    const points = revenueSeries.map((entry, index) => {
-      const x = revenueSeries.length > 1 ? (index / (revenueSeries.length - 1)) * (chartWidth - 40) + 20 : chartWidth / 2;
-      const y = chartHeight - (entry[1] / maxRevenue) * 150 - 20;
-      return `${x},${y}`;
-    }).join(' ');
-    const maxCategory = Math.max(...categorySeries.map(([, count]) => count), 1);
-
-    return (
-      <Shell title="Tableau de bord admin">
-        {isLoading && <Panel title="Chargement">Chargement du tableau de bord admin...</Panel>}
-        {error && <Panel title="Erreur">{error}</Panel>}
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Total producers" value={String(producerCount)} icon="🏭" gradient="bg-gradient-to-br from-cyan-500/30 to-indigo-700/30" />
-          <StatCard label="Total events" value={String(events.length)} icon="🎫" gradient="bg-gradient-to-br from-fuchsia-500/30 to-violet-700/30" />
-          <StatCard label="Revenue" value={`${revenueTotal.toLocaleString()} MAD`} icon="💰" gradient="bg-gradient-to-br from-emerald-500/30 to-teal-700/30" />
-          <StatCard label="Active packs" value={String(activePackCount)} icon="📦" gradient="bg-gradient-to-br from-amber-500/30 to-orange-700/30" />
-        </div>
-
-        <div className="grid gap-4 xl:grid-cols-2">
-          <Panel title="Revenue trend">
-            <div className="rounded-2xl border border-white/10 bg-[#031335]/70 p-4">
-              <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-56 w-full">
-                <polyline fill="none" stroke="rgba(148,163,184,0.2)" strokeWidth="1" points={`20,${chartHeight - 20} ${chartWidth - 20},${chartHeight - 20}`} />
-                <polyline fill="none" stroke="url(#revenueGradient)" strokeWidth="4" strokeLinecap="round" points={points} />
-                <defs><linearGradient id="revenueGradient" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#06b6d4" /><stop offset="100%" stopColor="#8b5cf6" /></linearGradient></defs>
-              </svg>
-              <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-slate-300 sm:grid-cols-6">{revenueSeries.map(([month, value]) => <p key={month}>{month} · {value}</p>)}</div>
-            </div>
-          </Panel>
-
-          <Panel title="Events per category">
-            <div className="space-y-3 rounded-2xl border border-white/10 bg-[#031335]/70 p-4">{categorySeries.map(([name, count]) => <div key={name} className="space-y-1"><div className="flex justify-between text-sm"><span>{name}</span><span>{count}</span></div><div className="h-2 rounded-full bg-white/10"><div className="h-2 rounded-full bg-gradient-to-r from-sky-400 to-violet-400" style={{ width: `${(count / maxCategory) * 100}%` }} /></div></div>)}</div>
-          </Panel>
-        </div>
-
-        <div className="grid gap-4 xl:grid-cols-2">
-          <Panel title="Quick actions"><div className="grid gap-3 sm:grid-cols-3"><button className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-medium transition-all duration-300 hover:scale-[1.02] hover:bg-white/15">Create producer</button><button className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-medium transition-all duration-300 hover:scale-[1.02] hover:bg-white/15">Create pack</button><button className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-medium transition-all duration-300 hover:scale-[1.02] hover:bg-white/15">View reports</button></div></Panel>
-          <Panel title="Recent orders">{orders.slice(0, 5).map((order) => <p key={order.id} className="rounded-xl bg-white/5 p-3 text-sm">{order.reference} · {order.productName} · {order.total} MAD</p>)}</Panel>
-        </div>
-      </Shell>
-    );
-  }
-
-  // remaining sections unchanged
-  if (section === 'users') {
-    return <Shell title="Utilisateurs"><Panel title="Gestion utilisateurs">{users.map((user) => <div key={user.id} className="mb-2 flex flex-wrap items-center gap-2 rounded bg-white/5 p-2 text-sm"><span>{user.firstName} {user.lastName}</span><span>{user.email}</span><span>{user.role}</span><span>{user.active ? 'active' : 'inactive'}</span><button onClick={() => backofficeService.updateUser(user.id, { active: !user.active })} className="rounded bg-white/10 px-2">activate/deactivate</button><button onClick={() => backofficeService.updateUser(user.id, { role: user.role === 'client' ? 'organizer' : 'client' })} className="rounded bg-white/10 px-2">change role</button><button onClick={() => backofficeService.deleteUser(user.id)} className="rounded bg-red-500/20 px-2">delete</button><button className="rounded bg-white/10 px-2">reset password</button></div>)}</Panel></Shell>;
-  }
-  if (section === 'organizers') {
-    return <Shell title="Fournisseurs / Organisateurs"><Panel title="Gestion organisateurs">{producers.map((organizer) => <div key={organizer.id} className="mb-2 flex flex-wrap items-center gap-2 rounded bg-white/5 p-2 text-sm"><span>{organizer.companyName}</span><span>{organizer.email}</span><span>{organizer.city}</span><span>{organizer.isApproved ? 'approved' : 'pending'}</span><button onClick={() => backofficeService.updateOrganizer(organizer.id, { isApproved: true })} className="rounded bg-white/10 px-2">approve</button><button onClick={() => backofficeService.updateOrganizer(organizer.id, { isApproved: false })} className="rounded bg-white/10 px-2">reject</button><Link to={`/ma-fr/event/producer/${organizer.slug}`} className="rounded bg-white/10 px-2">open page</Link></div>)}</Panel></Shell>;
-  }
-  if (section === 'events') {
-    return <Shell title="Événements"><Panel title="Gestion événements">{events.map((event) => <div key={event.id} className="mb-2 flex flex-wrap gap-2 rounded bg-white/5 p-2 text-sm"><span>{event.title}</span><span>{event.organizerId}</span><span>{event.category}</span><span>{event.city}</span><span>{event.status}</span><button onClick={() => backofficeService.updateEventByAdmin(event.id, { status: event.status === 'published' ? 'draft' : 'published' })} className="rounded bg-white/10 px-2">publish/unpublish</button><button onClick={() => backofficeService.updateEventByAdmin(event.id, { status: 'archived' })} className="rounded bg-white/10 px-2">archive</button><button onClick={() => backofficeService.updateEventByAdmin(event.id, { featured: !event.featured })} className="rounded bg-white/10 px-2">feature</button><button onClick={() => backofficeService.deleteEventByAdmin(event.id)} className="rounded bg-red-500/20 px-2">delete</button><Link className="rounded bg-white/10 px-2" to={`/ma-fr/event/${event.slug}`}>open</Link></div>)}</Panel></Shell>;
-  }
-  if (section === 'orders') {
-    return <Shell title="Commandes"><Panel title="Toutes les commandes">{orders.map((order) => <p key={order.id} className="rounded bg-white/5 p-2 text-sm">{order.reference} · {order.customerName} · {order.organizerId} · {order.productType} · {order.productName} · {order.total} · {order.paymentStatus}</p>)}</Panel></Shell>;
-  }
-  if (section === 'travels') {
-    return <Shell title="Voyages"><Panel title="Gestion voyages"><button className="mb-2 rounded bg-white px-3 py-1 text-[#041743]" onClick={() => backofficeService.createTravel({ image: '', title: 'Nouveau voyage', category: 'Voyage organisé', destination: 'Rabat', departureDate: '2026-07-01', price: 4500, status: 'draft', featured: false })}>Créer</button>{travels.map((travel) => <div key={travel.id} className="mb-2 flex flex-wrap gap-2 rounded bg-white/5 p-2 text-sm"><span>{travel.title}</span><span>{travel.destination}</span><span>{travel.departureDate}</span><span>{travel.price} MAD</span><button onClick={() => backofficeService.updateTravel(travel.id, { status: travel.status === 'published' ? 'draft' : 'published' })} className="rounded bg-white/10 px-2">publish/unpublish</button><button onClick={() => backofficeService.updateTravel(travel.id, { featured: !travel.featured })} className="rounded bg-white/10 px-2">feature</button></div>)}</Panel></Shell>;
-  }
-  if (section === 'movies') {
-    return <Shell title="Films"><Panel title="Gestion films"><button className="mb-2 rounded bg-white px-3 py-1 text-[#041743]" onClick={() => backofficeService.createMovie({ poster: '', title: 'Nouveau film', genre: 'Action', duration: '1h30', releaseDate: '2026-06-20', cinemas: 'Megarama', status: 'draft', featured: false })}>Créer</button>{movies.map((movie) => <div key={movie.id} className="mb-2 flex flex-wrap gap-2 rounded bg-white/5 p-2 text-sm"><span>{movie.title}</span><span>{movie.genre}</span><span>{movie.duration}</span><span>{movie.releaseDate}</span><button onClick={() => backofficeService.updateMovie(movie.id, { status: movie.status === 'published' ? 'draft' : 'published' })} className="rounded bg-white/10 px-2">publish/unpublish</button><button onClick={() => backofficeService.updateMovie(movie.id, { featured: !movie.featured })} className="rounded bg-white/10 px-2">feature</button></div>)}</Panel></Shell>;
-  }
-  if (section === 'categories') {
-    return <Shell title="Catégories"><Panel title="Category management"><button onClick={() => backofficeService.createCategory({ type: 'event', name: 'Nouvelle catégorie', slug: 'nouvelle-categorie', icon: '⭐', isActive: true, order: categories.length + 1 })} className="mb-2 rounded bg-white px-3 py-1 text-[#041743]">Add category</button>{categories.map((category) => <div key={category.id} className="mb-2 flex flex-wrap gap-2 rounded bg-white/5 p-2 text-sm"><span>{category.type}</span><span>{category.name}</span><span>{category.slug}</span><span>{category.order}</span><button onClick={() => backofficeService.updateCategory(category.id, { isActive: !category.isActive })} className="rounded bg-white/10 px-2">activate/deactivate</button><button onClick={() => backofficeService.updateCategory(category.id, { order: Math.max(1, category.order - 1) })} className="rounded bg-white/10 px-2">reorder</button><button onClick={() => backofficeService.deleteCategory(category.id)} className="rounded bg-red-500/20 px-2">delete</button></div>)}</Panel></Shell>;
-  }
-  if (section === 'content') {
-    return <Shell title="Contenu"><Panel title="Homepage content"><button onClick={() => backofficeService.addContent({ type: 'banner', title: 'Nouveau banner', subtitle: 'Promo', visible: true, order: contentItems.length + 1 })} className="mb-2 rounded bg-white px-3 py-1 text-[#041743]">Add content block</button>{contentItems.map((item) => <div key={item.id} className="mb-2 flex flex-wrap gap-2 rounded bg-white/5 p-2 text-sm"><span>{item.type}</span><span>{item.title}</span><span>{item.order}</span><button onClick={() => backofficeService.updateContent(item.id, { visible: !item.visible })} className="rounded bg-white/10 px-2">toggle visibility</button><button onClick={() => backofficeService.updateContent(item.id, { order: Math.max(1, item.order - 1) })} className="rounded bg-white/10 px-2">reorder</button></div>)}</Panel></Shell>;
-  }
-  return <Shell title="Paramètres"><Panel title="Platform settings"><label className="block text-sm">Branding<input defaultValue={settings.platformName} onBlur={(e) => backofficeService.updateSettings({ platformName: e.target.value })} className="mt-1 w-full rounded border border-white/20 bg-white/5 p-2" /></label><label className="block text-sm">Support email<input defaultValue={settings.supportEmail} onBlur={(e) => backofficeService.updateSettings({ supportEmail: e.target.value })} className="mt-1 w-full rounded border border-white/20 bg-white/5 p-2" /></label><label className="block text-sm">Default currency<input defaultValue={settings.currency} onBlur={(e) => backofficeService.updateSettings({ currency: e.target.value })} className="mt-1 w-full rounded border border-white/20 bg-white/5 p-2" /></label></Panel></Shell>;
+  const { pathname } = useLocation(); const [tick, setTick] = useState(0); const [editing, setEditing] = useState<Editable | null>(null);
+  useEffect(() => { const sync = (): void => setTick((n) => n + 1); window.addEventListener('ticketflow:update', sync); return () => window.removeEventListener('ticketflow:update', sync); }, []);
+  const db = backofficeService.getAdminData(); void tick;
+  const section = pathname.split('/')[3] ?? 'dashboard'; const users = getUsers() ?? []; const revenue = db.orders.reduce((sum, order) => sum + order.total, 0);
+  const revenueSeries = useMemo(() => db.orders.slice(0, 6).map((order) => ({ label: order.createdAt.slice(5, 10), value: order.total })), [db.orders]);
+  const saveEditable = (event: FormEvent): void => { event.preventDefault(); if (!editing?.kind) return; if (editing.kind === 'travel') { const payload = editing as Omit<TravelModel, 'id'>; editing.id ? backofficeService.updateTravel(editing.id, payload) : backofficeService.createTravel(payload); } if (editing.kind === 'movie') { const payload = editing as Omit<MovieModel, 'id'>; editing.id ? backofficeService.updateMovie(editing.id, payload) : backofficeService.createMovie(payload); } if (editing.kind === 'category') { const payload = editing as Omit<CategoryModel, 'id'>; editing.id ? backofficeService.updateCategory(editing.id, payload) : backofficeService.createCategory(payload); } if (editing.kind === 'content') { const payload = editing as Omit<ContentBlock, 'id'>; editing.id ? backofficeService.updateContent(editing.id, payload) : backofficeService.addContent(payload); } setEditing(null); };
+  if (section === 'dashboard' || section === 'admin') return <Shell title="Tableau de bord"><div className="grid gap-4 md:grid-cols-4"><StatCard label="Producteurs" value={String(db.organizers.length)} icon="🏢" /><StatCard label="Événements" value={String(db.events.length)} icon="🎟️" /><StatCard label="Revenu" value={`${revenue.toLocaleString()} MAD`} icon="💳" /><StatCard label="Listings actifs" value={String(db.events.filter((e) => e.status === 'published').length + db.travels.filter((t) => t.status === 'published').length + db.movies.filter((m) => m.status === 'published').length)} icon="⚡" /></div><div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]"><section className={panel}><h2 className="text-xl font-bold">Revenus récents</h2><div className="mt-5 flex h-56 items-end gap-3">{revenueSeries.map((bar) => <div key={bar.label} className="flex flex-1 flex-col items-center gap-2"><div className="w-full rounded-t-2xl bg-gradient-to-t from-blue-500 to-cyan-300" style={{ height: `${Math.max(18, Math.min(100, bar.value / Math.max(1, revenue) * 420))}%` }} /><span className="text-xs text-slate-400">{bar.label}</span></div>)}</div></section><section className={panel}><h2 className="text-xl font-bold">Actions rapides</h2><div className="mt-4 grid gap-2"><Link className={ghost} to="/ma-fr/admin/producers/new">Créer fournisseur</Link><Link className={ghost} to="/ma-fr/admin/packs">Créer pack</Link><button className={ghost} onClick={() => setEditing({ ...emptyContent, order: db.content.length + 1 })}>Ajouter bloc contenu</button><button className={ghost} onClick={() => setEditing({ ...emptyTravel })}>Ajouter voyage</button></div></section></div>{editing && <Editor editing={editing} setEditing={setEditing} saveEditable={saveEditable} />}</Shell>;
+  if (section === 'users') return <Shell title="Utilisateurs"><div className={panel}>{users.map((user) => <div key={user.id} className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-white/[0.04] p-3 text-sm"><span>{user.firstName ?? user.email} · {user.email} · {user.role}</span><button className={danger} onClick={() => backofficeService.deleteUser(user.id)}>Supprimer</button></div>)}</div></Shell>;
+  if (section === 'organizers') return <Shell title="Fournisseurs"><div className="grid gap-4 xl:grid-cols-2">{db.organizers.map((o) => <article key={o.id} className={panel}><div className="flex gap-4"><img src={o.logo || o.coverImage} className="h-16 w-16 rounded-2xl object-cover" /><div><h2 className="text-xl font-bold">{o.companyName}</h2><p className="text-sm text-slate-300">{o.city} · /{o.slug}</p></div></div><p className="mt-3 text-sm text-slate-300">{o.description}</p><button className={ghost + ' mt-3'} onClick={() => backofficeService.updateOrganizer(o.id, { isApproved: !o.isApproved })}>{o.isApproved ? 'Désapprouver' : 'Approuver'}</button></article>)}</div></Shell>;
+  if (section === 'events') return <Shell title="Événements"><div className={panel}>{db.events.map((e) => <div key={e.id} className="mb-2 flex flex-wrap items-center gap-2 rounded-2xl bg-white/[0.04] p-3 text-sm"><strong>{e.title}</strong><span>{e.status}</span><button className={ghost} onClick={() => backofficeService.updateEventByAdmin(e.id, { status: e.status === 'published' ? 'draft' : 'published' })}>Publier / retirer</button><button className={ghost} onClick={() => backofficeService.updateEventByAdmin(e.id, { featured: !e.featured })}>Feature</button><button className={danger} onClick={() => backofficeService.deleteEventByAdmin(e.id)}>Supprimer</button><Link className={ghost} to={`/ma-fr/event/${e.slug}`}>Ouvrir</Link></div>)}</div></Shell>;
+  if (section === 'orders') return <Shell title="Commandes"><div className={panel}>{db.orders.map((o) => <div key={o.id} className="mb-2 rounded-2xl bg-white/[0.04] p-3 text-sm">{o.reference} · {o.customerName} · {o.productName} · {o.total} MAD · {o.paymentStatus}</div>)}</div></Shell>;
+  if (section === 'travels') return <Shell title="Voyages"><CrudList title="Gestion voyages" items={db.travels} imageKey="image" onNew={() => setEditing({ ...emptyTravel })} onEdit={(item) => setEditing({ ...item, kind: 'travel' })} onToggle={(item) => backofficeService.updateTravel(item.id, { status: item.status === 'published' ? 'draft' : 'published' })} onFeature={(item) => backofficeService.updateTravel(item.id, { featured: !item.featured })} onDelete={(item) => backofficeService.deleteTravel(item.id)} />{editing && <Editor editing={editing} setEditing={setEditing} saveEditable={saveEditable} />}</Shell>;
+  if (section === 'movies') return <Shell title="Films"><CrudList title="Gestion films" items={db.movies} imageKey="poster" onNew={() => setEditing({ ...emptyMovie })} onEdit={(item) => setEditing({ ...item, kind: 'movie' })} onToggle={(item) => backofficeService.updateMovie(item.id, { status: item.status === 'published' ? 'draft' : 'published' })} onFeature={(item) => backofficeService.updateMovie(item.id, { featured: !item.featured })} onDelete={(item) => backofficeService.deleteMovie(item.id)} />{editing && <Editor editing={editing} setEditing={setEditing} saveEditable={saveEditable} />}</Shell>;
+  if (section === 'categories') return <Shell title="Catégories"><CrudList title="Category management" items={db.categories} imageKey="image" onNew={() => setEditing({ ...emptyCategory, order: db.categories.length + 1 })} onEdit={(item) => setEditing({ ...item, kind: 'category' })} onToggle={(item) => backofficeService.updateCategory(item.id, { isActive: !item.isActive })} onFeature={(item) => backofficeService.updateCategory(item.id, { order: Math.max(1, item.order - 1) })} onDelete={(item) => backofficeService.deleteCategory(item.id)} />{editing && <Editor editing={editing} setEditing={setEditing} saveEditable={saveEditable} />}</Shell>;
+  if (section === 'content') return <Shell title="Contenu"><CrudList title="Homepage content" items={db.content} imageKey="image" onNew={() => setEditing({ ...emptyContent, order: db.content.length + 1 })} onEdit={(item) => setEditing({ ...item, kind: 'content' })} onToggle={(item) => backofficeService.updateContent(item.id, { visible: !item.visible })} onFeature={(item) => backofficeService.updateContent(item.id, { order: Math.max(1, item.order - 1) })} onDelete={(item) => backofficeService.deleteContent(item.id)} />{editing && <Editor editing={editing} setEditing={setEditing} saveEditable={saveEditable} />}</Shell>;
+  return <Shell title="Paramètres"><div className={panel}><label className="block text-sm">Branding<input defaultValue={db.settings.platformName} onBlur={(e) => backofficeService.updateSettings({ platformName: e.target.value })} className={input + ' mt-1'} /></label><label className="mt-4 block text-sm">Support email<input defaultValue={db.settings.supportEmail} onBlur={(e) => backofficeService.updateSettings({ supportEmail: e.target.value })} className={input + ' mt-1'} /></label></div></Shell>;
 }
-
-
-export default function AdminPage(): JSX.Element {
-  return (
-    <AdminPageErrorBoundary>
-      <AdminPageContent />
-    </AdminPageErrorBoundary>
-  );
-}
+function CrudList<T extends { id: string; title?: string; name?: string; status?: string; featured?: boolean; isActive?: boolean; visible?: boolean; order?: number }>({ title, items, imageKey, onNew, onEdit, onToggle, onFeature, onDelete }: { title: string; items: T[]; imageKey: keyof T; onNew: () => void; onEdit: (item: T) => void; onToggle: (item: T) => void; onFeature: (item: T) => void; onDelete: (item: T) => void }): JSX.Element { return <section className={panel}><div className="mb-4 flex items-center justify-between"><h2 className="text-xl font-bold">{title}</h2><button className={btn} onClick={onNew}>Créer</button></div><div className="grid gap-3">{items.map((item) => <article key={item.id} className="flex flex-wrap items-center gap-3 rounded-2xl bg-white/[0.04] p-3"><img src={String(item[imageKey] || 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=240&q=80')} className="h-14 w-20 rounded-xl object-cover" /><div className="min-w-[180px] flex-1"><h3 className="font-bold">{item.title ?? item.name}</h3><p className="text-sm text-slate-400">{item.status ?? (item.isActive ?? item.visible ? 'actif' : 'inactif')} {item.featured ? '· featured' : ''} {item.order ? `· ordre ${item.order}` : ''}</p></div><button className={ghost} onClick={() => onEdit(item)}>Éditer</button><button className={ghost} onClick={() => onToggle(item)}>Toggle</button><button className={ghost} onClick={() => onFeature(item)}>Reorder / feature</button><button className={danger} onClick={() => onDelete(item)}>Supprimer</button></article>)}</div></section>; }
+function Editor({ editing, setEditing, saveEditable }: { editing: Editable; setEditing: (value: Editable | null) => void; saveEditable: (event: FormEvent) => void }): JSX.Element { const set = (key: string, value: string | number | boolean): void => setEditing({ ...editing, [key]: value }); return <form className={panel + ' grid gap-4 md:grid-cols-2'} onSubmit={saveEditable}><h2 className="md:col-span-2 text-xl font-bold">{editing.id ? 'Modifier' : 'Créer'} {editing.kind}</h2><input className={input} placeholder="Titre / nom" value={editing.title ?? editing.name ?? ''} onChange={(e) => editing.kind === 'category' ? set('name', e.target.value) : set('title', e.target.value)} /><input className={input} placeholder="Slug / type / genre / destination" value={editing.slug ?? editing.genre ?? editing.destination ?? editing.type ?? ''} onChange={(e) => editing.kind === 'category' ? set('slug', e.target.value) : editing.kind === 'movie' ? set('genre', e.target.value) : editing.kind === 'travel' ? set('destination', e.target.value) : set('type', e.target.value)} /><input className={input} placeholder="Catégorie / durée / sous-titre" value={editing.category ?? editing.duration ?? editing.subtitle ?? ''} onChange={(e) => editing.kind === 'travel' ? set('category', e.target.value) : editing.kind === 'movie' ? set('duration', e.target.value) : set('subtitle', e.target.value)} /><input className={input} type={editing.kind === 'travel' || editing.kind === 'movie' ? 'date' : 'number'} placeholder="Date / ordre" value={editing.departureDate ?? editing.releaseDate ?? editing.order ?? ''} onChange={(e) => editing.kind === 'travel' ? set('departureDate', e.target.value) : editing.kind === 'movie' ? set('releaseDate', e.target.value) : set('order', Number(e.target.value))} /><input className={input} placeholder="Prix / CTA label / icône" value={editing.price ?? editing.ctaLabel ?? editing.icon ?? ''} onChange={(e) => editing.kind === 'travel' ? set('price', Number(e.target.value)) : editing.kind === 'category' ? set('icon', e.target.value) : set('ctaLabel', e.target.value)} /><input className={input} placeholder="Cinémas / CTA link" value={editing.cinemas ?? editing.ctaLink ?? ''} onChange={(e) => editing.kind === 'movie' ? set('cinemas', e.target.value) : set('ctaLink', e.target.value)} /><textarea className={input + ' md:col-span-2'} placeholder="Description" value={editing.description ?? ''} onChange={(e) => set('description', e.target.value)} /><MediaInput label="Image" value={editing.image ?? editing.poster} onChange={(value) => editing.kind === 'movie' ? set('poster', value) : set('image', value)} /><div className="space-y-3"><label className="flex gap-2"><input type="checkbox" checked={editing.status === 'published' || editing.isActive === true || editing.visible === true} onChange={(e) => editing.kind === 'category' ? set('isActive', e.target.checked) : editing.kind === 'content' ? set('visible', e.target.checked) : set('status', e.target.checked ? 'published' : 'draft')} /> Actif / visible / publié</label>{(editing.kind === 'travel' || editing.kind === 'movie') && <label className="flex gap-2"><input type="checkbox" checked={editing.featured ?? false} onChange={(e) => set('featured', e.target.checked)} /> Mis en avant</label>}<div className="flex gap-2"><button className={btn} type="submit">Enregistrer</button><button className={ghost} type="button" onClick={() => setEditing(null)}>Annuler</button></div></div></form>; }
