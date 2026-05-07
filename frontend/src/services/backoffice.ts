@@ -100,7 +100,7 @@ export interface TravelModel { id: string; image: string; gallery?: string[]; ti
 export interface MovieModel { id: string; poster: string; title: string; genre: string; duration: string; releaseDate: string; cinemas: string; description?: string; status: EventStatus; featured: boolean }
 export interface ContentBlock { id: string; type: 'banner' | 'section' | 'hero' | 'cta'; title: string; subtitle?: string; description?: string; ctaLabel?: string; ctaLink?: string; image?: string; backgroundImage?: string; visible: boolean; order: number }
 
-interface DbShape {
+export interface DbShape {
   organizers: OrganizerProfile[];
   events: BackofficeEvent[];
   orders: BackofficeOrder[];

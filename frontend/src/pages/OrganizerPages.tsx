@@ -1,6 +1,6 @@
 import { ChangeEvent, FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { backofficeService, BackofficeEvent, TicketType } from '../services/backoffice';
+import { backofficeService, BackofficeEvent, EventStatus, TicketType } from '../services/backoffice';
 import { useUser } from '../contexts/UserContext';
 
 const sidebarItems = [
@@ -137,13 +137,31 @@ function ActionButton({ onClick, children }: { onClick: () => void; children: Re
   return <button onClick={onClick} className="rounded bg-white/10 px-2 py-1">{children}</button>;
 }
 
-const defaultEventForm = {
-  title: '', slug: '', category: 'Concerts', shortDescription: '', description: '', date: '', time: '', city: '', location: '', mapsLink: '', image: '', featuredImage: '', tags: '', status: 'draft' as const, terms: ''
+type EventFormState = {
+  title: string;
+  slug: string;
+  category: string;
+  shortDescription: string;
+  description: string;
+  date: string;
+  time: string;
+  city: string;
+  location: string;
+  mapsLink: string;
+  image: string;
+  featuredImage: string;
+  tags: string;
+  status: EventStatus;
+  terms: string;
+};
+
+const defaultEventForm: EventFormState = {
+  title: '', slug: '', category: 'Concerts', shortDescription: '', description: '', date: '', time: '', city: '', location: '', mapsLink: '', image: '', featuredImage: '', tags: '', status: 'draft', terms: ''
 };
 
 function EventForm({ initial, onSubmit }: { initial?: BackofficeEvent; onSubmit: (payload: Omit<BackofficeEvent, 'id' | 'organizerId' | 'ticketsSold' | 'revenue' | 'createdAt' | 'updatedAt'>) => void }): JSX.Element {
   const navigate = useNavigate();
-  const [form, setForm] = useState(initial ? { ...defaultEventForm, ...initial, tags: initial.tags.join(', ') } : defaultEventForm);
+  const [form, setForm] = useState<EventFormState>(initial ? { ...defaultEventForm, ...initial, tags: initial.tags.join(', ') } : defaultEventForm);
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>(initial?.ticketTypes ?? [
     { id: 'normal', name: 'Normal', price: 100, stock: 100, seatPlanRequired: false },
     { id: 'vip', name: 'VIP', price: 300, stock: 50, seatPlanRequired: true }
@@ -167,8 +185,6 @@ function EventForm({ initial, onSubmit }: { initial?: BackofficeEvent; onSubmit:
       gallery: form.image ? [form.image] : [],
       tags: form.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
       featured: initial?.featured ?? false,
-      ticketsSold: 0,
-      revenue: 0,
       ticketTypes
     });
     navigate('/ma-fr/organizer/events');

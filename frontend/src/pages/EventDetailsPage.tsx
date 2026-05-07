@@ -1,6 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
 import PlatformTopNav from '../components/PlatformTopNav';
-import { getEventBySlug } from '../services/platformData';
+import { getEventBySlug, PlatformEvent } from '../services/platformData';
 import { backofficeService } from '../services/backoffice';
 import TicketSelectionModal from '../components/commerce/TicketSelectionModal';
 import FavoriteButton from '../components/FavoriteButton';
@@ -19,11 +19,16 @@ function organizerSlug(value: string): string {
   return organizerSlugOverrides[normalized] ?? value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
 
+function stableNumericId(value: string): number {
+  return Array.from(value).reduce((hash, char) => ((hash * 31) + char.charCodeAt(0)) >>> 0, 7);
+}
+
 export default function EventDetailsPage(): JSX.Element {
   const { slug = '' } = useParams();
   const dynamic = backofficeService.getPublicEventBySlug(slug);
   const fallbackEvent = getEventBySlug(slug);
-  const event = dynamic ? {
+  const event: PlatformEvent | undefined = dynamic ? {
+    id: stableNumericId(dynamic.event.id),
     slug: dynamic.event.slug,
     title: dynamic.event.title,
     organizer: dynamic.organizer?.companyName ?? 'Organisateur',

@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { producerPacksService, PackRecord, ProducerDashboardData, ProducerRecord } from '../services/producerPacks';
+import { producerPacksService, uploadAdminMedia, PackRecord, ProducerDashboardData, ProducerRecord } from '../services/producerPacks';
 
 const defaultDashboard: ProducerDashboardData = {
   producer: null,
@@ -29,9 +29,17 @@ async function fileToDataUrl(file: File): Promise<string> {
     reader.readAsDataURL(file);
   });
 }
+async function uploadImageWithDevFallback(file: File, collection: string): Promise<string> {
+  try {
+    return await uploadAdminMedia(file, collection);
+  } catch (error) {
+    if (import.meta.env.DEV) return fileToDataUrl(file);
+    throw error;
+  }
+}
 
 function MediaField({ label, value, onChange }: { label: string; value?: string | null; onChange: (value: string) => void }): JSX.Element {
-  return <label className="space-y-2 text-sm text-slate-200"><span>{label}</span><input className={input} type="file" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) void fileToDataUrl(file).then(onChange); }} />{value ? <img src={value} alt={label} className="h-32 w-full rounded-2xl border border-white/10 object-cover" /> : <div className="flex h-32 items-center justify-center rounded-2xl border border-dashed border-white/15 bg-white/[0.04] text-xs text-slate-400">Aperçu image</div>}</label>;
+  return <label className="space-y-2 text-sm text-slate-200"><span>{label}</span><input className={input} type="file" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadImageWithDevFallback(file, 'admin-media').then(onChange); }} />{value ? <img src={value} alt={label} className="h-32 w-full rounded-2xl border border-white/10 object-cover" /> : <div className="flex h-32 items-center justify-center rounded-2xl border border-dashed border-white/15 bg-white/[0.04] text-xs text-slate-400">Aperçu image</div>}</label>;
 }
 
 export function AdminProducersPage(): JSX.Element {

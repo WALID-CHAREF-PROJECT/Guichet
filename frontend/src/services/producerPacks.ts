@@ -81,6 +81,24 @@ function authHeaders(json = true): HeadersInit {
   const token = getAuthToken();
   return { ...(json ? { 'Content-Type': 'application/json' } : {}), Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 }
+export async function uploadAdminMedia(file: File, collection = 'admin'): Promise<string> {
+  if (!file.type.startsWith('image/')) throw new Error('Seuls les fichiers image sont autorisés.');
+  const form = new FormData();
+  form.append('file', file);
+  form.append('collection', collection);
+  const response = await fetch(`${API_BASE_URL}/admin/media`, {
+    method: 'POST',
+    headers: authHeaders(false),
+    body: form,
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({ message: `API error ${response.status}` }));
+    throw new Error(payload.message ?? `API error ${response.status}`);
+  }
+  const payload = await response.json() as { path?: string; url?: string };
+  return payload.url ?? payload.path ?? '';
+}
+
 async function request<T>(path: string, init?: RequestInit, json = true): Promise<T> {
   if (!getAuthToken()) throw new Error('Veuillez vous reconnecter pour accéder à cette page.');
   let response: Response;
