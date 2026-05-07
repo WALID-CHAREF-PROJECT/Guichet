@@ -9,7 +9,7 @@ function sanitizeBaseUrl(value: string | undefined): string {
 export const API_BASE_URL = sanitizeBaseUrl(import.meta.env.VITE_API_BASE_URL);
 
 if (import.meta.env.DEV) {
-  console.info(`[api] Using API base URL: ${API_BASE_URL}`);
+  console.info(`[api] Active API base URL: ${API_BASE_URL}`);
 }
 
 export { FALLBACK_API_BASE_URL };

@@ -1,7 +1,7 @@
 import { API_BASE_URL } from './api/config';
 import { getAuthToken } from './api/authClient';
 import { backofficeService, BackofficeEvent, CategoryModel, ContentBlock, DbShape, MovieModel, OrganizerProfile, TravelModel } from './backoffice';
-import { StoredUser, getUsers } from './storage';
+import { StoredUser, getCurrentUser, getUsers } from './storage';
 
 export interface AdminData extends DbShape {
   users: StoredUser[];
@@ -10,13 +10,17 @@ export interface AdminData extends DbShape {
 
 type AdminCollection = 'users' | 'organizers' | 'events' | 'orders' | 'categories' | 'travels' | 'movies' | 'content' | 'settings';
 
+function hasAdminSession(): boolean {
+  return Boolean(getAuthToken() && getCurrentUser()?.role === 'admin');
+}
+
 function headers(): HeadersInit {
   const token = getAuthToken();
   return { 'Content-Type': 'application/json', Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  if (!getAuthToken()) throw new Error('Authentication required for admin API persistence.');
+  if (!hasAdminSession()) throw new Error('Admin authentication required for admin API persistence.');
   const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers: { ...headers(), ...(init?.headers ?? {}) } });
   if (!response.ok) {
     const payload = await response.json().catch(() => ({ message: `API error ${response.status}` }));
@@ -69,6 +73,9 @@ function normalizeEvent(raw: Partial<BackofficeEvent> & Record<string, unknown>,
 export const adminPersistence = {
   async load(): Promise<AdminData> {
     const local = backofficeService.getAdminData();
+    if (!hasAdminSession()) {
+      return { ...local, users: [], source: 'local-fallback' };
+    }
     const [users, organizers, events, orders, categories, travels, movies, content, settings] = await Promise.all([
       optionalCollection<StoredUser[]>('users', getUsers()),
       optionalCollection<OrganizerProfile[]>('organizers', local.organizers),
@@ -93,7 +100,7 @@ export const adminPersistence = {
       movies: movies.map(normalizeMovie),
       content: content.map(normalizeContent),
       settings: { ...local.settings, ...settings },
-      source: getAuthToken() ? 'api' : 'local-fallback',
+      source: hasAdminSession() ? 'api' : 'local-fallback',
     };
   },
   async deleteUser(id: string): Promise<void> { try { await request(`/admin/users/${id}`, { method: 'DELETE' }); } catch { backofficeService.deleteUser(id); } },

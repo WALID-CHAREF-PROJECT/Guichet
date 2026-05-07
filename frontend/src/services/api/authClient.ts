@@ -48,6 +48,27 @@ export function getAuthToken(): string | null {
   return legacyToken;
 }
 
+async function canReachApiHostWithoutCors(): Promise<boolean> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 2500);
+  try {
+    await fetch(new URL(API_BASE_URL).origin, { mode: 'no-cors', cache: 'no-store', signal: controller.signal });
+    return true;
+  } catch {
+    return false;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
+async function readErrorPayload(response: Response): Promise<{ message?: string }> {
+  try {
+    return await response.json() as { message?: string };
+  } catch {
+    return {};
+  }
+}
+
 async function requestAuth<T>(path: string, input: unknown): Promise<T> {
   let response: Response;
   try {
@@ -57,21 +78,29 @@ async function requestAuth<T>(path: string, input: unknown): Promise<T> {
       body: JSON.stringify(input),
     });
   } catch {
-    throw new Error('Impossible de contacter le serveur Laravel. Vérifiez que php artisan serve fonctionne sur http://127.0.0.1:8000.');
+    const apiHostReachable = await canReachApiHostWithoutCors();
+    if (apiHostReachable) {
+      throw new Error(`Erreur CORS/API: le serveur Laravel répond sur ${API_BASE_URL}, mais la requête de connexion est bloquée ou invalide. Vérifiez la configuration CORS et la route /api${path}.`);
+    }
+    throw new Error(`Impossible de contacter le serveur Laravel sur ${API_BASE_URL}. Vérifiez que php artisan serve fonctionne sur http://127.0.0.1:8000.`);
   }
 
   if (!response.ok) {
-    const payload = await response.json().catch(() => ({ message: `Erreur API (${response.status})` }));
+    const payload = await readErrorPayload(response);
     if (response.status === 401 || response.status === 422) {
       throw new Error(payload.message ?? 'Email ou mot de passe invalide.');
     }
     if (response.status === 403) {
-      throw new Error('Votre compte est désactivé.');
+      throw new Error(payload.message ?? 'Votre compte est désactivé.');
     }
-    throw new Error(payload.message ?? `Erreur API (${response.status})`);
+    throw new Error(payload.message ?? `Erreur CORS/API: Laravel a répondu avec le statut ${response.status} pour ${API_BASE_URL}${path}.`);
   }
 
-  return response.json() as Promise<T>;
+  try {
+    return await response.json() as T;
+  } catch {
+    throw new Error(`Erreur CORS/API: réponse JSON invalide depuis ${API_BASE_URL}${path}.`);
+  }
 }
 
 export async function login(input: { email: string; password: string }): Promise<{ user: AuthUser; token: string }> {

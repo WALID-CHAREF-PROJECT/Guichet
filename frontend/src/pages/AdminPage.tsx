@@ -1,9 +1,10 @@
 import { Component, FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { Link, Navigate, NavLink, useLocation } from 'react-router-dom';
 import { backofficeService, CategoryModel, ContentBlock, MovieModel, TravelModel } from '../services/backoffice';
 import { useUser } from '../contexts/UserContext';
 import { uploadAdminMedia } from '../services/producerPacks';
 import { AdminData, adminPersistence } from '../services/adminPersistence';
+import { getAuthToken } from '../services/api/authClient';
 
 const menu = [
   { to: '/ma-fr/admin/dashboard', label: 'Tableau de bord', icon: '⌘' }, { to: '/ma-fr/admin/users', label: 'Utilisateurs', icon: '👥' },
@@ -36,10 +37,10 @@ class AdminPageErrorBoundary extends Component<{ children: ReactNode }, { hasErr
 
 export default function AdminPage(): JSX.Element { return <AdminPageErrorBoundary><AdminPageContent /></AdminPageErrorBoundary>; }
 function AdminPageContent(): JSX.Element {
-  const { pathname } = useLocation(); const [tick, setTick] = useState(0); const [editing, setEditing] = useState<Editable | null>(null); const [db, setDb] = useState<AdminData>(() => ({ ...backofficeService.getAdminData(), users: [], source: 'local-fallback' }));
-  useEffect(() => { const sync = (): void => setTick((n) => n + 1); window.addEventListener('ticketflow:update', sync); return () => window.removeEventListener('ticketflow:update', sync); }, []);
-  useEffect(() => { void adminPersistence.load().then(setDb); }, [tick]);
-  const refresh = (): void => setTick((n) => n + 1);
+  const { pathname } = useLocation(); const { user } = useUser(); const token = getAuthToken(); const isAuthenticatedAdmin = Boolean(token && user?.role === 'admin'); const [refreshNonce, setRefreshNonce] = useState(0); const [editing, setEditing] = useState<Editable | null>(null); const [db, setDb] = useState<AdminData>(() => ({ ...backofficeService.getAdminData(), users: [], source: 'local-fallback' }));
+  useEffect(() => { if (!isAuthenticatedAdmin) return; let cancelled = false; void adminPersistence.load().then((nextDb) => { if (!cancelled) setDb(nextDb); }); return () => { cancelled = true; }; }, [isAuthenticatedAdmin, refreshNonce]);
+  const refresh = (): void => setRefreshNonce((n) => n + 1);
+  if (!isAuthenticatedAdmin) return <Navigate to="/ma-fr/login" replace />;
   const section = pathname.split('/')[3] ?? 'dashboard'; const users = db.users; const revenue = db.orders.reduce((sum, order) => sum + order.total, 0);
   const revenueSeries = useMemo(() => db.orders.slice(0, 6).map((order) => ({ label: order.createdAt.slice(5, 10), value: order.total })), [db.orders]);
   const saveEditable = (event: FormEvent): void => { event.preventDefault(); if (!editing?.kind) return; const done = (): void => { setEditing(null); refresh(); }; if (editing.kind === 'travel') void adminPersistence.saveTravel(editing as Omit<TravelModel, 'id'> & { id?: string }).then(done); if (editing.kind === 'movie') void adminPersistence.saveMovie(editing as Omit<MovieModel, 'id'> & { id?: string }).then(done); if (editing.kind === 'category') void adminPersistence.saveCategory(editing as Omit<CategoryModel, 'id'> & { id?: string }).then(done); if (editing.kind === 'content') void adminPersistence.saveContent(editing as Omit<ContentBlock, 'id'> & { id?: string }).then(done); };

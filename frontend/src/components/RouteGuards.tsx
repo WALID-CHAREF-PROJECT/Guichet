@@ -1,6 +1,7 @@
 import { Navigate } from 'react-router-dom';
 import { ReactNode } from 'react';
 import { useUser } from '../contexts/UserContext';
+import { getAuthToken } from '../services/api/authClient';
 
 function roleHome(role: 'client' | 'organizer' | 'producer' | 'admin'): string {
   if (role === 'organizer' || role === 'producer') return '/ma-fr/organizer';
@@ -11,6 +12,7 @@ function roleHome(role: 'client' | 'organizer' | 'producer' | 'admin'): string {
 function Guard({ children, role }: { children: ReactNode; role?: 'client' | 'organizer' | 'admin' }): JSX.Element {
   const { user } = useUser();
   if (!user) return <Navigate to="/ma-fr/login" replace />;
+  if (role === 'admin' && !getAuthToken()) return <Navigate to="/ma-fr/login" replace />;
   if (role) {
     const allowed = role === 'organizer' ? ['organizer', 'producer'] : [role];
     if (!allowed.includes(user.role)) return <Navigate to={roleHome(user.role)} replace />;
