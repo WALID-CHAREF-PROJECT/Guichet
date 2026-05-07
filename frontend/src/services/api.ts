@@ -1,7 +1,6 @@
 import { Category, City, EventItem, PaginatedResponse } from '../types/api';
+import { API_BASE_URL } from './api/config';
 import { buildPaginatedEvents, mockCategories, mockCities, mockEvents } from './mockData';
-
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000/api';
 
 interface EventFilters {
   search?: string;
@@ -13,7 +12,7 @@ interface EventFilters {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${BASE_URL}${path}`, {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
       'Content-Type': 'application/json'
     },
