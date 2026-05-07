@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\MarketplaceController;
 use App\Http\Controllers\Api\NewsletterController;
 use App\Http\Controllers\Api\ProducerPortalController;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', fn () => response()->json(['ok' => true, 'service' => 'laravel-api']));
@@ -79,6 +80,12 @@ Route::middleware('auth.token')->group(function (): void {
 
     Route::middleware('role:admin')->group(function (): void {
         Route::get('/admin/dashboard', [MarketplaceController::class, 'adminDashboard']);
+        Route::post('/admin/media', function () {
+            request()->validate(['file' => ['required', 'image', 'max:5120'], 'collection' => ['nullable', 'string', 'max:80']]);
+            $collection = preg_replace('/[^a-z0-9_\/-]/i', '', request('collection', 'admin')) ?: 'admin';
+            $path = request()->file('file')->store($collection, 'public');
+            return response()->json(['path' => Storage::url($path)]);
+        });
         Route::get('/admin/users', fn () => response()->json(DB::table('users')->get()));
         Route::put('/admin/users/{id}', fn (string $id) => response()->json(tap(DB::table('users')->where('id', $id)->update(request()->all()), fn () => null)));
         Route::delete('/admin/users/{id}', fn (string $id) => response()->json(['success' => DB::table('users')->where('id', $id)->delete() > 0]));

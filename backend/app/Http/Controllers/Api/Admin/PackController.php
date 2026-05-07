@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Pack;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class PackController extends Controller
 {
@@ -19,11 +20,23 @@ class PackController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'code' => ['required', 'string', 'max:255', 'unique:packs,code'],
+            'slug' => ['nullable', 'string', 'max:255'],
+            'price' => ['nullable', 'numeric', 'min:0'],
+            'billing_type' => ['nullable', 'in:monthly,yearly,custom'],
             'max_events_per_month' => ['nullable', 'integer', 'min:1'],
             'max_active_events' => ['nullable', 'integer', 'min:1'],
+            'quotas' => ['nullable'],
+            'features' => ['nullable', 'array'],
+            'features.*' => ['string', 'max:255'],
+            'image' => ['nullable'],
             'is_active' => ['sometimes', 'boolean'],
+            'is_featured' => ['sometimes', 'boolean'],
             'description' => ['nullable', 'string'],
         ]);
+
+        if ($request->hasFile('image')) {
+            $data['image'] = Storage::url($request->file('image')->store('admin/packs', 'public'));
+        }
 
         $pack = Pack::query()->create($data);
 
@@ -40,11 +53,23 @@ class PackController extends Controller
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
             'code' => ['sometimes', 'string', 'max:255', 'unique:packs,code,' . $pack->id],
+            'slug' => ['nullable', 'string', 'max:255'],
+            'price' => ['nullable', 'numeric', 'min:0'],
+            'billing_type' => ['nullable', 'in:monthly,yearly,custom'],
             'max_events_per_month' => ['nullable', 'integer', 'min:1'],
             'max_active_events' => ['nullable', 'integer', 'min:1'],
+            'quotas' => ['nullable'],
+            'features' => ['nullable', 'array'],
+            'features.*' => ['string', 'max:255'],
+            'image' => ['nullable'],
             'is_active' => ['sometimes', 'boolean'],
+            'is_featured' => ['sometimes', 'boolean'],
             'description' => ['nullable', 'string'],
         ]);
+
+        if ($request->hasFile('image')) {
+            $data['image'] = Storage::url($request->file('image')->store('admin/packs', 'public'));
+        }
 
         $pack->update($data);
 

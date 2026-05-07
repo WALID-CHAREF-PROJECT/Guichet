@@ -85,19 +85,20 @@ export interface PayoutModel {
   status: 'pending' | 'paid' | 'failed';
 }
 
-interface CategoryModel {
+export interface CategoryModel {
   id: string;
-  type: 'event' | 'travel' | 'movie' | 'sport';
+  type: 'event' | 'travel' | 'movie' | 'sport' | 'other';
   name: string;
   slug: string;
   icon?: string;
+  image?: string;
   isActive: boolean;
   order: number;
 }
 
-interface TravelModel { id: string; image: string; title: string; category: string; destination: string; departureDate: string; price: number; status: EventStatus; featured: boolean }
-interface MovieModel { id: string; poster: string; title: string; genre: string; duration: string; releaseDate: string; cinemas: string; status: EventStatus; featured: boolean }
-interface ContentBlock { id: string; type: 'banner' | 'section'; title: string; subtitle?: string; image?: string; visible: boolean; order: number }
+export interface TravelModel { id: string; image: string; gallery?: string[]; title: string; category: string; destination: string; departureDate: string; price: number; description?: string; status: EventStatus; featured: boolean }
+export interface MovieModel { id: string; poster: string; title: string; genre: string; duration: string; releaseDate: string; cinemas: string; description?: string; status: EventStatus; featured: boolean }
+export interface ContentBlock { id: string; type: 'banner' | 'section' | 'hero' | 'cta'; title: string; subtitle?: string; description?: string; ctaLabel?: string; ctaLink?: string; image?: string; backgroundImage?: string; visible: boolean; order: number }
 
 interface DbShape {
   organizers: OrganizerProfile[];
@@ -485,6 +486,16 @@ export const backofficeService = {
     db.categories = db.categories.filter((category) => category.id !== id);
     saveDb(db);
   },
+  deleteTravel(id: string): void {
+    const db = getDb();
+    db.travels = db.travels.filter((travel) => travel.id !== id);
+    saveDb(db);
+  },
+  deleteMovie(id: string): void {
+    const db = getDb();
+    db.movies = db.movies.filter((movie) => movie.id !== id);
+    saveDb(db);
+  },
   updateContent(id: string, patch: Partial<ContentBlock>): void {
     const db = getDb();
     db.content = db.content.map((item) => item.id === id ? { ...item, ...patch } : item);
@@ -493,6 +504,11 @@ export const backofficeService = {
   addContent(payload: Omit<ContentBlock, 'id'>): void {
     const db = getDb();
     db.content.push({ ...payload, id: uid('content') });
+    saveDb(db);
+  },
+  deleteContent(id: string): void {
+    const db = getDb();
+    db.content = db.content.filter((item) => item.id !== id);
     saveDb(db);
   },
   updateSettings(patch: Partial<DbShape['settings']>): void {
