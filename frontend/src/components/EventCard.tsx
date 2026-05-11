@@ -18,13 +18,20 @@ export default function EventCard({ event }: Props): JSX.Element {
   const route = `/ma-fr/event/${event.slug}`;
   const location = eventLocation(event);
 
+  const isPlanEvent = event.buyingMode === 'plan' && event.hasPlan === true;
+
   const handleAddToCart = (clickEvent: MouseEvent<HTMLButtonElement>): void => {
     clickEvent.stopPropagation();
+    if (isPlanEvent) {
+      navigate(route);
+      return;
+    }
     addItems([
       {
         id: uid('cart'),
         productType: 'event_ticket',
         slug: event.slug,
+        productId: String(event.id),
         title: event.title,
         image: event.image_url,
         date: event.starts_at_human,
@@ -49,6 +56,7 @@ export default function EventCard({ event }: Props): JSX.Element {
       <div className="absolute right-3 top-3 z-10" onClick={(clickEvent) => clickEvent.stopPropagation()}><FavoriteButton itemId={event.slug} itemType="event" payload={{ slug: event.slug, title: event.title, image: event.image_url, location, date: event.starts_at_human, route, organizer: event.organizer }} /></div>
       <ResponsiveImage src={event.image_url} alt={event.title} aspect="video" loading="lazy" imgClassName="transition duration-500 group-hover:scale-105" />
       {event.badge && <span className="absolute left-3 top-3 rounded-full bg-slate-900/80 px-3 py-1 text-xs text-white backdrop-blur">{event.badge}</span>}
+      {isPlanEvent && <span className="absolute left-3 top-3 rounded-full bg-orange-500/90 px-3 py-1 text-xs font-semibold text-white backdrop-blur">Plan interactif</span>}
       <div className="space-y-2 p-4">
         <p className="line-clamp-1 text-xs uppercase text-slate-400">{event.organizer}</p>
         <h3 className="line-clamp-2 font-semibold text-white">{event.title}</h3>
@@ -57,7 +65,7 @@ export default function EventCard({ event }: Props): JSX.Element {
         <div className="flex items-center justify-between gap-2 pt-1">
           <span className="font-semibold text-orange-400">{event.is_free ? 'Gratuit' : `${event.price_mad} MAD`}</span>
           <div className="flex items-center gap-2">
-            <button type="button" onClick={handleAddToCart} className="rounded-full bg-orange-500 px-3 py-1 text-sm font-medium text-white hover:bg-orange-600">Ajouter</button>
+            <button type="button" onClick={handleAddToCart} className="rounded-full bg-orange-500 px-3 py-1 text-sm font-medium text-white hover:bg-orange-600">{isPlanEvent ? 'Voir le plan' : 'Acheter'}</button>
             <span className="rounded-full border border-white/40 px-3 py-1 text-sm font-medium transition group-hover:bg-white group-hover:text-[#041743]">Voir</span>
           </div>
         </div>

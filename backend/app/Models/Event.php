@@ -29,6 +29,7 @@ class Event extends Model
         'hero_image',
         'type',
         'buying_mode',
+        'plan_type',
         'has_plan',
         'seating_enabled',
         'status',

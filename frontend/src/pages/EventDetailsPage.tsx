@@ -31,6 +31,10 @@ function toPlatformEvent(event: EventItem): PlatformEvent {
     time,
     price: event.is_free ? 'Gratuit' : `${event.price_mad} MAD`,
     description: event.description,
+    buyingMode: event.buyingMode ?? 'ticket',
+    hasPlan: event.hasPlan === true && event.buyingMode === 'plan',
+    planType: event.planType ?? null,
+    seatingEnabled: event.seatingEnabled ?? false,
   };
 }
 
@@ -51,6 +55,9 @@ export default function EventDetailsPage(): JSX.Element {
   };
 
   useEffect(load, [slug]);
+
+  const usesPlan = event?.buyingMode === 'plan' && event.hasPlan === true && Boolean(event.planType);
+  const planCta = event?.planType === 'theatre' ? 'Choisir mes places' : event?.planType === 'stadium' ? 'Choisir ma zone' : 'Choisir sur le plan';
 
   if (loading || error || !event) {
     return (
@@ -88,15 +95,24 @@ export default function EventDetailsPage(): JSX.Element {
           <p className="mt-2 text-slate-300">🗓️ {event.date} {event.time ? `· ${event.time}` : ''}</p>
           <hr className="my-6 border-white/10" />
           <p className="leading-7 text-slate-200">{event.description}</p>
-          <div className="mt-8 grid gap-3 sm:grid-cols-2">
-            <button onClick={() => setTicketModalOpen(true)} className="w-full rounded-full bg-white px-6 py-4 text-lg font-bold text-[#03143a]">Acheter maintenant · {event.price}</button>
-            <button onClick={() => setSeatModalOpen(true)} className="w-full rounded-full border border-white/30 bg-white/5 px-6 py-4 text-lg font-bold">Acheter via plan</button>
+          <div className="mt-8 space-y-3">
+            {usesPlan ? (
+              <>
+                <button onClick={() => setSeatModalOpen(true)} className="w-full rounded-full bg-white px-6 py-4 text-lg font-bold text-[#03143a]">{planCta}</button>
+                <p className="text-sm text-slate-300">Sélectionnez une zone sur le plan interactif, puis vérifiez le récapitulatif avant l’ajout au panier.</p>
+              </>
+            ) : (
+              <>
+                <p className="text-2xl font-bold text-orange-300">{event.price}</p>
+                <button onClick={() => setTicketModalOpen(true)} className="w-full rounded-full bg-white px-6 py-4 text-lg font-bold text-[#03143a]">Acheter / Ajouter au panier</button>
+              </>
+            )}
           </div>
         </article>
       </section>
 
-      <TicketSelectionModal event={event} open={ticketModalOpen} onClose={() => setTicketModalOpen(false)} />
-      <SeatPlanModal event={event} open={seatModalOpen} onClose={() => setSeatModalOpen(false)} />
+      {!usesPlan && <TicketSelectionModal event={event} open={ticketModalOpen} onClose={() => setTicketModalOpen(false)} />}
+      {usesPlan && <SeatPlanModal event={event} open={seatModalOpen} onClose={() => setSeatModalOpen(false)} />}
     </div>
   );
 }

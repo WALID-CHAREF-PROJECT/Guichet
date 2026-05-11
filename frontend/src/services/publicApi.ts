@@ -167,6 +167,39 @@ export async function getPublicEvent(slug: string): Promise<EventItem> {
   return mapEvent(unwrapItem(await request<EventItem | { data: EventItem }>(`/events/${slug}`)) as EventItem & Record<string, unknown>);
 }
 
+
+export interface PublicPlanZone {
+  id: string;
+  name: string;
+  label: string;
+  price: number;
+  available: boolean;
+  capacity: number;
+  availableCapacity: number;
+  color: string;
+  planType: 'theatre' | 'stadium' | 'generic';
+}
+
+export async function getEventPlan(eventId: number | string, planType?: string): Promise<{ eventId: string; planType: string; zones: PublicPlanZone[] }> {
+  const search = planType ? `?planType=${encodeURIComponent(planType)}` : '';
+  const payload = await request<{ eventId: string; planType: string; zones: PublicPlanZone[] }>(`/events/${eventId}/plan${search}`);
+  return {
+    eventId: String(payload.eventId),
+    planType: String(payload.planType),
+    zones: payload.zones.map((zone) => ({
+      id: String(zone.id),
+      name: String(zone.name),
+      label: String(zone.label ?? zone.name),
+      price: Number(zone.price ?? 0),
+      available: zone.available === true,
+      capacity: Number(zone.capacity ?? zone.availableCapacity ?? 0),
+      availableCapacity: Number(zone.availableCapacity ?? zone.capacity ?? 0),
+      color: String(zone.color ?? '#f97316'),
+      planType: (zone.planType ?? payload.planType ?? 'generic') as PublicPlanZone['planType'],
+    })),
+  };
+}
+
 export async function getPublicCategories(type?: string): Promise<Category[]> {
   const payload = await request<Category[] | { data: Category[] }>(`/categories${type ? `?type=${encodeURIComponent(type)}` : ''}`);
   return unwrapList(payload).map((item) => ({ ...item, image: normalizeMediaUrl((item as Category & { image?: string }).image, '') }));

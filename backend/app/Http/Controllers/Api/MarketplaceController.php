@@ -94,6 +94,8 @@ class MarketplaceController extends Controller
         $categoryName = $event->category->name ?? null;
         $categorySlug = $event->category->slug ?? null;
 
+        $hasPlan = (bool) $event->has_plan && $event->buying_mode === 'plan' && !empty($event->plan_type);
+
         return [
             'id' => (string) $event->id,
             'slug' => $event->slug,
@@ -118,8 +120,10 @@ class MarketplaceController extends Controller
             'badge' => $event->is_sold_out ? 'Complet' : ($event->is_free ? 'Gratuit' : null),
             'type' => $event->type,
             'tags' => array_values(array_filter([$event->type, $categorySlug])),
-            'buyingMode' => $event->buying_mode,
-            'hasPlan' => (bool) $event->has_plan,
+            'buyingMode' => $hasPlan ? 'plan' : ($event->buying_mode ?: 'ticket'),
+            'hasPlan' => $hasPlan,
+            'planType' => $hasPlan ? $event->plan_type : null,
+            'seatingEnabled' => $hasPlan && (bool) $event->seating_enabled,
             'featured' => (bool) $event->featured,
             'status' => $event->status,
         ];
@@ -683,14 +687,26 @@ class MarketplaceController extends Controller
 
     public function sportPlan(string $id): JsonResponse
     {
-        $zones = DB::table('sport_plan_zones')->where('event_id', $id)->get()->map(fn ($zone) => [
-            'id' => 'zone_'.$zone->id,
-            'name' => $zone->name,
-            'price' => (float) $zone->price,
-            'available' => (bool) $zone->is_available && $zone->available_capacity > 0,
-            'capacity' => (int) $zone->available_capacity,
-        ]);
-        return response()->json(['eventId' => (string) $id, 'zones' => $zones]);
+        $event = Event::query()->find($id);
+        $planType = $event?->plan_type ?: request()->query('planType', 'stadium');
+        $zones = DB::table('sport_plan_zones')
+            ->where('event_id', $id)
+            ->when($planType, fn ($query) => $query->where('plan_type', $planType))
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get()
+            ->map(fn ($zone) => [
+                'id' => 'zone_'.$zone->id,
+                'name' => $zone->name,
+                'label' => $zone->label ?: $zone->name,
+                'price' => (float) $zone->price,
+                'available' => (bool) $zone->is_available && $zone->available_capacity > 0,
+                'capacity' => (int) $zone->capacity,
+                'availableCapacity' => (int) $zone->available_capacity,
+                'color' => $zone->color ?: '#f97316',
+                'planType' => $zone->plan_type ?: $planType,
+            ]);
+        return response()->json(['eventId' => (string) $id, 'planType' => $planType, 'zones' => $zones]);
     }
 
     public function sportSelect(Request $request, string $id): JsonResponse
@@ -806,6 +822,115 @@ class MarketplaceController extends Controller
     public function organizerPayouts(Request $request): JsonResponse
     {
         return response()->json(DB::table('payouts')->where('organizer_id', $request->user()->id)->orderByDesc('id')->get());
+    }
+
+
+    private function validateAdminEvent(Request $request, bool $partial = false): array
+    {
+        $data = $request->validate([
+            'organizer_id' => ['nullable'],
+            'category_id' => ['nullable'],
+            'city_id' => ['nullable'],
+            'organizer' => ['nullable', 'string', 'max:255'],
+            'title' => [$partial ? 'sometimes' : 'required', 'string', 'max:255'],
+            'short_description' => ['nullable', 'string'],
+            'slug' => ['nullable', 'string', 'max:255'],
+            'city_name' => ['nullable', 'string', 'max:255'],
+            'venue' => ['nullable', 'string', 'max:255'],
+            'address' => ['nullable', 'string', 'max:255'],
+            'event_date' => ['nullable', 'date'],
+            'event_time' => ['nullable'],
+            'description' => ['nullable', 'string'],
+            'image_url' => ['nullable', 'string'],
+            'image' => ['nullable', 'string'],
+            'hero_image' => ['nullable', 'string'],
+            'type' => ['nullable', 'string', 'max:80'],
+            'buying_mode' => ['nullable', 'in:ticket,plan,reservation'],
+            'plan_type' => ['nullable', 'in:theatre,stadium,generic'],
+            'has_plan' => ['nullable', 'boolean'],
+            'seating_enabled' => ['nullable', 'boolean'],
+            'status' => ['nullable', 'string', 'max:40'],
+            'featured' => ['nullable', 'boolean'],
+            'starts_at' => ['nullable', 'date'],
+            'price_mad' => ['nullable', 'numeric', 'min:0'],
+            'is_sold_out' => ['nullable', 'boolean'],
+            'is_free' => ['nullable', 'boolean'],
+            'zones' => ['nullable', 'array'],
+            'zones.*.name' => ['required_with:zones', 'string', 'max:255'],
+            'zones.*.label' => ['nullable', 'string', 'max:255'],
+            'zones.*.price' => ['required_with:zones', 'numeric', 'min:0'],
+            'zones.*.capacity' => ['required_with:zones', 'integer', 'min:0'],
+            'zones.*.available_capacity' => ['nullable', 'integer', 'min:0'],
+            'zones.*.color' => ['nullable', 'string', 'max:32'],
+            'zones.*.sort_order' => ['nullable', 'integer', 'min:0'],
+            'zones.*.is_available' => ['nullable', 'boolean'],
+        ]);
+
+        if (!$partial || array_key_exists('buying_mode', $data) || array_key_exists('has_plan', $data) || array_key_exists('plan_type', $data)) {
+            $mode = $data['buying_mode'] ?? 'ticket';
+            $hasPlan = $mode === 'plan' && (bool) ($data['has_plan'] ?? true);
+            $data['buying_mode'] = $hasPlan ? 'plan' : $mode;
+            $data['has_plan'] = $hasPlan;
+            $data['seating_enabled'] = $hasPlan && (bool) ($data['seating_enabled'] ?? true);
+            $data['plan_type'] = $hasPlan ? ($data['plan_type'] ?? 'generic') : null;
+        }
+        if (!empty($data['title']) && empty($data['slug'])) {
+            $data['slug'] = Str::slug($data['title']);
+        }
+        $data['starts_at'] = $data['starts_at'] ?? (!empty($data['event_date']) ? trim($data['event_date'].' '.($data['event_time'] ?? '00:00:00')) : null);
+
+        return $data;
+    }
+
+    private function syncAdminEventZones(int|string $eventId, string $planType, array $zones): void
+    {
+        DB::table('sport_plan_zones')->where('event_id', $eventId)->delete();
+        foreach (array_values($zones) as $index => $zone) {
+            $capacity = (int) $zone['capacity'];
+            DB::table('sport_plan_zones')->insert([
+                'event_id' => $eventId,
+                'plan_type' => $planType,
+                'name' => $zone['name'],
+                'label' => $zone['label'] ?? $zone['name'],
+                'code' => Str::upper(Str::slug($zone['name'], '_')),
+                'price' => $zone['price'],
+                'capacity' => $capacity,
+                'available_capacity' => $zone['available_capacity'] ?? $capacity,
+                'color' => $zone['color'] ?? '#f97316',
+                'sort_order' => $zone['sort_order'] ?? $index,
+                'is_available' => $zone['is_available'] ?? true,
+                'shape_data' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+
+    public function adminStoreEvent(Request $request): JsonResponse
+    {
+        $data = $this->validateAdminEvent($request);
+        $zones = $data['zones'] ?? [];
+        unset($data['zones']);
+        $id = DB::table('events')->insertGetId(array_merge($data, ['created_at' => now(), 'updated_at' => now()]));
+        if (($data['buying_mode'] ?? 'ticket') === 'plan') {
+            $this->syncAdminEventZones($id, (string) $data['plan_type'], $zones);
+        }
+        return response()->json(['id' => $id], 201);
+    }
+
+    public function adminUpdateEvent(Request $request, string $id): JsonResponse
+    {
+        $data = $this->validateAdminEvent($request, true);
+        $zones = $data['zones'] ?? null;
+        unset($data['zones']);
+        $updated = DB::table('events')->where('id', $id)->update(array_merge($data, ['updated_at' => now()]));
+        if (($data['buying_mode'] ?? null) === 'plan' && is_array($zones)) {
+            $this->syncAdminEventZones($id, (string) $data['plan_type'], $zones);
+        }
+        if (array_key_exists('buying_mode', $data) && $data['buying_mode'] !== 'plan') {
+            DB::table('sport_plan_zones')->where('event_id', $id)->delete();
+        }
+        return response()->json(['success' => $updated > 0]);
     }
 
     public function adminDashboard(): JsonResponse

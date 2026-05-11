@@ -13,6 +13,9 @@ export interface EventTag {
   icon: string;
 }
 
+export type PlanType = 'theatre' | 'stadium' | 'generic';
+export type BuyingMode = 'ticket' | 'plan' | 'reservation';
+
 export interface PlatformEvent {
   id: number;
   slug: string;
@@ -26,7 +29,12 @@ export interface PlatformEvent {
   time: string;
   price: string;
   description: string;
+  buyingMode?: BuyingMode;
+  hasPlan?: boolean;
+  planType?: PlanType | null;
+  seatingEnabled?: boolean;
 }
+
 
 export interface MovieItem {
   id: number;

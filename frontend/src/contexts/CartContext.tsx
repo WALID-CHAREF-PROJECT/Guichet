@@ -35,6 +35,8 @@ function mergeByIdentity(current: CartItem[], incoming: CartItem[]): CartItem[] 
       (item) =>
         item.slug === nextItem.slug &&
         item.ticketType === nextItem.ticketType &&
+        item.selectedZone === nextItem.selectedZone &&
+        item.planType === nextItem.planType &&
         (item.selectedSeats ?? []).join(',') === (nextItem.selectedSeats ?? []).join(',')
     );
 

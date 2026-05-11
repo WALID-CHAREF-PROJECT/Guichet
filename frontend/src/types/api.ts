@@ -15,6 +15,9 @@ export interface City {
   slug: string;
 }
 
+export type BuyingMode = 'ticket' | 'plan' | 'reservation';
+export type PlanType = 'theatre' | 'stadium' | 'generic';
+
 export interface EventItem {
   id: number;
   slug: string;
@@ -38,7 +41,12 @@ export interface EventItem {
   is_free: boolean;
   is_sold_out: boolean;
   badge: string | null;
+  buyingMode?: BuyingMode;
+  hasPlan?: boolean;
+  planType?: PlanType | null;
+  seatingEnabled?: boolean;
 }
+
 
 export interface PaginatedResponse<T> {
   data: T[];

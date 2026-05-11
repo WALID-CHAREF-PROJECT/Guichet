@@ -117,7 +117,29 @@ function normalizeContent(raw: Partial<ContentBlock> & Record<string, unknown>):
 }
 
 function normalizeEvent(raw: Partial<BackofficeEvent> & Record<string, unknown>, fallback: BackofficeEvent): BackofficeEvent {
-  return { ...fallback, ...raw, id: String(raw.id ?? fallback.id), organizerId: String(raw.organizerId ?? raw.organizer_id ?? fallback.organizerId), title: str(raw.title, fallback.title), slug: str(raw.slug, fallback.slug), location: str(raw.location ?? raw.venue, fallback.location), date: str(raw.date ?? raw.event_date ?? raw.starts_at, fallback.date), time: str(raw.time ?? raw.event_time, fallback.time), image: mediaUrl(raw.image ?? raw.image_url ?? raw.featured_image) || fallback.image, status: (str(raw.status, fallback.status) as BackofficeEvent['status']), featured: bool(raw.featured ?? raw.is_featured, fallback.featured) };
+  const buyingMode = str(raw.buyingMode ?? raw.buying_mode, fallback.buyingMode ?? 'ticket') as BackofficeEvent['buyingMode'];
+  const planType = raw.planType ?? raw.plan_type ?? fallback.planType ?? null;
+  return {
+    ...fallback,
+    ...raw,
+    id: String(raw.id ?? fallback.id),
+    organizerId: String(raw.organizerId ?? raw.organizer_id ?? fallback.organizerId),
+    title: str(raw.title, fallback.title),
+    slug: str(raw.slug, fallback.slug),
+    category: str(raw.category ?? raw.type, fallback.category),
+    city: str(raw.city ?? raw.city_name, fallback.city),
+    location: str(raw.location ?? raw.venue, fallback.location),
+    date: str(raw.date ?? raw.event_date ?? raw.starts_at, fallback.date),
+    time: str(raw.time ?? raw.event_time, fallback.time),
+    image: mediaUrl(raw.image ?? raw.image_url ?? raw.featured_image) || fallback.image,
+    status: (str(raw.status, fallback.status) as BackofficeEvent['status']),
+    featured: bool(raw.featured ?? raw.is_featured, fallback.featured),
+    buyingMode,
+    hasPlan: buyingMode === 'plan' && bool(raw.hasPlan ?? raw.has_plan, fallback.hasPlan),
+    planType: buyingMode === 'plan' ? (planType as BackofficeEvent['planType']) : null,
+    seatingEnabled: buyingMode === 'plan' && bool(raw.seatingEnabled ?? raw.seating_enabled, fallback.seatingEnabled),
+    planZones: array(raw.planZones ?? raw.zones, fallback.planZones ?? []),
+  };
 }
 
 
@@ -128,6 +150,42 @@ function compactPayload(values: Record<string, unknown>): Record<string, unknown
 function slugFrom(value: string, fallback: string): string {
   const slug = value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
   return slug || fallback;
+}
+
+
+function eventPayload(value: Partial<BackofficeEvent>): Record<string, unknown> {
+  const buyingMode = value.buyingMode;
+  return compactPayload({
+    organizer_id: value.organizerId,
+    title: value.title,
+    slug: value.slug || (value.title ? slugFrom(value.title, `event-${Date.now()}`) : undefined),
+    type: value.category,
+    short_description: value.shortDescription,
+    description: value.description,
+    city_name: value.city,
+    venue: value.location,
+    event_date: value.date,
+    event_time: value.time,
+    image: value.image,
+    image_url: value.image,
+    status: value.status,
+    featured: value.featured,
+    price_mad: value.ticketTypes?.[0]?.price,
+    buying_mode: buyingMode,
+    has_plan: buyingMode === undefined ? undefined : buyingMode === 'plan',
+    plan_type: buyingMode === undefined ? undefined : buyingMode === 'plan' ? (value.planType ?? 'theatre') : null,
+    seating_enabled: buyingMode === undefined ? undefined : buyingMode === 'plan' ? value.seatingEnabled !== false : false,
+    zones: buyingMode === 'plan' ? value.planZones?.map((zone, index) => ({
+      name: zone.name,
+      label: zone.label,
+      price: zone.price,
+      capacity: zone.capacity,
+      available_capacity: zone.availableCapacity,
+      color: zone.color,
+      sort_order: zone.sortOrder ?? index,
+      is_available: zone.isAvailable,
+    })) : undefined,
+  });
 }
 
 function travelPayload(value: Partial<TravelModel>): Record<string, unknown> {
@@ -264,7 +322,8 @@ export const adminPersistence = {
   },
   async deleteUser(id: string): Promise<void> { try { await request(`/admin/users/${id}`, { method: 'DELETE' }); } catch (error) { logAdminFailure(`/admin/users/${id}`, error); backofficeService.deleteUser(id); } },
   async updateOrganizer(id: string, patch: Partial<OrganizerProfile>): Promise<void> { try { await request(`/admin/organizers/${id}`, { method: 'PUT', body: JSON.stringify(organizerPayload(patch)) }); } catch (error) { logAdminFailure(`/admin/organizers/${id}`, error); backofficeService.updateOrganizer(id, patch); } },
-  async updateEvent(id: string, patch: Partial<BackofficeEvent>): Promise<void> { try { await request(`/admin/events/${id}`, { method: 'PUT', body: JSON.stringify(patch) }); } catch { backofficeService.updateEventByAdmin(id, patch); } },
+  async saveEvent(editing: Omit<BackofficeEvent, 'id'> & { id?: string }): Promise<void> { try { const payload = eventPayload(editing); if (editing.id) await request(`/admin/events/${editing.id}`, { method: 'PUT', body: JSON.stringify(payload) }); else await request('/admin/events', { method: 'POST', body: JSON.stringify(payload) }); } catch (error) { logAdminFailure(editing.id ? `/admin/events/${editing.id}` : '/admin/events', error); editing.id ? backofficeService.updateEventByAdmin(editing.id, editing) : backofficeService.createEvent(editing); } },
+  async updateEvent(id: string, patch: Partial<BackofficeEvent>): Promise<void> { try { await request(`/admin/events/${id}`, { method: 'PUT', body: JSON.stringify(eventPayload(patch)) }); } catch { backofficeService.updateEventByAdmin(id, patch); } },
   async deleteEvent(id: string): Promise<void> { try { await request(`/admin/events/${id}`, { method: 'DELETE' }); } catch { backofficeService.deleteEventByAdmin(id); } },
   async saveTravel(editing: Omit<TravelModel, 'id'> & { id?: string }): Promise<void> { try { const payload = travelPayload(editing); if (editing.id) await request(`/admin/travels/${editing.id}`, { method: 'PUT', body: JSON.stringify(payload) }); else await request('/admin/travels', { method: 'POST', body: JSON.stringify(payload) }); } catch (error) { logAdminFailure(editing.id ? `/admin/travels/${editing.id}` : '/admin/travels', error); editing.id ? backofficeService.updateTravel(editing.id, editing) : backofficeService.createTravel(editing); } },
   async updateTravel(id: string, patch: Partial<TravelModel>): Promise<void> { try { await request(`/admin/travels/${id}`, { method: 'PUT', body: JSON.stringify(travelPayload(patch)) }); } catch (error) { logAdminFailure(`/admin/travels/${id}`, error); backofficeService.updateTravel(id, patch); } },

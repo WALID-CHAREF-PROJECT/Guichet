@@ -25,12 +25,15 @@ export interface CartItem {
   id: string;
   productType: ProductType;
   slug: string;
+  productId?: string;
   title: string;
   image: string;
   date: string;
   location: string;
   ticketType?: string;
   selectedSeats?: string[];
+  selectedZone?: string;
+  planType?: 'theatre' | 'stadium' | 'generic';
   selectedDate?: string;
   quantity: number;
   unitPrice: number;
