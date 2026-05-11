@@ -1201,8 +1201,8 @@ function Editor({
               <p className="text-xs text-slate-300">Ajoutez au moins une zone active avec prix et capacité. Ces zones apparaîtront dans le sélecteur public {planType === 'stadium' ? 'stade' : 'salle'}.</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button type="button" className={ghost} onClick={() => resetZones('theatre')}>Reset theatre zones</button>
-              <button type="button" className={ghost} onClick={() => resetZones('stadium')}>Reset stadium zones</button>
+              <button type="button" className={ghost} onClick={() => resetZones('theatre')}>Reset theatre template</button>
+              <button type="button" className={ghost} onClick={() => resetZones('stadium')}>Reset stadium template</button>
               <button type="button" className={btn} onClick={() => setEditing({ ...editing, planZones: [...zones, { id: String(Date.now()), name: 'Nouvelle zone', label: '', price: 100, capacity: 100, availableCapacity: 100, color: '#f97316', sortOrder: zones.length, isAvailable: true }] })}>Add zone</button>
             </div>
           </div>
