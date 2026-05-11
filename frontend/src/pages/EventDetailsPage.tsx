@@ -1,55 +1,62 @@
 import { Link, useParams } from 'react-router-dom';
 import PlatformTopNav from '../components/PlatformTopNav';
-import { getEventBySlug, PlatformEvent } from '../services/platformData';
-import { backofficeService } from '../services/backoffice';
 import TicketSelectionModal from '../components/commerce/TicketSelectionModal';
 import FavoriteButton from '../components/FavoriteButton';
 import SharePopover from '../components/SharePopover';
 import SeatPlanModal from '../components/commerce/SeatPlanModal';
-import { useState } from 'react';
-
-const organizerSlugOverrides: Record<string, string> = {
-  'nostalgia lovers': 'nostalgia-lovers',
-  'basketball africa league': 'basketball-africa-league-bal',
-  'association edom': 'association-edom'
-};
+import { useEffect, useState } from 'react';
+import { getPublicEvent } from '../services/publicApi';
+import { EventItem } from '../types/api';
+import { PlatformEvent } from '../services/platformData';
 
 function organizerSlug(value: string): string {
-  const normalized = value.toLowerCase().trim().replace(/[^a-z0-9]+/g, ' ').trim();
-  return organizerSlugOverrides[normalized] ?? value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
 
-function stableNumericId(value: string): number {
-  return Array.from(value).reduce((hash, char) => ((hash * 31) + char.charCodeAt(0)) >>> 0, 7);
+function toPlatformEvent(event: EventItem): PlatformEvent {
+  const location = event.location ?? [event.venue, event.city?.name].filter(Boolean).join(' · ');
+  const date = event.date ?? event.starts_at_human;
+  const time = event.time ?? '';
+  return {
+    id: Number(event.id),
+    slug: event.slug,
+    title: event.title,
+    organizer: event.organizer,
+    organizerLogo: event.image_url,
+    image: event.image_url,
+    tags: [event.type ?? event.category?.slug ?? 'event'],
+    location,
+    date,
+    time,
+    price: event.is_free ? 'Gratuit' : `${event.price_mad} MAD`,
+    description: event.description,
+  };
 }
 
 export default function EventDetailsPage(): JSX.Element {
   const { slug = '' } = useParams();
-  const dynamic = backofficeService.getPublicEventBySlug(slug);
-  const fallbackEvent = getEventBySlug(slug);
-  const event: PlatformEvent | undefined = dynamic ? {
-    id: stableNumericId(dynamic.event.id),
-    slug: dynamic.event.slug,
-    title: dynamic.event.title,
-    organizer: dynamic.organizer?.companyName ?? 'Organisateur',
-    organizerLogo: dynamic.organizer?.logo ?? dynamic.event.image,
-    image: dynamic.event.image,
-    tags: dynamic.event.tags,
-    location: dynamic.event.location,
-    date: dynamic.event.date,
-    time: dynamic.event.time,
-    price: `${dynamic.event.ticketTypes[0]?.price ?? 0} MAD`,
-    description: dynamic.event.description
-  } : fallbackEvent;
+  const [event, setEvent] = useState<PlatformEvent | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [ticketModalOpen, setTicketModalOpen] = useState(false);
   const [seatModalOpen, setSeatModalOpen] = useState(false);
 
-  if (!event) {
+  const load = (): void => {
+    setLoading(true);
+    getPublicEvent(slug)
+      .then((item) => { setEvent(toPlatformEvent(item)); setError(''); })
+      .catch((err: unknown) => { setEvent(null); setError(err instanceof Error ? err.message : 'Événement introuvable.'); })
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(load, [slug]);
+
+  if (loading || error || !event) {
     return (
       <div className="-mx-4 min-h-screen bg-[#020b22] text-white lg:-mx-8">
         <PlatformTopNav active="billeterie" />
         <section className="mx-auto max-w-[1200px] px-4 py-10 lg:px-8">
-          <p>Événement introuvable.</p>
+          {loading ? <p>Chargement de l’événement...</p> : <><p>{error || 'Événement introuvable.'}</p><button onClick={load} className="mt-4 rounded-full bg-white px-5 py-2 font-semibold text-[#041743]">Réessayer</button></>}
         </section>
       </div>
     );
@@ -77,7 +84,7 @@ export default function EventDetailsPage(): JSX.Element {
           </div>
           <h1 className="text-4xl font-bold leading-tight">{event.title}</h1>
           <p className="mt-4 text-slate-300">📍 {event.location}</p>
-          <p className="mt-2 text-slate-300">🗓️ {event.date} · {event.time}</p>
+          <p className="mt-2 text-slate-300">🗓️ {event.date} {event.time ? `· ${event.time}` : ''}</p>
           <hr className="my-6 border-white/10" />
           <p className="leading-7 text-slate-200">{event.description}</p>
           <div className="mt-8 grid gap-3 sm:grid-cols-2">

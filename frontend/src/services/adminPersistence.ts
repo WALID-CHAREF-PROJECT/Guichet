@@ -75,10 +75,21 @@ async function optionalCollection<T>(name: AdminCollection, fallback: T): Promis
   }
 }
 
-const bool = (value: unknown, fallback = false): boolean => typeof value === 'boolean' ? value : value === 1 || value === '1' || value === 'true' || fallback;
+const bool = (value: unknown, fallback = false): boolean => {
+  if (typeof value === 'boolean') return value;
+  if (value === 1 || value === '1' || value === 'true') return true;
+  if (value === 0 || value === '0' || value === 'false') return false;
+  return fallback;
+};
 const str = (value: unknown, fallback = ''): string => typeof value === 'string' ? value : fallback;
 const num = (value: unknown, fallback = 0): number => Number.isFinite(Number(value)) ? Number(value) : fallback;
 const array = <T>(value: unknown, fallback: T[]): T[] => Array.isArray(value) ? value as T[] : fallback;
+function mediaUrl(value: unknown): string {
+  const raw = str(value);
+  if (!raw || /^(https?:|data:|blob:)/i.test(raw)) return raw;
+  const origin = API_BASE_URL.replace(/\/api\/?$/, '');
+  return raw.startsWith('/') ? `${origin}${raw}` : `${origin}/storage/${raw.replace(/^storage\//, '')}`;
+}
 
 function normalizeCategory(raw: Partial<CategoryModel> & Record<string, unknown>): CategoryModel {
   return {
@@ -87,26 +98,26 @@ function normalizeCategory(raw: Partial<CategoryModel> & Record<string, unknown>
     name: str(raw.name),
     slug: str(raw.slug, str(raw.name).toLowerCase().replace(/[^a-z0-9]+/g, '-')),
     icon: str(raw.icon),
-    image: str(raw.image),
+    image: mediaUrl(raw.image),
     isActive: bool(raw.isActive ?? raw.is_active, true),
-    order: num(raw.order ?? raw.sort_order, 1),
+    order: num(raw.order ?? raw.display_order ?? raw.sort_order, 1),
   };
 }
 
 function normalizeTravel(raw: Partial<TravelModel> & Record<string, unknown>): TravelModel {
-  return { id: String(raw.id ?? crypto.randomUUID()), image: str(raw.image ?? raw.image_url), title: str(raw.title), category: str(raw.category, 'Voyage'), destination: str(raw.destination ?? raw.venue), departureDate: str(raw.departureDate ?? raw.departure_date ?? raw.starts_at), price: num(raw.price ?? raw.price_mad), description: str(raw.description), status: (str(raw.status, 'draft') as TravelModel['status']), featured: bool(raw.featured ?? raw.is_featured) };
+  return { id: String(raw.id ?? crypto.randomUUID()), image: mediaUrl(raw.image ?? raw.image_url), title: str(raw.title), category: str(raw.category, 'Voyage'), destination: str(raw.destination ?? raw.venue), departureDate: str(raw.departureDate ?? raw.departure_date ?? raw.starts_at), price: num(raw.price ?? raw.price_mad), description: str(raw.description), status: (str(raw.status, 'draft') as TravelModel['status']), featured: bool(raw.featured ?? raw.is_featured) };
 }
 
 function normalizeMovie(raw: Partial<MovieModel> & Record<string, unknown>): MovieModel {
-  return { id: String(raw.id ?? crypto.randomUUID()), poster: str(raw.poster ?? raw.image ?? raw.image_url), title: str(raw.title), genre: str(raw.genre), duration: str(raw.duration), releaseDate: str(raw.releaseDate ?? raw.release_date ?? raw.starts_at), cinemas: str(raw.cinemas ?? raw.venue), description: str(raw.description), status: (str(raw.status, 'draft') as MovieModel['status']), featured: bool(raw.featured ?? raw.is_featured) };
+  return { id: String(raw.id ?? crypto.randomUUID()), poster: mediaUrl(raw.poster ?? raw.image ?? raw.image_url), title: str(raw.title), genre: str(raw.genre), duration: str(raw.duration), releaseDate: str(raw.releaseDate ?? raw.release_date ?? raw.starts_at), cinemas: str(raw.cinemas ?? raw.venue), description: str(raw.description), status: (str(raw.status, 'draft') as MovieModel['status']), featured: bool(raw.featured ?? raw.is_featured) };
 }
 
 function normalizeContent(raw: Partial<ContentBlock> & Record<string, unknown>): ContentBlock {
-  return { id: String(raw.id ?? crypto.randomUUID()), type: (str(raw.type, 'section') as ContentBlock['type']), title: str(raw.title), subtitle: str(raw.subtitle), description: str(raw.description), ctaLabel: str(raw.ctaLabel ?? raw.cta_label), ctaLink: str(raw.ctaLink ?? raw.cta_link), image: str(raw.image), backgroundImage: str(raw.backgroundImage ?? raw.background_image), visible: bool(raw.visible ?? raw.is_visible, true), order: num(raw.order ?? raw.sort_order, 1) };
+  return { id: String(raw.id ?? crypto.randomUUID()), type: (str(raw.type, 'section') as ContentBlock['type']), title: str(raw.title), subtitle: str(raw.subtitle), description: str(raw.description), ctaLabel: str(raw.ctaLabel ?? raw.cta_label), ctaLink: str(raw.ctaLink ?? raw.cta_link), image: mediaUrl(raw.image), backgroundImage: mediaUrl(raw.backgroundImage ?? raw.background_image), visible: bool(raw.visible ?? raw.is_visible, true), order: num(raw.order ?? raw.display_order ?? raw.sort_order, 1) };
 }
 
 function normalizeEvent(raw: Partial<BackofficeEvent> & Record<string, unknown>, fallback: BackofficeEvent): BackofficeEvent {
-  return { ...fallback, ...raw, id: String(raw.id ?? fallback.id), organizerId: String(raw.organizerId ?? raw.organizer_id ?? fallback.organizerId), title: str(raw.title, fallback.title), slug: str(raw.slug, fallback.slug), location: str(raw.location ?? raw.venue, fallback.location), date: str(raw.date ?? raw.event_date ?? raw.starts_at, fallback.date), time: str(raw.time ?? raw.event_time, fallback.time), image: str(raw.image ?? raw.image_url ?? raw.featured_image, fallback.image), status: (str(raw.status, fallback.status) as BackofficeEvent['status']), featured: bool(raw.featured ?? raw.is_featured, fallback.featured) };
+  return { ...fallback, ...raw, id: String(raw.id ?? fallback.id), organizerId: String(raw.organizerId ?? raw.organizer_id ?? fallback.organizerId), title: str(raw.title, fallback.title), slug: str(raw.slug, fallback.slug), location: str(raw.location ?? raw.venue, fallback.location), date: str(raw.date ?? raw.event_date ?? raw.starts_at, fallback.date), time: str(raw.time ?? raw.event_time, fallback.time), image: mediaUrl(raw.image ?? raw.image_url ?? raw.featured_image) || fallback.image, status: (str(raw.status, fallback.status) as BackofficeEvent['status']), featured: bool(raw.featured ?? raw.is_featured, fallback.featured) };
 }
 
 

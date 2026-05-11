@@ -13,6 +13,11 @@ class CategoryResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'slug' => $this->slug,
+            'type' => $this->type ?? 'event',
+            'icon' => $this->icon,
+            'image' => $this->image,
+            'is_active' => (bool) ($this->is_active ?? true),
+            'display_order' => (int) ($this->display_order ?? 0),
         ];
     }
 }

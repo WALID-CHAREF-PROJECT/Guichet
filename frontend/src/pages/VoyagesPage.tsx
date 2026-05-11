@@ -1,7 +1,9 @@
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import ServiceTabs from '../components/ServiceTabs';
-import { voyageCategories, voyages } from '../services/platformData';
 import FavoriteButton from '../components/FavoriteButton';
+import { getPublicCategories, getPublicTravels, PublicTravel } from '../services/publicApi';
+import { Category } from '../types/api';
 
 const slugify = (value: string): string =>
   value
@@ -11,10 +13,33 @@ const slugify = (value: string): string =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
 
+type LoadState = 'loading' | 'ready' | 'error';
+
 export default function VoyagesPage(): JSX.Element {
   const { category } = useParams();
   const [searchParams] = useSearchParams();
-  const filtered = voyages.filter((trip) => {
+  const [travels, setTravels] = useState<PublicTravel[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [state, setState] = useState<LoadState>('loading');
+  const [error, setError] = useState('');
+
+  const load = (): void => {
+    setState('loading');
+    Promise.all([getPublicTravels(), getPublicCategories('travel')])
+      .then(([travelItems, categoryItems]) => { setTravels(travelItems); setCategories(categoryItems); setState('ready'); setError(''); })
+      .catch((err: unknown) => { setError(err instanceof Error ? err.message : 'Erreur de chargement'); setState('error'); });
+  };
+
+  useEffect(load, []);
+
+  const visibleCategories = useMemo(() => {
+    const fromTravels = travels.map((trip) => ({ id: trip.collection, name: trip.collection, slug: slugify(trip.collection) })).filter((item) => item.name);
+    const bySlug = new Map<string, Category>();
+    [...categories, ...fromTravels].forEach((item) => bySlug.set(item.slug, item as Category));
+    return Array.from(bySlug.values());
+  }, [categories, travels]);
+
+  const filtered = travels.filter((trip) => {
     const byCategoryRoute = category ? slugify(trip.collection) === category : true;
     const q = (searchParams.get('q') ?? '').toLowerCase();
     const byQuery = !q || trip.title.toLowerCase().includes(q) || trip.location.toLowerCase().includes(q);
@@ -29,38 +54,44 @@ export default function VoyagesPage(): JSX.Element {
     <section className="space-y-8">
       <ServiceTabs active="voyage" />
       <div className="flex gap-2 overflow-x-auto pb-1">
-        {voyageCategories.map((item) => {
-          const slug = slugify(item);
+        {visibleCategories.map((item) => {
+          const slug = item.slug || slugify(item.name);
           const active = category === slug;
           return (
-            <Link key={item} to={`/ma-fr/travel/category/${slug}`} className={`shrink-0 rounded-full border px-4 py-2 text-sm ${active ? 'border-white bg-white text-[#041743]' : 'border-white/20 bg-white/5 hover:bg-white/10'}`}>
-              {item}
+            <Link key={slug} to={`/ma-fr/travel/category/${slug}`} className={`shrink-0 rounded-full border px-4 py-2 text-sm ${active ? 'border-white bg-white text-[#041743]' : 'border-white/20 bg-white/5 hover:bg-white/10'}`}>
+              {item.name}
             </Link>
           );
         })}
       </div>
       <h1 className="text-5xl font-bold">Les voyages les plus appréciés sur Guichet</h1>
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {filtered.map((trip) => (
-          <Link key={trip.slug} to={`/ma-fr/voyage/${trip.slug}`} className="relative overflow-hidden rounded-xl border border-white/10 bg-[#041743]">
-            <div className="absolute right-3 top-3 z-10"><FavoriteButton itemId={trip.slug} itemType="travel" payload={{ slug: trip.slug, title: trip.title, image: trip.image, location: trip.location, date: trip.departureDate, route: `/ma-fr/voyage/${trip.slug}` }} /></div>
-            <img src={trip.image} alt={trip.title} className="h-64 w-full object-cover" />
-            <div className="space-y-2 p-4">
-              <p className="inline-block rounded bg-white/10 px-2 py-1 text-xs">{trip.location}</p>
-              <h2 className="font-semibold">{trip.title}</h2>
-              <p className="text-sm text-slate-300">{trip.departureDate}</p>
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="font-bold text-white">{trip.price}</span>
-                  {trip.oldPrice ? <span className="ml-2 text-xs text-slate-400 line-through">{trip.oldPrice}</span> : null}
+
+      {state === 'loading' && <div className="rounded-2xl border border-white/10 bg-[#041743] p-8 text-center text-slate-300">Chargement des voyages...</div>}
+      {state === 'error' && <div className="rounded-2xl border border-white/10 bg-[#041743] p-8 text-center"><p>Impossible de charger les voyages.</p><p className="mt-2 text-slate-300">{error}</p><button onClick={load} className="mt-4 rounded-full bg-white px-5 py-2 font-semibold text-[#041743]">Réessayer</button></div>}
+      {state === 'ready' && travels.length === 0 && <div className="rounded-2xl border border-white/10 bg-[#041743] p-8 text-center text-slate-300">Aucun voyage publié pour le moment.</div>}
+
+      {state === 'ready' && travels.length > 0 && (
+        <>
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {filtered.map((trip) => (
+              <Link key={trip.slug} to={`/ma-fr/voyage/${trip.slug}`} className="relative overflow-hidden rounded-xl border border-white/10 bg-[#041743]">
+                <div className="absolute right-3 top-3 z-10"><FavoriteButton itemId={trip.slug} itemType="travel" payload={{ slug: trip.slug, title: trip.title, image: trip.image, location: trip.location, date: trip.departureDate, route: `/ma-fr/voyage/${trip.slug}` }} /></div>
+                <img src={trip.image} alt={trip.title} className="h-64 w-full object-cover" />
+                <div className="space-y-2 p-4">
+                  <p className="inline-block rounded bg-white/10 px-2 py-1 text-xs">{trip.location}</p>
+                  <h2 className="font-semibold">{trip.title}</h2>
+                  <p className="text-sm text-slate-300">{trip.departureDate}</p>
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-white">{trip.priceLabel}</span>
+                    <span className="rounded-full border border-white/50 px-4 py-1 text-xs">Voir l’offre</span>
+                  </div>
                 </div>
-                <span className="rounded-full border border-white/50 px-4 py-1 text-xs">Voir l’offre</span>
-              </div>
-            </div>
-          </Link>
-        ))}
-      </div>
-      {filtered.length === 0 && <div className="rounded-2xl border border-white/10 bg-[#041743] p-8 text-center text-slate-300">Aucun voyage disponible avec ces filtres.</div>}
+              </Link>
+            ))}
+          </div>
+          {filtered.length === 0 && <div className="rounded-2xl border border-white/10 bg-[#041743] p-8 text-center text-slate-300">Aucun voyage disponible avec ces filtres.</div>}
+        </>
+      )}
     </section>
   );
 }
