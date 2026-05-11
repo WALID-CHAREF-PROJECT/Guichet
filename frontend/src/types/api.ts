@@ -42,9 +42,13 @@ export interface EventItem {
   is_sold_out: boolean;
   badge: string | null;
   buyingMode?: BuyingMode;
+  buying_mode?: BuyingMode;
   hasPlan?: boolean;
+  has_plan?: boolean;
   planType?: PlanType | null;
+  plan_type?: PlanType | null;
   seatingEnabled?: boolean;
+  seating_enabled?: boolean;
 }
 
 

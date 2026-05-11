@@ -52,6 +52,12 @@ DB_PASSWORD=
 php artisan migrate --seed
 ```
 
+If local seed data is stale and plan buying is not visible for the seeded BAL Casablanca Finals Night event, reset and reseed the database:
+
+```bash
+php artisan migrate:fresh --seed
+```
+
 ### Run API
 
 ```bash

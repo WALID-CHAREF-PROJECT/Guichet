@@ -86,6 +86,35 @@ class MarketplaceController extends Controller
         });
     }
 
+    private function mapPublicPlanZone(object $zone, ?string $fallbackPlanType = null): array
+    {
+        return [
+            'id' => 'zone_'.$zone->id,
+            'name' => $zone->name,
+            'label' => $zone->label ?: $zone->name,
+            'price' => (float) $zone->price,
+            'available' => (bool) $zone->is_available && $zone->available_capacity > 0,
+            'capacity' => (int) $zone->capacity,
+            'availableCapacity' => (int) $zone->available_capacity,
+            'available_capacity' => (int) $zone->available_capacity,
+            'color' => $zone->color ?: '#f97316',
+            'planType' => $zone->plan_type ?: $fallbackPlanType ?: 'generic',
+            'plan_type' => $zone->plan_type ?: $fallbackPlanType ?: 'generic',
+        ];
+    }
+
+    private function eventActivePlanZones(int|string $eventId, ?string $planType = null)
+    {
+        return DB::table('sport_plan_zones')
+            ->where('event_id', $eventId)
+            ->where('is_available', true)
+            ->where('available_capacity', '>', 0)
+            ->when($planType, fn ($query) => $query->where('plan_type', $planType))
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+    }
+
     private function mapPublicEvent(Event $event): array
     {
         $date = $event->event_date ?: $event->starts_at?->toDateString();
@@ -94,8 +123,12 @@ class MarketplaceController extends Controller
         $cityName = $event->city->name ?? $event->city_name ?? '';
         $categoryName = $event->category->name ?? null;
         $categorySlug = $event->category->slug ?? null;
-
-        $hasPlan = (bool) $event->has_plan && $event->buying_mode === 'plan' && !empty($event->plan_type);
+        $buyingMode = $event->buying_mode ?: 'ticket';
+        $zones = $buyingMode === 'plan' ? $this->eventActivePlanZones($event->id, $event->plan_type) : collect();
+        $inferredPlanType = $event->plan_type ?: ($zones->first()->plan_type ?? null);
+        $hasPlan = $buyingMode === 'plan' && (bool) $inferredPlanType && ((bool) $event->has_plan || $zones->isNotEmpty());
+        $seatingEnabled = $hasPlan && ((bool) $event->seating_enabled || $zones->isNotEmpty());
+        $planZones = $hasPlan ? $zones->map(fn ($zone) => $this->mapPublicPlanZone($zone, $inferredPlanType))->values() : collect();
 
         return [
             'id' => (string) $event->id,
@@ -121,10 +154,15 @@ class MarketplaceController extends Controller
             'badge' => $event->is_sold_out ? 'Complet' : ($event->is_free ? 'Gratuit' : null),
             'type' => $event->type,
             'tags' => array_values(array_filter([$event->type, $categorySlug])),
-            'buyingMode' => $hasPlan ? 'plan' : ($event->buying_mode ?: 'ticket'),
+            'buyingMode' => $hasPlan ? 'plan' : $buyingMode,
+            'buying_mode' => $hasPlan ? 'plan' : $buyingMode,
             'hasPlan' => $hasPlan,
-            'planType' => $hasPlan ? $event->plan_type : null,
-            'seatingEnabled' => $hasPlan && (bool) $event->seating_enabled,
+            'has_plan' => $hasPlan,
+            'planType' => $hasPlan ? $inferredPlanType : null,
+            'plan_type' => $hasPlan ? $inferredPlanType : null,
+            'seatingEnabled' => $seatingEnabled,
+            'seating_enabled' => $seatingEnabled,
+            'zones' => $planZones,
             'featured' => (bool) $event->featured,
             'status' => $event->status,
         ];
@@ -689,25 +727,33 @@ class MarketplaceController extends Controller
     public function sportPlan(string $id): JsonResponse
     {
         $event = Event::query()->find($id);
-        $planType = $event?->plan_type ?: request()->query('planType', 'stadium');
+        $requestedPlanType = request()->query('planType') ?: request()->query('plan_type');
+        $planType = $event?->plan_type ?: $requestedPlanType;
         $zones = DB::table('sport_plan_zones')
             ->where('event_id', $id)
             ->when($planType, fn ($query) => $query->where('plan_type', $planType))
             ->orderBy('sort_order')
             ->orderBy('id')
-            ->get()
-            ->map(fn ($zone) => [
-                'id' => 'zone_'.$zone->id,
-                'name' => $zone->name,
-                'label' => $zone->label ?: $zone->name,
-                'price' => (float) $zone->price,
-                'available' => (bool) $zone->is_available && $zone->available_capacity > 0,
-                'capacity' => (int) $zone->capacity,
-                'availableCapacity' => (int) $zone->available_capacity,
-                'color' => $zone->color ?: '#f97316',
-                'planType' => $zone->plan_type ?: $planType,
-            ]);
-        return response()->json(['eventId' => (string) $id, 'planType' => $planType, 'zones' => $zones]);
+            ->get();
+
+        if ($zones->isEmpty() && $planType) {
+            $zones = DB::table('sport_plan_zones')
+                ->where('event_id', $id)
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get();
+        }
+
+        $resolvedPlanType = $planType ?: ($zones->first()->plan_type ?? 'generic');
+        $mappedZones = $zones->map(fn ($zone) => $this->mapPublicPlanZone($zone, $resolvedPlanType))->values();
+
+        return response()->json([
+            'eventId' => (string) $id,
+            'event_id' => (string) $id,
+            'planType' => $resolvedPlanType,
+            'plan_type' => $resolvedPlanType,
+            'zones' => $mappedZones,
+        ]);
     }
 
     public function sportSelect(Request $request, string $id): JsonResponse

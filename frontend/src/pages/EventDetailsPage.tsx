@@ -15,6 +15,10 @@ function organizerSlug(value: string): string {
 }
 
 function toPlatformEvent(event: EventItem): PlatformEvent {
+  const buyingMode = event.buyingMode ?? event.buying_mode ?? 'ticket';
+  const hasPlan = event.hasPlan ?? event.has_plan ?? false;
+  const planType = event.planType ?? event.plan_type ?? null;
+  const seatingEnabled = event.seatingEnabled ?? event.seating_enabled ?? false;
   const location = event.location ?? [event.venue, event.city?.name].filter(Boolean).join(' · ');
   const date = event.date ?? event.starts_at_human;
   const time = event.time ?? '';
@@ -31,10 +35,10 @@ function toPlatformEvent(event: EventItem): PlatformEvent {
     time,
     price: event.is_free ? 'Gratuit' : `${event.price_mad} MAD`,
     description: event.description,
-    buyingMode: event.buyingMode ?? 'ticket',
-    hasPlan: event.hasPlan === true && event.buyingMode === 'plan',
-    planType: event.planType ?? null,
-    seatingEnabled: event.seatingEnabled ?? false,
+    buyingMode,
+    hasPlan,
+    planType,
+    seatingEnabled,
   };
 }
 
@@ -58,6 +62,18 @@ export default function EventDetailsPage(): JSX.Element {
 
   const usesPlan = event?.buyingMode === 'plan' && event.hasPlan === true && Boolean(event.planType);
   const planCta = event?.planType === 'theatre' ? 'Choisir mes places' : event?.planType === 'stadium' ? 'Choisir ma zone' : 'Choisir sur le plan';
+
+  useEffect(() => {
+    if (!event || !import.meta.env.DEV) return;
+    console.info('[EventDetailsPage] plan detection', {
+      slug: event.slug,
+      buyingMode: event.buyingMode,
+      hasPlan: event.hasPlan,
+      planType: event.planType,
+      seatingEnabled: event.seatingEnabled,
+      usesPlan,
+    });
+  }, [event, usesPlan]);
 
   if (loading || error || !event) {
     return (
