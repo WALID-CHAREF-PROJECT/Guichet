@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Category } from '../types/api';
+import ResponsiveImage from './ResponsiveImage';
 
 interface Props {
   categories: Category[];
@@ -28,12 +29,14 @@ export default function CategoriesSection({ categories }: Props): JSX.Element {
           <Link
             key={category.id}
             to={`/ma-fr/billeterie?category=${category.slug}`}
-            className="group relative h-40 overflow-hidden rounded-2xl border border-blue-100"
+            className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#041743] shadow-sm shadow-black/20 transition hover:-translate-y-1 hover:border-white/25"
           >
-            <img
+            <ResponsiveImage
               src={category.image || categoryImages[category.slug] || fallbackCategoryImage}
               alt={category.name}
-              className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+              aspect="video"
+              loading="lazy"
+              imgClassName="transition duration-300 group-hover:scale-105"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-blue-950/70 via-blue-900/30 to-transparent" />
             <div className="absolute bottom-3 left-3 rounded-full bg-orange-500 px-3 py-1 text-sm font-semibold text-white">

@@ -5,6 +5,8 @@ import { useCart } from '../contexts/CartContext';
 import { uid } from '../services/commerce/utils';
 import FavoriteButton from '../components/FavoriteButton';
 import SharePopover from '../components/SharePopover';
+import ResponsiveImage from '../components/ResponsiveImage';
+import EmptyState from '../components/EmptyState';
 import { getMovieSessions, getPublicMovie, MovieSession, PublicMovie } from '../services/publicApi';
 
 const fallbackDates = ['Aujourd’hui', 'Demain', 'Vendredi', 'Samedi'];
@@ -57,8 +59,8 @@ export default function CinemaDetailsPage(): JSX.Element {
     <section className="space-y-6">
       <ServiceTabs active="cinema" />
       <p className="text-sm text-slate-400">Accueil / Cinéma / {movie.title}</p>
-      <div className="grid gap-6 lg:grid-cols-[0.6fr_1fr]">
-        <img src={movie.image} alt={movie.title} className="h-[560px] w-full rounded-2xl object-cover" />
+      <div className="grid gap-6 lg:grid-cols-[0.55fr_1fr]">
+        <ResponsiveImage src={movie.image} alt={movie.title} aspect="poster" loading="eager" className="max-h-[520px] rounded-2xl" />
         <article className="rounded-2xl border border-white/10 bg-[#041743] p-6">
           <div className="mb-3 flex items-center justify-end gap-2"><SharePopover title={movie.title} /><FavoriteButton itemId={movie.slug} itemType="movie" payload={{ slug: movie.slug, title: movie.title, image: movie.image, route: `/ma-fr/cinema/${movie.slug}` }} /></div><h1 className="text-4xl font-bold">{movie.title}</h1>
           <p className="mt-2 text-slate-300">Genre: {movie.genre || 'Cinéma'} · Durée: {movie.duration || 'Non renseignée'}</p>
@@ -84,7 +86,7 @@ export default function CinemaDetailsPage(): JSX.Element {
           </article>
         ))}
       </div>
-      {visibleSessions.length === 0 && <div className="rounded-2xl border border-white/10 bg-[#041743] p-6 text-center text-slate-300">Pas de séances disponibles pour cette date/ville.</div>}
+      {visibleSessions.length === 0 && <EmptyState title="Pas de séances disponibles pour cette date/ville." />}
       <Link to="/ma-fr/panier" className="inline-flex rounded-full bg-white px-5 py-2 font-semibold text-[#041743]">Continuer vers réservation</Link>
     </section>
   );

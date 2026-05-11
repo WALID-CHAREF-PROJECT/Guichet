@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import ServiceTabs from '../components/ServiceTabs';
 import FavoriteButton from '../components/FavoriteButton';
+import EmptyState from '../components/EmptyState';
+import LoadingSkeleton from '../components/LoadingSkeleton';
+import MediaCard from '../components/MediaCard';
 import { getPublicCategories, getPublicTravels, PublicTravel } from '../services/publicApi';
 import { Category } from '../types/api';
 
@@ -66,30 +69,28 @@ export default function VoyagesPage(): JSX.Element {
       </div>
       <h1 className="text-5xl font-bold">Les voyages les plus appréciés sur Guichet</h1>
 
-      {state === 'loading' && <div className="rounded-2xl border border-white/10 bg-[#041743] p-8 text-center text-slate-300">Chargement des voyages...</div>}
-      {state === 'error' && <div className="rounded-2xl border border-white/10 bg-[#041743] p-8 text-center"><p>Impossible de charger les voyages.</p><p className="mt-2 text-slate-300">{error}</p><button onClick={load} className="mt-4 rounded-full bg-white px-5 py-2 font-semibold text-[#041743]">Réessayer</button></div>}
-      {state === 'ready' && travels.length === 0 && <div className="rounded-2xl border border-white/10 bg-[#041743] p-8 text-center text-slate-300">Aucun voyage publié pour le moment.</div>}
+      {state === 'loading' && <LoadingSkeleton label="Chargement des voyages..." />}
+      {state === 'error' && <EmptyState title="Impossible de charger les voyages." description={error} action={<button onClick={load} className="rounded-full bg-white px-5 py-2 font-semibold text-[#041743]">Réessayer</button>} />}
+      {state === 'ready' && travels.length === 0 && <EmptyState title="Aucun voyage publié pour le moment." />}
 
       {state === 'ready' && travels.length > 0 && (
         <>
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {filtered.map((trip) => (
-              <Link key={trip.slug} to={`/ma-fr/voyage/${trip.slug}`} className="relative overflow-hidden rounded-xl border border-white/10 bg-[#041743]">
-                <div className="absolute right-3 top-3 z-10"><FavoriteButton itemId={trip.slug} itemType="travel" payload={{ slug: trip.slug, title: trip.title, image: trip.image, location: trip.location, date: trip.departureDate, route: `/ma-fr/voyage/${trip.slug}` }} /></div>
-                <img src={trip.image} alt={trip.title} className="h-64 w-full object-cover" />
-                <div className="space-y-2 p-4">
-                  <p className="inline-block rounded bg-white/10 px-2 py-1 text-xs">{trip.location}</p>
-                  <h2 className="font-semibold">{trip.title}</h2>
-                  <p className="text-sm text-slate-300">{trip.departureDate}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-white">{trip.priceLabel}</span>
-                    <span className="rounded-full border border-white/50 px-4 py-1 text-xs">Voir l’offre</span>
-                  </div>
-                </div>
-              </Link>
+              <MediaCard
+                key={trip.slug}
+                to={`/ma-fr/voyage/${trip.slug}`}
+                title={trip.title}
+                image={trip.image}
+                eyebrow={trip.location}
+                meta={trip.departureDate}
+                price={trip.priceLabel}
+                actionLabel="Voir l’offre"
+                favorite={<FavoriteButton itemId={trip.slug} itemType="travel" payload={{ slug: trip.slug, title: trip.title, image: trip.image, location: trip.location, date: trip.departureDate, route: `/ma-fr/voyage/${trip.slug}` }} />}
+              />
             ))}
           </div>
-          {filtered.length === 0 && <div className="rounded-2xl border border-white/10 bg-[#041743] p-8 text-center text-slate-300">Aucun voyage disponible avec ces filtres.</div>}
+          {filtered.length === 0 && <EmptyState title="Aucun voyage disponible avec ces filtres." />}
         </>
       )}
     </section>
