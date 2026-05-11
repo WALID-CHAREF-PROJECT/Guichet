@@ -29,12 +29,14 @@ class MarketplaceSeeder extends Seeder
             'company_name' => 'Guichet Organizer', 'slug' => 'guichet-organizer', 'logo' => 'https://picsum.photos/seed/organizer/300/300', 'cover_image' => 'https://picsum.photos/seed/organizer-cover/1200/400', 'description' => 'Organisateur officiel.', 'city' => 'Casablanca', 'address' => 'Ain Diab', 'website' => 'https://guichet.local', 'support_email' => 'support@guichet.com', 'support_phone' => '+212522000000', 'is_approved' => true, 'updated_at' => now(), 'created_at' => now(),
         ]);
 
-        Category::query()->updateOrCreate(['slug' => 'voyage-organise'], ['name' => 'Voyage organisé', 'type' => 'travel', 'display_order' => 9, 'is_active' => true]);
-        Category::query()->updateOrCreate(['slug' => 'cinema'], ['name' => 'Cinéma', 'type' => 'movie', 'display_order' => 10, 'is_active' => true]);
-        $theatreCategory = Category::query()->updateOrCreate(['slug' => 'theatre-humour'], ['name' => 'Théâtre & Humour', 'type' => 'event', 'display_order' => 3, 'is_active' => true]);
-        $concertCategory = Category::query()->updateOrCreate(['slug' => 'concerts'], ['name' => 'Concerts', 'type' => 'event', 'display_order' => 2, 'is_active' => true]);
-
-        $sportCategory = Category::query()->firstWhere('slug', 'sport');
+        Category::query()->updateOrCreate(['slug' => 'voyage-organise'], ['name' => 'Voyage organisé', 'type' => 'travel', 'display_order' => 9, 'is_active' => true, 'icon' => '✈️']);
+        Category::query()->updateOrCreate(['slug' => 'last-minute'], ['name' => 'Last Minute', 'type' => 'travel', 'display_order' => 10, 'is_active' => true, 'icon' => '⚡']);
+        Category::query()->updateOrCreate(['slug' => 'cinema'], ['name' => 'Cinéma', 'type' => 'movie', 'display_order' => 11, 'is_active' => true, 'icon' => '🎬']);
+        Category::query()->updateOrCreate(['slug' => 'action'], ['name' => 'Action', 'type' => 'movie', 'display_order' => 12, 'is_active' => true, 'icon' => '💥']);
+        $theatreCategory = Category::query()->updateOrCreate(['slug' => 'theatre-humour'], ['name' => 'Théâtre & Humour', 'type' => 'event', 'display_order' => 3, 'is_active' => true, 'icon' => '🎭']);
+        $concertCategory = Category::query()->updateOrCreate(['slug' => 'concerts'], ['name' => 'Concerts', 'type' => 'event', 'display_order' => 2, 'is_active' => true, 'icon' => '🎤']);
+        Category::query()->updateOrCreate(['slug' => 'spectacle'], ['name' => 'Spectacle', 'type' => 'event', 'display_order' => 4, 'is_active' => true, 'icon' => '✨']);
+        $sportCategory = Category::query()->updateOrCreate(['slug' => 'sport'], ['name' => 'Sport', 'type' => 'sport', 'display_order' => 5, 'is_active' => true, 'icon' => '🏟️']);
         $city = City::query()->first() ?? City::query()->create(['name' => 'Casablanca', 'slug' => 'casablanca']);
 
         $sportEvent = Event::query()->updateOrCreate(['slug' => 'bal-casablanca-finals-night'], [
@@ -64,8 +66,16 @@ class MarketplaceSeeder extends Seeder
         ]);
 
         DB::table('ticket_types')->updateOrInsert(['event_id' => $sportEvent->id, 'name' => 'Tribune A'], ['price' => 100, 'stock' => 200, 'requires_seat_selection' => true, 'updated_at' => now(), 'created_at' => now()]);
-        DB::table('sport_plan_zones')->updateOrInsert(['event_id' => $sportEvent->id, 'name' => 'Tribune Nord'], ['plan_type' => 'stadium', 'label' => 'Virage Nord', 'code' => 'NORD', 'price' => 100, 'capacity' => 200, 'available_capacity' => 180, 'color' => '#22c55e', 'sort_order' => 0, 'is_available' => true, 'shape_data' => json_encode(['x' => 10, 'y' => 20]), 'updated_at' => now(), 'created_at' => now()]);
-        DB::table('sport_plan_zones')->updateOrInsert(['event_id' => $sportEvent->id, 'name' => 'Tribune Ouest'], ['plan_type' => 'stadium', 'label' => 'Latérale Ouest', 'code' => 'OUEST', 'price' => 150, 'capacity' => 120, 'available_capacity' => 90, 'color' => '#6366f1', 'sort_order' => 1, 'is_available' => true, 'shape_data' => json_encode(['x' => 40, 'y' => 30]), 'updated_at' => now(), 'created_at' => now()]);
+        foreach ([
+            ['Tribune Nord', 'Virage Nord', 120, 1200, 640, '#22c55e'],
+            ['Tribune Sud', 'Virage Sud', 120, 1200, 580, '#14b8a6'],
+            ['Tribune Est', 'Latérale Est', 180, 900, 340, '#3b82f6'],
+            ['Tribune Ouest', 'Latérale Ouest', 220, 820, 260, '#6366f1'],
+            ['VIP', 'Salon premium', 650, 120, 40, '#f97316'],
+            ['Virage', 'Supporters', 90, 1600, 900, '#ef4444'],
+        ] as $index => [$name, $label, $price, $capacity, $available, $color]) {
+            DB::table('sport_plan_zones')->updateOrInsert(['event_id' => $sportEvent->id, 'name' => $name], ['plan_type' => 'stadium', 'label' => $label, 'code' => Str::upper(Str::slug($name, '_')), 'price' => $price, 'capacity' => $capacity, 'available_capacity' => $available, 'color' => $color, 'sort_order' => $index, 'is_available' => true, 'shape_data' => json_encode(['template' => 'stadium']), 'updated_at' => now(), 'created_at' => now()]);
+        }
 
         $normalEvent = Event::query()->updateOrCreate(['slug' => 'festival-normal-ticket-demo'], [
             'category_id' => $concertCategory?->id,
@@ -120,10 +130,11 @@ class MarketplaceSeeder extends Seeder
             'price_mad' => 180,
         ]);
         foreach ([
-            ['Orchestre', 'Face scène', 280, 220, 180, '#38bdf8'],
-            ['Balcon', 'Vue surélevée', 180, 140, 100, '#818cf8'],
-            ['Mezzanine', 'Centre mezzanine', 220, 90, 45, '#a78bfa'],
-            ['VIP', 'Loges premium', 520, 32, 12, '#f59e0b'],
+            ['Orchestre VIP', 'Premiers rangs premium', 650, 48, 18, '#f59e0b'],
+            ['Orchestre', 'Face scène', 320, 220, 180, '#38bdf8'],
+            ['Balcon', 'Vue surélevée', 220, 160, 100, '#818cf8'],
+            ['Mezzanine', 'Centre mezzanine', 260, 96, 45, '#a78bfa'],
+            ['Galerie', 'Placement économique', 140, 180, 120, '#14b8a6'],
         ] as $index => [$name, $label, $price, $capacity, $available, $color]) {
             DB::table('sport_plan_zones')->updateOrInsert(['event_id' => $theatreEvent->id, 'name' => $name], ['plan_type' => 'theatre', 'label' => $label, 'code' => Str::upper(Str::slug($name, '_')), 'price' => $price, 'capacity' => $capacity, 'available_capacity' => $available, 'color' => $color, 'sort_order' => $index, 'is_available' => true, 'updated_at' => now(), 'created_at' => now()]);
         }
@@ -135,6 +146,66 @@ class MarketplaceSeeder extends Seeder
         $movie = DB::table('movies')->where('slug', 'casablanca-nocturne')->first();
         if ($movie) {
             DB::table('movie_sessions')->updateOrInsert(['movie_id' => $movie->id, 'session_date' => now()->toDateString(), 'session_time' => '19:00'], ['cinema' => 'Megarama', 'city' => 'Casablanca', 'price' => 70, 'updated_at' => now(), 'created_at' => now()]);
+            DB::table('movie_sessions')->updateOrInsert(['movie_id' => $movie->id, 'session_date' => now()->addDay()->toDateString(), 'session_time' => '21:30'], ['cinema' => 'IMAX Morocco Mall', 'city' => 'Casablanca', 'price' => 90, 'updated_at' => now(), 'created_at' => now()]);
+        }
+
+        foreach ([
+            ['run-casablanca-10k', 'Casablanca 10K Night Run', 'Running nocturne sur la corniche.', now()->addDay(), 'Corniche Ain Diab', 'sport', 80, 'https://picsum.photos/seed/run-casa/1200/700'],
+            ['raja-wydad-derby-demo', 'Derby football premium demo', 'Match sport en billets normaux.', now()->addWeek(), 'Stade Mohammed V', 'sport', 160, 'https://picsum.photos/seed/derby-demo/1200/700'],
+            ['jazz-rabat-normal-demo', 'Jazz Rabat normal ticket', 'Concert sans plan pour tester le mode normal.', now()->addDays(3), 'Théâtre National Mohammed V', 'concert', 220, 'https://picsum.photos/seed/jazz-rabat/1200/700'],
+        ] as [$slug, $title, $description, $date, $venue, $type, $price, $image]) {
+            Event::query()->updateOrCreate(['slug' => $slug], [
+                'category_id' => $type === 'sport' ? $sportCategory?->id : $concertCategory?->id,
+                'city_id' => $city->id,
+                'organizer_id' => $organizer->id,
+                'organizer' => 'Guichet Organizer',
+                'title' => $title,
+                'short_description' => Str::limit($description, 110),
+                'description' => $description,
+                'city_name' => 'Casablanca',
+                'venue' => $venue,
+                'address' => $venue,
+                'event_date' => $date->toDateString(),
+                'event_time' => '20:00:00',
+                'image_url' => $image,
+                'image' => $image,
+                'type' => $type,
+                'buying_mode' => 'ticket',
+                'plan_type' => null,
+                'has_plan' => false,
+                'seating_enabled' => false,
+                'status' => 'published',
+                'featured' => false,
+                'starts_at' => $date,
+                'price_mad' => $price,
+            ]);
+        }
+
+        foreach ([
+            ['istanbul-sharm-demo', 'ISTANBUL & SHARM EL SHEIKH 11 jours', 'Last Minute', 'Istanbul', now()->addDays(8), 7900, 'https://picsum.photos/seed/istanbul-sharm/1200/700'],
+            ['splendeurs-europe-demo', 'Splendeurs France Suisse Italie', 'Voyage organisé', 'Paris', now()->addWeeks(3), 13900, 'https://picsum.photos/seed/europe-trip/1200/700'],
+            ['jordanie-merveilles-demo', 'Jordanie, terre de merveilles', 'Voyage thématique', 'Amman', now()->addMonth(), 17500, 'https://picsum.photos/seed/jordan-trip/1200/700'],
+        ] as [$slug, $title, $category, $destination, $departureDate, $price, $image]) {
+            DB::table('travels')->updateOrInsert(['slug' => $slug], ['title' => $title, 'category' => $category, 'destination' => $destination, 'departure_date' => $departureDate->toDateString(), 'price' => $price, 'image' => $image, 'description' => 'Voyage démo avec image et date dynamique.', 'status' => 'published', 'updated_at' => now(), 'created_at' => now()]);
+        }
+
+        foreach ([
+            ['desert-premium', 'Voyage désert premium', 'Voyage organisé', 'Merzouga', now()->addMonth(), 4200, 'https://picsum.photos/seed/travel/1200/700'],
+        ] as [$slug, $title, $category, $destination, $departureDate, $price, $image]) {
+            DB::table('travels')->updateOrInsert(['slug' => $slug], ['title' => $title, 'category' => $category, 'destination' => $destination, 'departure_date' => $departureDate->toDateString(), 'price' => $price, 'image' => $image, 'description' => 'Road trip premium.', 'status' => 'published', 'updated_at' => now(), 'created_at' => now()]);
+        }
+
+        foreach ([
+            ['atlas-quest', 'Atlas Quest', 'Aventure', '1h52', now()->subDays(2), 'https://picsum.photos/seed/atlas-quest/900/1200'],
+            ['marrakech-lights', 'Marrakech Lights', 'Comédie', '1h38', now()->subWeek(), 'https://picsum.photos/seed/marrakech-lights/900/1200'],
+            ['future-medina', 'Future Medina', 'Science-fiction', '2h04', now()->addDays(4), 'https://picsum.photos/seed/future-medina/900/1200'],
+        ] as [$slug, $title, $genre, $duration, $releaseDate, $poster]) {
+            DB::table('movies')->updateOrInsert(['slug' => $slug], ['title' => $title, 'genre' => $genre, 'duration' => $duration, 'release_date' => $releaseDate->toDateString(), 'poster' => $poster, 'synopsis' => 'Film démo publié avec séances.', 'status' => 'published', 'featured' => $slug === 'atlas-quest', 'updated_at' => now(), 'created_at' => now()]);
+            $seedMovie = DB::table('movies')->where('slug', $slug)->first();
+            if ($seedMovie) {
+                DB::table('movie_sessions')->updateOrInsert(['movie_id' => $seedMovie->id, 'session_date' => now()->toDateString(), 'session_time' => '18:00'], ['cinema' => 'Megarama', 'city' => 'Casablanca', 'price' => 70, 'updated_at' => now(), 'created_at' => now()]);
+                DB::table('movie_sessions')->updateOrInsert(['movie_id' => $seedMovie->id, 'session_date' => now()->addDays(2)->toDateString(), 'session_time' => '20:45'], ['cinema' => 'Pathé Californie', 'city' => 'Casablanca', 'price' => 85, 'updated_at' => now(), 'created_at' => now()]);
+            }
         }
 
         DB::table('payouts')->updateOrInsert(['reference' => 'PAYOUT-0001'], ['organizer_id' => $organizer->id, 'amount' => 12000, 'status' => 'pending', 'payout_date' => now()->addDays(5)->toDateString(), 'updated_at' => now(), 'created_at' => now()]);

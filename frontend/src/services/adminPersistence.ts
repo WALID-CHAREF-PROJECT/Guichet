@@ -112,6 +112,21 @@ function normalizeMovie(raw: Partial<MovieModel> & Record<string, unknown>): Mov
   return { id: String(raw.id ?? crypto.randomUUID()), poster: mediaUrl(raw.poster ?? raw.image ?? raw.image_url), title: str(raw.title), genre: str(raw.genre), duration: str(raw.duration), releaseDate: str(raw.releaseDate ?? raw.release_date ?? raw.starts_at), cinemas: str(raw.cinemas ?? raw.venue), description: str(raw.description), status: (str(raw.status, 'draft') as MovieModel['status']), featured: bool(raw.featured ?? raw.is_featured) };
 }
 
+
+function normalizePlanZones(value: unknown, fallback: BackofficeEvent['planZones'] = []): BackofficeEvent['planZones'] {
+  return array<Record<string, unknown>>(value, fallback as unknown as Record<string, unknown>[]).map((zone, index) => ({
+    id: String(zone.id ?? `zone-${index}`),
+    name: str(zone.name),
+    label: str(zone.label, str(zone.name)),
+    price: num(zone.price),
+    capacity: num(zone.capacity),
+    availableCapacity: num(zone.availableCapacity ?? zone.available_capacity, num(zone.capacity)),
+    color: str(zone.color, '#f97316'),
+    sortOrder: num(zone.sortOrder ?? zone.sort_order, index),
+    isAvailable: bool(zone.isAvailable ?? zone.is_available, true),
+  }));
+}
+
 function normalizeContent(raw: Partial<ContentBlock> & Record<string, unknown>): ContentBlock {
   return { id: String(raw.id ?? crypto.randomUUID()), type: (str(raw.type, 'section') as ContentBlock['type']), title: str(raw.title), subtitle: str(raw.subtitle), description: str(raw.description), ctaLabel: str(raw.ctaLabel ?? raw.cta_label), ctaLink: str(raw.ctaLink ?? raw.cta_link), image: mediaUrl(raw.image), backgroundImage: mediaUrl(raw.backgroundImage ?? raw.background_image), visible: bool(raw.visible ?? raw.is_visible, true), order: num(raw.order ?? raw.display_order ?? raw.sort_order, 1) };
 }
@@ -138,7 +153,7 @@ function normalizeEvent(raw: Partial<BackofficeEvent> & Record<string, unknown>,
     hasPlan: buyingMode === 'plan' && bool(raw.hasPlan ?? raw.has_plan, fallback.hasPlan),
     planType: buyingMode === 'plan' ? (planType as BackofficeEvent['planType']) : null,
     seatingEnabled: buyingMode === 'plan' && bool(raw.seatingEnabled ?? raw.seating_enabled, fallback.seatingEnabled),
-    planZones: array(raw.planZones ?? raw.zones, fallback.planZones ?? []),
+    planZones: normalizePlanZones(raw.planZones ?? raw.zones, fallback.planZones ?? []),
   };
 }
 

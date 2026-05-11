@@ -13,6 +13,7 @@ import {
   CategoryModel,
   ContentBlock,
   MovieModel,
+  PlanZoneModel,
   TravelModel,
 } from "../services/backoffice";
 import { useUser } from "../contexts/UserContext";
@@ -52,11 +53,28 @@ const danger =
 type EditableKind = "event" | "travel" | "movie" | "category" | "content";
 type Editable = Record<string, any> & { id?: string; kind?: EditableKind };
 
-const defaultPlanZones = [
-  { id: 'zone-orchestre', name: 'Orchestre', label: 'Face scène', price: 280, capacity: 220, availableCapacity: 180, color: '#38bdf8', sortOrder: 0, isAvailable: true },
-  { id: 'zone-balcon', name: 'Balcon', label: 'Vue surélevée', price: 180, capacity: 140, availableCapacity: 100, color: '#818cf8', sortOrder: 1, isAvailable: true },
-  { id: 'zone-vip', name: 'VIP', label: 'Premium', price: 520, capacity: 32, availableCapacity: 12, color: '#f59e0b', sortOrder: 2, isAvailable: true },
+const theatrePlanZones: PlanZoneModel[] = [
+  { id: 'zone-orchestre-vip', name: 'Orchestre VIP', label: 'Premiers rangs premium', price: 650, capacity: 48, availableCapacity: 48, color: '#f59e0b', sortOrder: 0, isAvailable: true },
+  { id: 'zone-orchestre', name: 'Orchestre', label: 'Face scène', price: 320, capacity: 220, availableCapacity: 220, color: '#38bdf8', sortOrder: 1, isAvailable: true },
+  { id: 'zone-balcon', name: 'Balcon', label: 'Vue surélevée', price: 220, capacity: 160, availableCapacity: 160, color: '#818cf8', sortOrder: 2, isAvailable: true },
+  { id: 'zone-mezzanine', name: 'Mezzanine', label: 'Centre mezzanine', price: 260, capacity: 96, availableCapacity: 96, color: '#a78bfa', sortOrder: 3, isAvailable: true },
+  { id: 'zone-galerie', name: 'Galerie', label: 'Placement économique', price: 140, capacity: 180, availableCapacity: 180, color: '#14b8a6', sortOrder: 4, isAvailable: true },
 ];
+const stadiumPlanZones: PlanZoneModel[] = [
+  { id: 'zone-tribune-nord', name: 'Tribune Nord', label: 'Virage Nord', price: 120, capacity: 1200, availableCapacity: 1200, color: '#22c55e', sortOrder: 0, isAvailable: true },
+  { id: 'zone-tribune-sud', name: 'Tribune Sud', label: 'Virage Sud', price: 120, capacity: 1200, availableCapacity: 1200, color: '#14b8a6', sortOrder: 1, isAvailable: true },
+  { id: 'zone-tribune-est', name: 'Tribune Est', label: 'Latérale Est', price: 180, capacity: 900, availableCapacity: 900, color: '#3b82f6', sortOrder: 2, isAvailable: true },
+  { id: 'zone-tribune-ouest', name: 'Tribune Ouest', label: 'Latérale Ouest', price: 220, capacity: 820, availableCapacity: 820, color: '#6366f1', sortOrder: 3, isAvailable: true },
+  { id: 'zone-vip', name: 'VIP', label: 'Salon premium', price: 650, capacity: 120, availableCapacity: 120, color: '#f97316', sortOrder: 4, isAvailable: true },
+  { id: 'zone-virage', name: 'Virage', label: 'Supporters', price: 90, capacity: 1600, availableCapacity: 1600, color: '#ef4444', sortOrder: 5, isAvailable: true },
+];
+const clonePlanZones = (zones: PlanZoneModel[]): PlanZoneModel[] => zones.map((zone, index) => ({ ...zone, id: `${zone.id}-${Date.now()}-${index}` }));
+const inferPlanType = (category?: string): 'theatre' | 'stadium' => {
+  const normalized = (category ?? '').toLowerCase();
+  if (/(sport|stad|mal3ab|basket|football|match)/.test(normalized)) return 'stadium';
+  return 'theatre';
+};
+const templateForPlanType = (planType?: string): PlanZoneModel[] => planType === 'stadium' ? stadiumPlanZones : theatrePlanZones;
 const emptyEvent: Editable = {
   kind: "event",
   title: "",
@@ -160,6 +178,12 @@ function MediaInput({
       <span>{label}</span>
       <input
         className={input}
+        placeholder="URL image ou chemin média"
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <input
+        className={input}
         type="file"
         accept="image/*"
         onChange={(e) => {
@@ -171,7 +195,7 @@ function MediaInput({
       {value ? (
         <img
           src={value}
-          alt=""
+          alt={`Aperçu ${label}`}
           className="h-32 w-full rounded-2xl object-cover"
         />
       ) : (
@@ -1098,47 +1122,105 @@ function Editor({
   if (editing.kind === "event") {
     const usePlan = editing.buyingMode === "plan";
     const zones = editing.planZones ?? [];
+    const activeZones = zones.filter((zone: any) => zone.isAvailable !== false && Number(zone.capacity) > 0);
+    const planType = (editing.planType ?? inferPlanType(editing.category)) as 'theatre' | 'stadium';
+    const setPlanMode = (buyingMode: string): void => {
+      if (buyingMode === 'plan') {
+        const nextPlanType = (editing.planType ?? inferPlanType(editing.category)) as 'theatre' | 'stadium';
+        setEditing({ ...editing, buyingMode: 'plan', hasPlan: true, seatingEnabled: true, planType: nextPlanType, planZones: zones.length ? zones : clonePlanZones(templateForPlanType(nextPlanType)) });
+        return;
+      }
+      setEditing({ ...editing, buyingMode: 'ticket', hasPlan: false, seatingEnabled: false, planType: null, planZones: [] });
+    };
+    const setPlanType = (nextPlanType: 'theatre' | 'stadium'): void => {
+      setEditing({ ...editing, planType: nextPlanType, hasPlan: true, seatingEnabled: true, planZones: zones.length ? zones : clonePlanZones(templateForPlanType(nextPlanType)) });
+    };
+    const resetZones = (nextPlanType: 'theatre' | 'stadium'): void => {
+      setEditing({ ...editing, buyingMode: 'plan', hasPlan: true, seatingEnabled: true, planType: nextPlanType, planZones: clonePlanZones(templateForPlanType(nextPlanType)) });
+    };
+    const handleCategoryChange = (category: string): void => {
+      const inferred = inferPlanType(category);
+      setEditing({ ...editing, category, planType: usePlan && !editing.planType ? inferred : editing.planType });
+    };
+    const handleSubmit = (submitEvent: FormEvent): void => {
+      if (usePlan && (!planType || activeZones.length === 0)) {
+        submitEvent.preventDefault();
+        return;
+      }
+      saveEditable(submitEvent);
+    };
     return (
-      <form className={panel + " grid gap-4 md:grid-cols-2"} onSubmit={saveEditable}>
+      <form className={panel + " grid gap-5 md:grid-cols-2"} onSubmit={handleSubmit}>
         <h2 className="md:col-span-2 text-xl font-bold">{editing.id ? "Modifier" : "Créer"} événement</h2>
-        <input className={input} placeholder="Titre" value={editing.title ?? ""} onChange={(e) => set("title", e.target.value)} />
-        <input className={input} placeholder="Slug" value={editing.slug ?? ""} onChange={(e) => set("slug", e.target.value)} />
-        <input className={input} placeholder="Catégorie" value={editing.category ?? ""} onChange={(e) => set("category", e.target.value)} />
-        <input className={input} placeholder="Ville" value={editing.city ?? ""} onChange={(e) => set("city", e.target.value)} />
-        <input className={input} placeholder="Lieu / salle" value={editing.location ?? ""} onChange={(e) => set("location", e.target.value)} />
-        <input className={input} type="date" value={editing.date ?? ""} onChange={(e) => set("date", e.target.value)} />
-        <input className={input} type="time" value={editing.time ?? ""} onChange={(e) => set("time", e.target.value)} />
-        <input className={input} type="number" placeholder="Prix normal" value={editing.ticketTypes?.[0]?.price ?? 0} onChange={(e) => setEditing({ ...editing, ticketTypes: [{ ...(editing.ticketTypes?.[0] ?? { id: 'ticket-normal', name: 'Normal', stock: 300, seatPlanRequired: false }), price: Number(e.target.value) }] })} />
-        <textarea className={input + " md:col-span-2"} placeholder="Description" value={editing.description ?? ""} onChange={(e) => set("description", e.target.value)} />
-        <MediaInput label="Image" value={editing.image ?? ""} onChange={(value) => set("image", value)} />
-        <div className="space-y-3 rounded-2xl border border-white/10 p-4">
+
+        <section className="md:col-span-2 grid gap-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4 md:grid-cols-2">
+          <h3 className="md:col-span-2 text-base font-bold text-cyan-100">Informations</h3>
+          <input className={input} placeholder="Titre" value={editing.title ?? ""} onChange={(e) => set("title", e.target.value)} />
+          <input className={input} placeholder="Slug" value={editing.slug ?? ""} onChange={(e) => set("slug", e.target.value)} />
+          <input className={input} placeholder="Catégorie (Sport, Concerts, Théâtre...)" value={editing.category ?? ""} onChange={(e) => handleCategoryChange(e.target.value)} />
+          <input className={input} placeholder="Ville" value={editing.city ?? ""} onChange={(e) => set("city", e.target.value)} />
+          <input className={input} placeholder="Lieu / salle" value={editing.location ?? ""} onChange={(e) => set("location", e.target.value)} />
+          <input className={input} type="date" value={editing.date ?? ""} onChange={(e) => set("date", e.target.value)} />
+          <input className={input} type="time" value={editing.time ?? ""} onChange={(e) => set("time", e.target.value)} />
+          <input className={input} type="number" placeholder="Prix normal" value={editing.ticketTypes?.[0]?.price ?? 0} onChange={(e) => setEditing({ ...editing, ticketTypes: [{ ...(editing.ticketTypes?.[0] ?? { id: 'ticket-normal', name: 'Normal', stock: 300, seatPlanRequired: false }), price: Number(e.target.value) }] })} />
+          <textarea className={input + " md:col-span-2"} placeholder="Description" value={editing.description ?? ""} onChange={(e) => set("description", e.target.value)} />
+        </section>
+
+        <section className="md:col-span-2 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+          <h3 className="mb-3 text-base font-bold text-cyan-100">Média</h3>
+          <MediaInput label="Image" value={editing.image ?? ""} onChange={(value) => set("image", value)} />
+        </section>
+
+        <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+          <h3 className="mb-3 text-base font-bold text-cyan-100">Publication</h3>
+          <div className="space-y-3">
+            <label className="flex gap-2 text-sm"><input type="checkbox" checked={editing.status === "published"} onChange={(e) => set("status", e.target.checked ? "published" : "draft")} /> Publié</label>
+            <label className="flex gap-2 text-sm"><input type="checkbox" checked={editing.featured ?? false} onChange={(e) => set("featured", e.target.checked)} /> Mis en avant</label>
+          </div>
+        </section>
+
+        <section className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+          <h3 className="text-base font-bold text-cyan-100">Mode d’achat</h3>
+          <p className="text-xs leading-5 text-slate-300">Utilisez le mode plan quand le client doit choisir une zone sur un plan de salle ou un stade. Les billets normaux restent sans plan interactif.</p>
           <label className="block text-sm font-semibold">Mode d’achat</label>
-          <select className={input} value={editing.buyingMode ?? "ticket"} onChange={(e) => {
-            const buyingMode = e.target.value;
-            setEditing({ ...editing, buyingMode, hasPlan: buyingMode === 'plan', seatingEnabled: buyingMode === 'plan', planType: buyingMode === 'plan' ? (editing.planType ?? 'theatre') : null, planZones: buyingMode === 'plan' ? (zones.length ? zones : defaultPlanZones) : [] });
-          }}>
+          <select className={input} value={editing.buyingMode ?? "ticket"} onChange={(e) => setPlanMode(e.target.value)}>
             <option value="ticket">Normal ticket</option>
-            <option value="plan">Via plan</option>
+            <option value="plan">Acheter via plan</option>
           </select>
-          {usePlan && <select className={input} value={editing.planType ?? "theatre"} onChange={(e) => set("planType", e.target.value)}>
-            <option value="theatre">Theatre / salle</option>
-            <option value="stadium">Stadium / sport</option>
+          {usePlan && <select className={input} value={planType} onChange={(e) => setPlanType(e.target.value as 'theatre' | 'stadium')} required>
+            <option value="theatre">Théâtre / Salle</option>
+            <option value="stadium">Stade / Mal3ab</option>
           </select>}
           {usePlan && <label className="flex gap-2 text-sm"><input type="checkbox" checked={editing.seatingEnabled ?? true} onChange={(e) => set("seatingEnabled", e.target.checked)} /> Seating enabled</label>}
-          <label className="flex gap-2 text-sm"><input type="checkbox" checked={editing.status === "published"} onChange={(e) => set("status", e.target.checked ? "published" : "draft")} /> Publié</label>
-          <label className="flex gap-2 text-sm"><input type="checkbox" checked={editing.featured ?? false} onChange={(e) => set("featured", e.target.checked)} /> Mis en avant</label>
-        </div>
-        {usePlan && <div className="md:col-span-2 space-y-3 rounded-2xl border border-white/10 p-4">
-          <div className="flex items-center justify-between"><h3 className="font-bold">Zones / catégories du plan</h3><button type="button" className={ghost} onClick={() => setEditing({ ...editing, planZones: [...zones, { id: String(Date.now()), name: 'Nouvelle zone', label: '', price: 100, capacity: 100, availableCapacity: 100, color: '#f97316', sortOrder: zones.length, isAvailable: true }] })}>Ajouter zone</button></div>
-          {zones.map((zone: any, index: number) => <div key={zone.id ?? index} className="grid gap-2 rounded-xl bg-white/[0.04] p-3 md:grid-cols-6">
-            <input className={input} placeholder="Nom" value={zone.name} onChange={(e) => setZone(index, 'name', e.target.value)} />
+        </section>
+
+        {usePlan && <section className="md:col-span-2 space-y-3 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 className="font-bold text-cyan-100">Plan & zones</h3>
+              <p className="text-xs text-slate-300">Ajoutez au moins une zone active avec prix et capacité. Ces zones apparaîtront dans le sélecteur public {planType === 'stadium' ? 'stade' : 'salle'}.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className={ghost} onClick={() => resetZones('theatre')}>Reset theatre zones</button>
+              <button type="button" className={ghost} onClick={() => resetZones('stadium')}>Reset stadium zones</button>
+              <button type="button" className={btn} onClick={() => setEditing({ ...editing, planZones: [...zones, { id: String(Date.now()), name: 'Nouvelle zone', label: '', price: 100, capacity: 100, availableCapacity: 100, color: '#f97316', sortOrder: zones.length, isAvailable: true }] })}>Add zone</button>
+            </div>
+          </div>
+          {activeZones.length === 0 && <p className="rounded-2xl border border-red-300/20 bg-red-500/10 p-3 text-sm text-red-100">Le mode plan nécessite au moins une zone active avant l’enregistrement.</p>}
+          {zones.map((zone: any, index: number) => <div key={zone.id ?? index} className="grid gap-2 rounded-xl bg-white/[0.04] p-3 md:grid-cols-8">
+            <input className={input} placeholder="Zone name" value={zone.name} onChange={(e) => setZone(index, 'name', e.target.value)} />
             <input className={input} placeholder="Label" value={zone.label ?? ''} onChange={(e) => setZone(index, 'label', e.target.value)} />
-            <input className={input} type="number" placeholder="Prix" value={zone.price} onChange={(e) => setZone(index, 'price', Number(e.target.value))} />
-            <input className={input} type="number" placeholder="Capacité" value={zone.capacity} onChange={(e) => setZone(index, 'capacity', Number(e.target.value))} />
-            <input className={input} type="color" value={zone.color} onChange={(e) => setZone(index, 'color', e.target.value)} />
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={zone.isAvailable !== false} onChange={(e) => setZone(index, 'isAvailable', e.target.checked)} /> active</label>
+            <input className={input} type="number" min="0" placeholder="Prix" value={zone.price} onChange={(e) => setZone(index, 'price', Number(e.target.value))} />
+            <input className={input} type="number" min="0" placeholder="Capacité" value={zone.capacity} onChange={(e) => setZone(index, 'capacity', Number(e.target.value))} />
+            <input className={input} type="number" min="0" placeholder="Disponible" value={zone.availableCapacity ?? zone.capacity ?? 0} onChange={(e) => setZone(index, 'availableCapacity', Number(e.target.value))} />
+            <input className={input} type="color" title="Couleur" value={zone.color} onChange={(e) => setZone(index, 'color', e.target.value)} />
+            <input className={input} type="number" min="0" placeholder="Ordre" value={zone.sortOrder ?? index} onChange={(e) => setZone(index, 'sortOrder', Number(e.target.value))} />
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <label className="flex items-center gap-2"><input type="checkbox" checked={zone.isAvailable !== false} onChange={(e) => setZone(index, 'isAvailable', e.target.checked)} /> actif</label>
+              <button type="button" className={danger} onClick={() => setEditing({ ...editing, planZones: zones.filter((_: any, zoneIndex: number) => zoneIndex !== index) })}>Remove zone</button>
+            </div>
           </div>)}
-        </div>}
+        </section>}
         <div className="md:col-span-2 flex gap-2"><button className={btn} type="submit">Enregistrer</button><button className={ghost} type="button" onClick={() => setEditing(null)}>Annuler</button></div>
       </form>
     );

@@ -139,6 +139,30 @@ const organizerSlugOverrides: Record<string, string> = {
   'association edom': 'association-edom'
 };
 
+
+const theatreSeedZones = (): PlanZoneModel[] => [
+  { id: uid('zone'), name: 'Orchestre VIP', label: 'Premiers rangs premium', price: 650, capacity: 48, availableCapacity: 18, color: '#f59e0b', sortOrder: 0, isAvailable: true },
+  { id: uid('zone'), name: 'Orchestre', label: 'Face scène', price: 320, capacity: 220, availableCapacity: 180, color: '#38bdf8', sortOrder: 1, isAvailable: true },
+  { id: uid('zone'), name: 'Balcon', label: 'Vue surélevée', price: 220, capacity: 160, availableCapacity: 100, color: '#818cf8', sortOrder: 2, isAvailable: true },
+  { id: uid('zone'), name: 'Mezzanine', label: 'Centre mezzanine', price: 260, capacity: 96, availableCapacity: 45, color: '#a78bfa', sortOrder: 3, isAvailable: true },
+  { id: uid('zone'), name: 'Galerie', label: 'Placement économique', price: 140, capacity: 180, availableCapacity: 120, color: '#14b8a6', sortOrder: 4, isAvailable: true },
+];
+const stadiumSeedZones = (): PlanZoneModel[] => [
+  { id: uid('zone'), name: 'Tribune Nord', label: 'Virage Nord', price: 120, capacity: 1200, availableCapacity: 640, color: '#22c55e', sortOrder: 0, isAvailable: true },
+  { id: uid('zone'), name: 'Tribune Sud', label: 'Virage Sud', price: 120, capacity: 1200, availableCapacity: 580, color: '#14b8a6', sortOrder: 1, isAvailable: true },
+  { id: uid('zone'), name: 'Tribune Est', label: 'Latérale Est', price: 180, capacity: 900, availableCapacity: 340, color: '#3b82f6', sortOrder: 2, isAvailable: true },
+  { id: uid('zone'), name: 'Tribune Ouest', label: 'Latérale Ouest', price: 220, capacity: 820, availableCapacity: 260, color: '#6366f1', sortOrder: 3, isAvailable: true },
+  { id: uid('zone'), name: 'VIP', label: 'Salon premium', price: 650, capacity: 120, availableCapacity: 40, color: '#f97316', sortOrder: 4, isAvailable: true },
+  { id: uid('zone'), name: 'Virage', label: 'Supporters', price: 90, capacity: 1600, availableCapacity: 900, color: '#ef4444', sortOrder: 5, isAvailable: true },
+];
+const seedIsoDate = (offsetDays: number): string => new Date(Date.now() + offsetDays * 86400000).toISOString().slice(0, 10);
+function seedPlanFor(category: string, slug: string): { buyingMode: BackofficeEvent['buyingMode']; hasPlan: boolean; planType: BackofficeEvent['planType']; seatingEnabled: boolean; planZones: PlanZoneModel[] } {
+  const normalized = `${category} ${slug}`.toLowerCase();
+  if (normalized.includes('bal') || normalized.includes('sport') || normalized.includes('stad')) return { buyingMode: 'plan', hasPlan: true, planType: 'stadium', seatingEnabled: true, planZones: stadiumSeedZones() };
+  if (normalized.includes('theatre') || normalized.includes('spectacle') || normalized.includes('piaf') || normalized.includes('tim')) return { buyingMode: 'plan', hasPlan: true, planType: 'theatre', seatingEnabled: true, planZones: theatreSeedZones() };
+  return { buyingMode: 'ticket', hasPlan: false, planType: null, seatingEnabled: false, planZones: [] };
+}
+
 function organizerSlug(value: string): string {
   return organizerSlugOverrides[normalizeSlug(value).replace(/-/g, ' ')] ?? slugify(value);
 }
@@ -193,24 +217,16 @@ function buildPublicEvents(existingEvents: BackofficeEvent[], organizers: Organi
       description: event.description,
       city: event.location.split('-').pop()?.trim() ?? 'Casablanca',
       location: event.location,
-      date: event.date,
+      date: seedIsoDate(index + 1),
       time: event.time,
       image: event.image,
       gallery: [event.image],
       tags: event.tags,
-      status: index < 2 ? 'past' : 'published',
+      status: 'published',
       featured: index % 4 === 0,
       ticketsSold: 40 + index * 22,
       revenue: 12000 + index * 6400,
-      buyingMode: index === 0 ? 'plan' : 'ticket',
-      hasPlan: index === 0,
-      planType: index === 0 ? 'theatre' : null,
-      seatingEnabled: index === 0,
-      planZones: index === 0 ? [
-        { id: uid('zone'), name: 'Orchestre', label: 'Face scène', price: 280, capacity: 220, availableCapacity: 180, color: '#38bdf8', sortOrder: 0, isAvailable: true },
-        { id: uid('zone'), name: 'Balcon', label: 'Vue surélevée', price: 180, capacity: 140, availableCapacity: 100, color: '#818cf8', sortOrder: 1, isAvailable: true },
-        { id: uid('zone'), name: 'VIP', label: 'Loges premium', price: 520, capacity: 32, availableCapacity: 12, color: '#f59e0b', sortOrder: 2, isAvailable: true }
-      ] : [],
+      ...seedPlanFor(event.tags[0] ?? '', event.slug),
       ticketTypes: [
         { id: uid('ticket'), name: 'Normal', price: Number.parseInt(event.price.replace(/[^\d]/g, ''), 10) || 150, stock: 300, seatPlanRequired: false },
         { id: uid('ticket'), name: 'VIP', price: (Number.parseInt(event.price.replace(/[^\d]/g, ''), 10) || 150) + 200, stock: 120, seatPlanRequired: true }
@@ -246,7 +262,7 @@ function makeSeedData(): DbShape {
     isApproved: true
   }];
 
-  const events: BackofficeEvent[] = platformEvents.slice(0, 4).map((event, index) => ({
+  const events: BackofficeEvent[] = platformEvents.slice(0, 8).map((event, index) => ({
     id: `evt-${index + 1}`,
     organizerId,
     title: event.title,
@@ -256,24 +272,16 @@ function makeSeedData(): DbShape {
     description: event.description,
     city: event.location.split('-').pop()?.trim() ?? 'Casablanca',
     location: event.location,
-    date: event.date,
     time: event.time,
     image: event.image,
     gallery: [event.image],
     tags: event.tags,
-    status: index % 3 === 0 ? 'draft' : 'published',
+    status: 'published',
     featured: index === 0,
     ticketsSold: 40 + index * 22,
     revenue: 12000 + index * 6400,
-    buyingMode: index === 0 ? 'plan' : 'ticket',
-    hasPlan: index === 0,
-    planType: index === 0 ? 'theatre' : null,
-    seatingEnabled: index === 0,
-    planZones: index === 0 ? [
-      { id: uid('zone'), name: 'Orchestre', label: 'Face scène', price: 280, capacity: 220, availableCapacity: 180, color: '#38bdf8', sortOrder: 0, isAvailable: true },
-      { id: uid('zone'), name: 'Balcon', label: 'Vue surélevée', price: 180, capacity: 140, availableCapacity: 100, color: '#818cf8', sortOrder: 1, isAvailable: true },
-      { id: uid('zone'), name: 'VIP', label: 'Loges premium', price: 520, capacity: 32, availableCapacity: 12, color: '#f59e0b', sortOrder: 2, isAvailable: true }
-    ] : [],
+    date: seedIsoDate(index + 1),
+    ...seedPlanFor(event.tags[0] ?? '', event.slug),
     ticketTypes: [
       { id: uid('ticket'), name: 'Normal', price: 150, stock: 300, seatPlanRequired: false },
       { id: uid('ticket'), name: 'VIP', price: 350, stock: 120, seatPlanRequired: true }
@@ -315,8 +323,8 @@ function makeSeedData(): DbShape {
     { id: 'cat-4', type: 'sport', name: 'Basketball', slug: 'basketball', isActive: true, order: 4, icon: '🏀' }
   ];
 
-  const travels: TravelModel[] = voyages.map((travel, i) => ({ id: `travel-${travel.id}`, image: travel.image, title: travel.title, category: travel.collection, destination: travel.location, departureDate: `2026-0${i + 5}-12`, price: Number.parseInt(travel.price, 10) || 3000, status: 'published', featured: i === 0 }));
-  const movieItems: MovieModel[] = movies.map((movie, i) => ({ id: `movie-${movie.id}`, poster: movie.image, title: movie.title, genre: movie.genre, duration: movie.duration, releaseDate: `2026-0${i + 4}-01`, cinemas: 'Megarama, Imax', status: 'published', featured: i === 0 }));
+  const travels: TravelModel[] = voyages.map((travel, i) => ({ id: `travel-${travel.id}`, image: travel.image, title: travel.title, category: travel.collection, destination: travel.location, departureDate: seedIsoDate(7 + i * 9), price: Number.parseInt(travel.price, 10) || 3000, status: 'published', featured: i === 0 }));
+  const movieItems: MovieModel[] = movies.map((movie, i) => ({ id: `movie-${movie.id}`, poster: movie.image, title: movie.title, genre: movie.genre, duration: movie.duration, releaseDate: seedIsoDate(i - 2), cinemas: 'Megarama, Imax, Pathé Californie', status: 'published', featured: i === 0 }));
   const content: ContentBlock[] = [
     { id: uid('content'), type: 'banner', title: 'Hero principal', subtitle: 'Campagne été', image: platformEvents[0]?.image, visible: true, order: 1 },
     { id: uid('content'), type: 'section', title: 'Événements promus', visible: true, order: 2 }

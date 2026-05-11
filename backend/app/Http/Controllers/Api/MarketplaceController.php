@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
 
 class MarketplaceController extends Controller
@@ -868,11 +869,29 @@ class MarketplaceController extends Controller
 
         if (!$partial || array_key_exists('buying_mode', $data) || array_key_exists('has_plan', $data) || array_key_exists('plan_type', $data)) {
             $mode = $data['buying_mode'] ?? 'ticket';
-            $hasPlan = $mode === 'plan' && (bool) ($data['has_plan'] ?? true);
-            $data['buying_mode'] = $hasPlan ? 'plan' : $mode;
+            if ($mode === 'plan' && array_key_exists('has_plan', $data) && (bool) $data['has_plan'] === false) {
+                throw ValidationException::withMessages(['has_plan' => 'has_plan must be true when buying_mode is plan.']);
+            }
+            if ($mode !== 'plan' && !empty($data['has_plan'])) {
+                throw ValidationException::withMessages(['has_plan' => 'has_plan must be false when buying_mode is ticket.']);
+            }
+
+            $hasPlan = $mode === 'plan';
+            $data['buying_mode'] = $hasPlan ? 'plan' : 'ticket';
             $data['has_plan'] = $hasPlan;
-            $data['seating_enabled'] = $hasPlan && (bool) ($data['seating_enabled'] ?? true);
-            $data['plan_type'] = $hasPlan ? ($data['plan_type'] ?? 'generic') : null;
+            $data['seating_enabled'] = $hasPlan;
+            $data['plan_type'] = $hasPlan ? ($data['plan_type'] ?? null) : null;
+
+            if ($hasPlan && empty($data['plan_type'])) {
+                throw ValidationException::withMessages(['plan_type' => 'plan_type is required when buying_mode is plan.']);
+            }
+        }
+
+        if (($data['buying_mode'] ?? null) === 'plan') {
+            $activeZones = collect($data['zones'] ?? [])->filter(fn ($zone) => ($zone['is_available'] ?? true) && (int) ($zone['capacity'] ?? 0) > 0);
+            if ($activeZones->isEmpty()) {
+                throw ValidationException::withMessages(['zones' => 'At least one active zone is required when buying_mode is plan.']);
+            }
         }
         if (!empty($data['title']) && empty($data['slug'])) {
             $data['slug'] = Str::slug($data['title']);
