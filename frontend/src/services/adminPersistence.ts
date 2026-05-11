@@ -6,9 +6,10 @@ import { StoredUser, getCurrentUser, getUsers } from './storage';
 export interface AdminData extends DbShape {
   users: StoredUser[];
   source: 'api' | 'local-fallback';
+  failedCollections?: AdminCollection[];
 }
 
-type AdminCollection = 'users' | 'organizers' | 'events' | 'orders' | 'categories' | 'travels' | 'movies' | 'content' | 'settings';
+export type AdminCollection = 'users' | 'organizers' | 'events' | 'orders' | 'categories' | 'travels' | 'movies' | 'content' | 'settings';
 
 export class AdminApiError extends Error {
   constructor(
@@ -65,12 +66,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return await response.json() as T;
 }
 
-async function optionalCollection<T>(name: AdminCollection, fallback: T): Promise<T> {
+async function optionalCollection<T>(name: AdminCollection, fallback: T): Promise<{ data: T; failed: boolean }> {
   try {
-    return await request<T>(`/admin/${name}`);
+    return { data: await request<T>(`/admin/${name}`), failed: false };
   } catch (error) {
     logAdminFailure(`/admin/${name}`, error);
-    return fallback;
+    return { data: fallback, failed: true };
   }
 }
 
@@ -219,7 +220,8 @@ export const adminPersistence = {
       return { ...local, users: [], source: 'local-fallback' };
     }
     adminDebug('boot', { apiBaseUrl: API_BASE_URL, role: getCurrentUser()?.role, hasToken: Boolean(getAuthToken()) });
-    const [users, organizers, events, orders, categories, travels, movies, content, settings] = await Promise.all([
+    const collectionNames: AdminCollection[] = ['users', 'organizers', 'events', 'orders', 'categories', 'travels', 'movies', 'content', 'settings'];
+    const collectionResults = await Promise.all([
       optionalCollection<StoredUser[]>('users', getUsers()),
       optionalCollection<OrganizerProfile[]>('organizers', local.organizers),
       optionalCollection<Array<Partial<BackofficeEvent> & Record<string, unknown>>>('events', local.events as unknown as Array<Partial<BackofficeEvent> & Record<string, unknown>>),
@@ -230,6 +232,8 @@ export const adminPersistence = {
       optionalCollection<Array<Partial<ContentBlock> & Record<string, unknown>>>('content', local.content as unknown as Array<Partial<ContentBlock> & Record<string, unknown>>),
       optionalCollection<typeof local.settings>('settings', local.settings),
     ]);
+    const [users, organizers, events, orders, categories, travels, movies, content, settings] = collectionResults.map((result) => result.data);
+    const failedCollections = collectionResults.reduce<AdminCollection[]>((failed, result, index) => result.failed ? [...failed, collectionNames[index]] : failed, []);
 
     const byIndex = (index: number): BackofficeEvent => local.events[index] ?? local.events[0];
     return {
@@ -244,6 +248,7 @@ export const adminPersistence = {
       content: array<Partial<ContentBlock> & Record<string, unknown>>(content, local.content as unknown as Array<Partial<ContentBlock> & Record<string, unknown>>).map(normalizeContent),
       settings: { ...local.settings, ...settings },
       source: hasAdminSession() ? 'api' : 'local-fallback',
+      failedCollections,
     };
   },
   async deleteUser(id: string): Promise<void> { try { await request(`/admin/users/${id}`, { method: 'DELETE' }); } catch (error) { logAdminFailure(`/admin/users/${id}`, error); backofficeService.deleteUser(id); } },
