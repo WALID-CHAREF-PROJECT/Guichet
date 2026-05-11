@@ -27,6 +27,7 @@ class EventResource extends JsonResource
             ],
             'description' => $this->description,
             'image_url' => $this->hero_image ?: $this->image ?: $this->image_url,
+            'event_date' => $this->event_date?->toDateString(),
             'starts_at' => $this->starts_at?->toIso8601String(),
             'starts_at_human' => $this->starts_at?->locale('fr')->isoFormat('dddd D MMMM YYYY, HH:mm') ?? trim(($this->event_date ?? '').' '.($this->event_time ?? '')),
             'price_mad' => (float) $this->price_mad,

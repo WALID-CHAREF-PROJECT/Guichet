@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import CategoryStrip from '../components/CategoryStrip';
 import PlatformTopNav from '../components/PlatformTopNav';
@@ -6,15 +6,14 @@ import FavoriteButton from '../components/FavoriteButton';
 import EmptyState from '../components/EmptyState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import ResponsiveImage from '../components/ResponsiveImage';
+import DateFilterTabs, { DateFilterValue } from '../components/DateFilterTabs';
 import { getPublicEvents } from '../services/publicApi';
 import { EventItem } from '../types/api';
-
-type DateFilter = 'today' | 'week' | 'weekend' | 'month';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
 function eventDate(event: EventItem): string {
-  return event.date ?? event.starts_at_human?.split(' ')[0] ?? '';
+  return event.event_date ?? event.date ?? event.starts_at?.slice(0, 10) ?? event.starts_at_human?.split(' ')[0] ?? '';
 }
 
 function eventTime(event: EventItem): string {
@@ -60,43 +59,41 @@ export default function TicketingHomePage(): JSX.Element {
   const [selectedCity, setSelectedCity] = useState(searchParams.get('city') ?? '');
   const [hour, setHour] = useState(searchParams.get('hour') ?? '');
   const [calendarDate, setCalendarDate] = useState(searchParams.get('date') ?? '');
-  const [activeDateFilter, setActiveDateFilter] = useState<DateFilter>((searchParams.get('preset') as DateFilter) ?? 'week');
+  const [activeDateFilter, setActiveDateFilter] = useState<DateFilterValue>((searchParams.get('date_filter') as DateFilterValue) ?? (searchParams.get('preset') as DateFilterValue) ?? '');
   const [events, setEvents] = useState<EventItem[]>([]);
   const [state, setState] = useState<LoadState>('loading');
   const [error, setError] = useState('');
 
-  const load = (): void => {
+  const load = useCallback((): void => {
     setState('loading');
-    getPublicEvents({ type: 'event', q: searchParams.get('q') ?? undefined })
+    getPublicEvents({
+      type: 'event',
+      q: searchParams.get('q') ?? undefined,
+      category: selectedTag || undefined,
+      city: selectedCity || undefined,
+      date_filter: activeDateFilter || undefined,
+    })
       .then((payload) => { setEvents(payload.data); setState('ready'); setError(''); })
       .catch((err: unknown) => { setError(err instanceof Error ? err.message : 'Erreur de chargement'); setState('error'); });
-  };
+  }, [activeDateFilter, searchParams, selectedCity, selectedTag]);
 
-  useEffect(load, [searchParams]);
+  useEffect(load, [load]);
 
   useEffect(() => {
     setSelectedTag(searchParams.get('category') ?? '');
     setSelectedCity(searchParams.get('city') ?? '');
     setHour(searchParams.get('hour') ?? '');
     setCalendarDate(searchParams.get('date') ?? '');
-    setActiveDateFilter((searchParams.get('preset') as DateFilter) ?? 'week');
+    setActiveDateFilter((searchParams.get('date_filter') as DateFilterValue) ?? (searchParams.get('preset') as DateFilterValue) ?? '');
   }, [searchParams]);
 
   const filteredEvents = useMemo(() => events
-    .filter((event) => (!selectedTag || event.category?.slug === selectedTag || event.type === selectedTag) && (!selectedCity || eventLocation(event).toLowerCase().includes(selectedCity.toLowerCase())))
     .filter((event) => (!hour || (hour === 'Soir' ? Number(eventTime(event).split(':')[0]) >= 18 : hour === 'Matin' ? Number(eventTime(event).split(':')[0]) < 12 : Number(eventTime(event).split(':')[0]) >= 12 && Number(eventTime(event).split(':')[0]) < 18)))
-    .filter((event) => !calendarDate || eventDate(event) === calendarDate), [events, selectedTag, selectedCity, hour, calendarDate]);
+    .filter((event) => !calendarDate || eventDate(event) === calendarDate), [events, hour, calendarDate]);
 
   const featured = filteredEvents.filter((event) => event.featured).slice(0, 4);
   const heroEvents = featured.length > 0 ? featured : filteredEvents.slice(0, 4);
   const categoryOptions = Array.from(new Map(events.map((event) => [event.category?.slug, event.category]).filter(([slug]) => Boolean(slug)) as Array<[string, EventItem['category']]>).values());
-
-  const tabs: { key: DateFilter; label: string }[] = [
-    { key: 'today', label: 'Aujourd’hui' },
-    { key: 'week', label: 'Cette semaine' },
-    { key: 'weekend', label: 'ce weekend' },
-    { key: 'month', label: 'Ce mois-ci' }
-  ];
 
   return (
     <div className="-mx-4 min-h-screen bg-[#020b22] text-white lg:-mx-8">
@@ -106,14 +103,14 @@ export default function TicketingHomePage(): JSX.Element {
 
       {state === 'loading' && <section className="mx-auto max-w-[1800px] px-4 py-8 lg:px-8"><LoadingSkeleton label="Chargement des événements..." /></section>}
       {state === 'error' && <section className="mx-auto max-w-[900px] px-4 py-16"><EmptyState title="Impossible de charger les événements." description={error} action={<button onClick={load} className="rounded-full bg-white px-5 py-2 font-semibold text-[#041743]">Réessayer</button>} /></section>}
-      {state === 'ready' && filteredEvents.length === 0 && <section className="mx-auto max-w-[900px] px-4 py-16"><EmptyState title="Aucun événement publié ne correspond à ces filtres." /></section>}
+      {state === 'ready' && filteredEvents.length === 0 && <section className="mx-auto max-w-[900px] px-4 py-16"><EmptyState title="Aucun événement ne correspond à ce filtre de date." description="Essayez une autre période ou réinitialisez les filtres pour découvrir tous les événements disponibles." action={<button onClick={() => setActiveDateFilter('')} className="rounded-full bg-white px-5 py-2 font-semibold text-[#041743]">Voir tous les événements</button>} /></section>}
 
       {state === 'ready' && filteredEvents.length > 0 && (
         <>
           <section className="mx-auto max-w-[1800px] px-4 pt-7 lg:px-8">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">{heroEvents.map((event) => <FeaturedPosterCard key={event.slug} event={event} />)}</div>
           </section>
-          <div className="mx-auto flex w-full max-w-xl items-center justify-center gap-5 border-b border-white/10 pb-2 pt-5 text-sm md:text-base">{tabs.map((tab) => <button key={tab.key} onClick={() => setActiveDateFilter(tab.key)} className={`relative pb-2 ${activeDateFilter === tab.key ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}>{tab.label}</button>)}</div>
+          <div className="mx-auto w-full max-w-3xl px-4 pt-5"><DateFilterTabs active={activeDateFilter} onChange={setActiveDateFilter} /></div>
           <section className="mx-auto max-w-[1800px] px-4 pt-7 lg:px-8"><div className="flex gap-4 overflow-x-auto pb-2">{filteredEvents.map((event) => <EventCard key={`strip-${event.id}`} event={event} compact />)}</div></section>
           <section className="mx-auto max-w-[1800px] px-4 pb-12 pt-9 lg:px-8"><div className="mb-6 border-t border-white/10 pt-6"><h2 className="text-3xl font-bold text-white">Tous les événements</h2></div><div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">{filteredEvents.map((event) => <EventCard key={`grid-${event.id}`} event={event} />)}</div></section>
         </>
@@ -127,8 +124,8 @@ export default function TicketingHomePage(): JSX.Element {
             <label className="mt-3 block text-sm">Villes<select value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)} className="mt-1 w-full rounded-xl border border-white/20 bg-[#0b275c] p-2"><option value="">Toutes</option><option>Casablanca</option><option>Rabat</option><option>Marrakech</option></select></label>
             <label className="mt-3 block text-sm">Heures<select value={hour} onChange={(e) => setHour(e.target.value)} className="mt-1 w-full rounded-xl border border-white/20 bg-[#0b275c] p-2"><option value="">Tous créneaux</option><option>Matin</option><option>Après-midi</option><option>Soir</option></select></label>
             <label className="mt-3 block text-sm">Date spécifique<input type="date" value={calendarDate} onChange={(e) => setCalendarDate(e.target.value)} className="mt-1 w-full rounded-xl border border-white/20 bg-[#0b275c] p-2" /></label>
-            <div className="mt-4 flex flex-wrap gap-2">{tabs.map((tab) => <button key={tab.key} onClick={() => setActiveDateFilter(tab.key)} className="rounded-full border border-white/20 px-2 py-1 text-xs">{tab.label}</button>)}</div>
-            <div className="mt-4 flex gap-2"><button onClick={() => { setSelectedTag(''); setSelectedCity(''); setHour(''); setCalendarDate(''); setActiveDateFilter('week'); }} className="flex-1 rounded border border-white/20 py-2">Réinitialiser</button><button onClick={() => setFilterOpen(false)} className="flex-1 rounded bg-white py-2 text-[#041743]">Appliquer</button></div>
+            <DateFilterTabs active={activeDateFilter} onChange={setActiveDateFilter} className="mt-4 rounded-2xl" />
+            <div className="mt-4 flex gap-2"><button onClick={() => { setSelectedTag(''); setSelectedCity(''); setHour(''); setCalendarDate(''); setActiveDateFilter(''); }} className="flex-1 rounded border border-white/20 py-2">Réinitialiser</button><button onClick={() => setFilterOpen(false)} className="flex-1 rounded bg-white py-2 text-[#041743]">Appliquer</button></div>
           </aside>
         </div>
       )}

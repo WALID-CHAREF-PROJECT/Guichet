@@ -27,30 +27,45 @@ class EventController extends Controller
             $query->whereHas('city', fn ($q) => $q->where('slug', $city));
         }
 
-        if ($quick = $request->string('quick_date')->toString()) {
-            $start = Carbon::now()->startOfDay();
+        if ($quick = $request->string('date_filter')->toString() ?: $request->string('quick_date')->toString()) {
+            $today = Carbon::today();
             [$rangeStart, $rangeEnd] = match ($quick) {
-                'today' => [Carbon::now()->startOfDay(), Carbon::now()->endOfDay()],
-                'tomorrow' => [Carbon::tomorrow()->startOfDay(), Carbon::tomorrow()->endOfDay()],
-                'week' => [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()],
-                'month' => [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()],
-                'weekend' => [Carbon::now()->startOfDay(), Carbon::now()->next('Saturday')->endOfDay()],
-                '7d' => [$start, Carbon::now()->addDays(7)->endOfDay()],
-                '30d' => [$start, Carbon::now()->addDays(30)->endOfDay()],
+                'today' => [$today->copy(), $today->copy()],
+                'tomorrow' => [$today->copy()->addDay(), $today->copy()->addDay()],
+                'week' => [$today->copy(), $today->copy()->endOfWeek()->startOfDay()],
+                'month' => [$today->copy()->startOfMonth(), $today->copy()->endOfMonth()->startOfDay()],
+                'weekend' => [$today->copy()->startOfWeek()->addDays(5), $today->copy()->startOfWeek()->addDays(6)],
+                '7d' => [$today->copy(), $today->copy()->addDays(7)],
+                '30d' => [$today->copy(), $today->copy()->addDays(30)],
                 default => [null, null],
             };
 
             if ($rangeStart && $rangeEnd) {
-                $query->whereBetween('starts_at', [$rangeStart, $rangeEnd]);
+                $startDate = $rangeStart->toDateString();
+                $endDate = $rangeEnd->toDateString();
+                $query->where(function ($dateQuery) use ($startDate, $endDate): void {
+                    $dateQuery
+                        ->whereBetween('event_date', [$startDate, $endDate])
+                        ->orWhere(function ($fallbackQuery) use ($startDate, $endDate): void {
+                            $fallbackQuery
+                                ->whereNull('event_date')
+                                ->whereDate('starts_at', '>=', $startDate)
+                                ->whereDate('starts_at', '<=', $endDate);
+                        });
+                });
             }
         }
 
         if ($from = $request->string('date_from')->toString()) {
-            $query->whereDate('starts_at', '>=', $from);
+            $query->where(function ($dateQuery) use ($from): void {
+                $dateQuery->whereDate('event_date', '>=', $from)->orWhere(fn ($fallbackQuery) => $fallbackQuery->whereNull('event_date')->whereDate('starts_at', '>=', $from));
+            });
         }
 
         if ($to = $request->string('date_to')->toString()) {
-            $query->whereDate('starts_at', '<=', $to);
+            $query->where(function ($dateQuery) use ($to): void {
+                $dateQuery->whereDate('event_date', '<=', $to)->orWhere(fn ($fallbackQuery) => $fallbackQuery->whereNull('event_date')->whereDate('starts_at', '<=', $to));
+            });
         }
 
         match ($request->string('sort')->toString()) {

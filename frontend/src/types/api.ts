@@ -25,6 +25,7 @@ export interface EventItem {
   category: Category;
   description: string;
   image_url: string;
+  event_date?: string;
   starts_at: string;
   starts_at_human: string;
   date?: string;

@@ -27,7 +27,7 @@ export default function EventsPage(): JSX.Element {
       search: filters.search,
       category: filters.category,
       city: filters.city,
-      quick_date: filters.quickDate,
+      date_filter: filters.quickDate,
       sort: filters.sort
     })
       .then((res) => setEvents(res.data))
