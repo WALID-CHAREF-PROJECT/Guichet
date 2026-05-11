@@ -114,7 +114,15 @@ Route::middleware('auth.token')->group(function (): void {
         Route::put('/admin/content/{id}', fn (string $id) => response()->json(['success' => DB::table('content_blocks')->where('id', $id)->update(array_merge(request()->all(), ['updated_at' => now()])) > 0]));
         Route::delete('/admin/content/{id}', fn (string $id) => response()->json(['success' => DB::table('content_blocks')->where('id', $id)->delete() > 0]));
         Route::get('/admin/settings', fn () => response()->json(DB::table('settings')->pluck('value', 'key')));
-        Route::put('/admin/settings', fn () => response()->json(['success' => true]));
+        Route::put('/admin/settings', function () {
+            foreach (request()->all() as $key => $value) {
+                DB::table('settings')->updateOrInsert(
+                    ['key' => $key],
+                    ['value' => is_bool($value) ? ($value ? '1' : '0') : (string) $value, 'updated_at' => now(), 'created_at' => now()]
+                );
+            }
+            return response()->json(['success' => true]);
+        });
 
         Route::apiResource('/admin/producers', ProducerController::class);
         Route::apiResource('/admin/packs', PackController::class);
