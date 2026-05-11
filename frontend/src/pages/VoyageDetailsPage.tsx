@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import TravelReservationModal from '../components/commerce/TravelReservationModal';
 import FavoriteButton from '../components/FavoriteButton';
 import SharePopover from '../components/SharePopover';
+import ResponsiveImage from '../components/ResponsiveImage';
+import MediaCard from '../components/MediaCard';
 import { getPublicTravel, getPublicTravels, PublicTravel } from '../services/publicApi';
 import { VoyageItem } from '../services/platformData';
 
@@ -49,8 +51,8 @@ export default function VoyageDetailsPage(): JSX.Element {
       <Link to="/ma-fr/voyage" className="text-sm text-slate-300">← Retour aux voyages</Link>
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="grid gap-3 sm:grid-cols-2">
-          <img src={voyage.image} alt={voyage.title} className="h-80 w-full rounded-2xl object-cover sm:col-span-2" />
-          {gallery.slice(0, 2).map((image) => <img key={image} src={image} alt={voyage.title} className="h-40 w-full rounded-2xl object-cover" />)}
+          <ResponsiveImage src={voyage.image} alt={voyage.title} aspect="video" loading="eager" className="max-h-[460px] rounded-2xl sm:col-span-2" />
+          {gallery.slice(0, 2).map((image) => <ResponsiveImage key={image} src={image} alt={voyage.title} aspect="video" loading="lazy" className="max-h-[180px] rounded-2xl" />)}
         </div>
         <article className="space-y-4 rounded-2xl border border-white/10 bg-white/10 p-6">
           <div className="flex items-center justify-end gap-2"><SharePopover title={voyage.title} /><FavoriteButton itemId={voyage.slug} itemType="travel" payload={{ slug: voyage.slug, title: voyage.title, image: voyage.image, location: voyage.location, date: voyage.departureDate, route: `/ma-fr/voyage/${voyage.slug}` }} /></div><p className="text-sm text-orange-400">{voyage.location}</p>
@@ -80,10 +82,7 @@ export default function VoyageDetailsPage(): JSX.Element {
         <h2 className="mb-4 text-2xl font-semibold">Offres similaires</h2>
         <div className="grid gap-4 md:grid-cols-3">
           {similar.map((item) => (
-            <Link key={item.slug} to={`/ma-fr/voyage/${item.slug}`} className="overflow-hidden rounded-xl border border-white/10 bg-[#041743]">
-              <img src={item.image} alt={item.title} className="h-40 w-full object-cover" />
-              <div className="p-3 text-sm">{item.title}</div>
-            </Link>
+            <MediaCard key={item.slug} to={`/ma-fr/voyage/${item.slug}`} title={item.title} image={item.image} eyebrow={item.location} meta={item.departureDate} price={item.priceLabel} actionLabel="Voir" />
           ))}
         </div>
       </section>

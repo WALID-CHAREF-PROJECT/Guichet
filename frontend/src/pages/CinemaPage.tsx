@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import ServiceTabs from '../components/ServiceTabs';
 import FavoriteButton from '../components/FavoriteButton';
+import EmptyState from '../components/EmptyState';
+import FeaturedCarousel from '../components/FeaturedCarousel';
+import LoadingSkeleton from '../components/LoadingSkeleton';
+import MediaCard from '../components/MediaCard';
 import { getPublicMovies, PublicMovie } from '../services/publicApi';
 
 type LoadState = 'loading' | 'ready' | 'error';
@@ -47,40 +51,37 @@ export default function CinemaPage(): JSX.Element {
         </div>
       </div>
 
-      {state === 'loading' && <div className="rounded-2xl border border-white/10 bg-[#041743] p-8 text-center text-slate-300">Chargement des films...</div>}
-      {state === 'error' && <div className="rounded-2xl border border-white/10 bg-[#041743] p-8 text-center"><p>Impossible de charger les films.</p><p className="mt-2 text-slate-300">{error}</p><button onClick={load} className="mt-4 rounded-full bg-white px-5 py-2 font-semibold text-[#041743]">Réessayer</button></div>}
-      {state === 'ready' && movies.length === 0 && <div className="rounded-2xl border border-white/10 bg-[#041743] p-8 text-center text-slate-300">Aucun film publié pour le moment.</div>}
+      {state === 'loading' && <LoadingSkeleton label="Chargement des films..." />}
+      {state === 'error' && <EmptyState title="Impossible de charger les films." description={error} action={<button onClick={load} className="rounded-full bg-white px-5 py-2 font-semibold text-[#041743]">Réessayer</button>} />}
+      {state === 'ready' && movies.length === 0 && <EmptyState title="Aucun film publié pour le moment." />}
 
       {state === 'ready' && movies.length > 0 && (
         <>
-          <div className="overflow-hidden rounded-2xl">
-            <div className="flex transition-transform duration-700" style={{ transform: `translateX(-${activeSlide * 100}%)` }}>
-              {movies.map((movie) => (
-                <Link key={movie.id} to={`/ma-fr/cinema/${movie.slug}`} className="min-w-full bg-[#07183f]">
-                  <img src={movie.image} alt={movie.title} className="h-[430px] w-full object-cover" />
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex justify-center gap-2">{movies.map((movie, index) => <button key={movie.slug} onClick={() => setActiveSlide(index)} className={`h-2 w-8 rounded-full transition ${index === activeSlide ? 'bg-orange-400' : 'bg-white/40'}`} />)}</div>
+          <FeaturedCarousel
+            label="Films à l'affiche"
+            items={movies.map((movie) => ({ id: movie.id, title: movie.title, subtitle: movie.description || movie.genre, image: movie.image, to: `/ma-fr/cinema/${movie.slug}`, ctaLabel: 'Voir les séances', meta: movie.genre || 'Cinéma' }))}
+            activeIndex={activeSlide}
+            onSelect={setActiveSlide}
+            maxHeightClassName="max-h-[440px]"
+          />
 
           <h1 className="text-5xl font-bold">Toujours à l'affiche</h1>
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
             {filteredMovies.map((movie) => (
-              <article key={movie.slug} className="relative space-y-3 rounded-lg border border-white/10 bg-[#041743] p-3">
-                <div className="absolute right-3 top-3 z-10"><FavoriteButton itemId={movie.slug} itemType="movie" payload={{ slug: movie.slug, title: movie.title, image: movie.image, route: `/ma-fr/cinema/${movie.slug}` }} /></div>
-                <Link to={`/ma-fr/cinema/${movie.slug}`}><img src={movie.image} alt={movie.title} className="h-72 w-full rounded-md object-cover" /></Link>
-                <h2 className="font-semibold">{movie.title}</h2>
-                <p className="text-sm text-slate-300">Durée: {movie.duration || 'Non renseignée'}</p>
-                <div className="flex items-center justify-between">
-                  <span className="rounded-full bg-[#0f295f] px-3 py-1 text-xs">{movie.genre || 'Cinéma'}</span>
-                  <Link to={`/ma-fr/cinema/${movie.slug}`} className="rounded-full border border-white/50 px-4 py-1 text-xs">Les séances</Link>
-                </div>
-              </article>
+              <MediaCard
+                key={movie.slug}
+                to={`/ma-fr/cinema/${movie.slug}`}
+                title={movie.title}
+                image={movie.image}
+                eyebrow={movie.genre || 'Cinéma'}
+                meta={`Durée: ${movie.duration || 'Non renseignée'}`}
+                actionLabel="Les séances"
+                aspect="poster"
+                favorite={<FavoriteButton itemId={movie.slug} itemType="movie" payload={{ slug: movie.slug, title: movie.title, image: movie.image, route: `/ma-fr/cinema/${movie.slug}` }} />}
+              />
             ))}
           </div>
-          {filteredMovies.length === 0 && <div className="rounded-2xl border border-white/10 bg-[#041743] p-8 text-center text-slate-300">Aucun film ne correspond à vos filtres.</div>}
+          {filteredMovies.length === 0 && <EmptyState title="Aucun film ne correspond à vos filtres." />}
         </>
       )}
     </section>

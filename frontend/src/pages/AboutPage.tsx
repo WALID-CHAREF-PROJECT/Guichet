@@ -1,11 +1,14 @@
+import ResponsiveImage from '../components/ResponsiveImage';
 export default function AboutPage(): JSX.Element {
   return (
     <section className="space-y-6">
-      <div className="relative h-72 overflow-hidden rounded-3xl">
-        <img
+      <div className="relative overflow-hidden rounded-3xl">
+        <ResponsiveImage
           src="https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1600&q=80"
           alt="Public pendant un événement"
-          className="h-full w-full object-cover"
+          aspect="wide"
+          loading="eager"
+          className="max-h-[360px] min-h-[220px]"
         />
         <div className="absolute inset-0 bg-blue-900/50" />
         <div className="absolute bottom-6 left-6 text-white">

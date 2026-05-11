@@ -3,6 +3,9 @@ import { Link, useSearchParams } from 'react-router-dom';
 import CategoryStrip from '../components/CategoryStrip';
 import PlatformTopNav from '../components/PlatformTopNav';
 import FavoriteButton from '../components/FavoriteButton';
+import EmptyState from '../components/EmptyState';
+import LoadingSkeleton from '../components/LoadingSkeleton';
+import ResponsiveImage from '../components/ResponsiveImage';
 import { getPublicEvents } from '../services/publicApi';
 import { EventItem } from '../types/api';
 
@@ -24,8 +27,8 @@ function eventLocation(event: EventItem): string {
 
 function FeaturedPosterCard({ event }: { event: EventItem }): JSX.Element {
   return (
-    <Link to={`/ma-fr/event/${event.slug}`} className="group relative block h-[520px] w-full overflow-hidden rounded-2xl bg-[#07183f] text-left">
-      <img src={event.image_url} alt={event.title} className="h-full w-full object-cover transition-all duration-500 group-hover:scale-105" />
+    <Link to={`/ma-fr/event/${event.slug}`} className="group relative block overflow-hidden rounded-2xl border border-white/10 bg-[#07183f] text-left shadow-lg shadow-black/20 transition hover:-translate-y-1 hover:border-white/25">
+      <ResponsiveImage src={event.image_url} alt={event.title} aspect="video" loading="eager" className="max-h-[420px] min-h-[240px] md:min-h-[340px]" imgClassName="transition-all duration-500 group-hover:scale-105" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4"><h3 className="line-clamp-2 text-lg font-semibold text-white">{event.title}</h3></div>
     </Link>
   );
@@ -39,9 +42,9 @@ function EventCard({ event, compact = false }: { event: EventItem; compact?: boo
 
   return (
     <Link to={`/ma-fr/event/${event.slug}`} className={`group relative ${compact ? 'w-[230px] shrink-0' : ''} rounded-2xl border border-white/10 bg-[#071b45] p-3 transition-all hover:-translate-y-1 hover:shadow-lg hover:shadow-black/30`}>
-      <div className="absolute right-3 top-3 z-10"><FavoriteButton itemId={event.slug} itemType="event" payload={{ slug: event.slug, title: event.title, image: event.image_url, location, date: `${date} · ${time}`, route: `/ma-fr/event/${event.slug}`, organizer: event.organizer }} /></div>
+      <div className="absolute right-3 top-3 z-10" onClick={(clickEvent) => clickEvent.preventDefault()}><FavoriteButton itemId={event.slug} itemType="event" payload={{ slug: event.slug, title: event.title, image: event.image_url, location, date: `${date} · ${time}`, route: `/ma-fr/event/${event.slug}`, organizer: event.organizer }} /></div>
       <div className="mb-3 flex items-center gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#10244f] text-xs">🎫</span><span className="line-clamp-1 text-xs font-medium text-slate-200">{event.organizer}</span></div>
-      <div className="overflow-hidden rounded-xl"><img src={event.image_url} alt={event.title} className={`${compact ? 'h-64' : 'h-72'} w-full object-cover transition-all duration-500 group-hover:scale-105`} /></div>
+      <ResponsiveImage src={event.image_url} alt={event.title} aspect="video" loading="lazy" className="rounded-xl" imgClassName="transition-all duration-500 group-hover:scale-105" />
       <h3 className="mt-3 text-sm font-semibold leading-snug text-white line-clamp-2">{event.title}</h3>
       <p className="mt-2 text-xs text-slate-300">📍 {location}</p>
       <p className="mt-1 text-xs text-slate-300">📅 {date} {time ? `· ${time}` : ''}</p>
@@ -101,14 +104,14 @@ export default function TicketingHomePage(): JSX.Element {
       <CategoryStrip />
       <section className="mx-auto flex max-w-[1800px] justify-end px-4 pt-4 lg:px-8"><button onClick={() => setFilterOpen(true)} className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm">Filtres</button></section>
 
-      {state === 'loading' && <div className="mx-auto max-w-[1800px] px-4 py-16 text-center text-slate-300 lg:px-8">Chargement des événements...</div>}
-      {state === 'error' && <div className="mx-auto max-w-[900px] px-4 py-16 text-center"><p className="text-lg font-semibold">Impossible de charger les événements.</p><p className="mt-2 text-slate-300">{error}</p><button onClick={load} className="mt-4 rounded-full bg-white px-5 py-2 font-semibold text-[#041743]">Réessayer</button></div>}
-      {state === 'ready' && filteredEvents.length === 0 && <div className="mx-auto max-w-[900px] px-4 py-16 text-center text-slate-300">Aucun événement publié ne correspond à ces filtres.</div>}
+      {state === 'loading' && <section className="mx-auto max-w-[1800px] px-4 py-8 lg:px-8"><LoadingSkeleton label="Chargement des événements..." /></section>}
+      {state === 'error' && <section className="mx-auto max-w-[900px] px-4 py-16"><EmptyState title="Impossible de charger les événements." description={error} action={<button onClick={load} className="rounded-full bg-white px-5 py-2 font-semibold text-[#041743]">Réessayer</button>} /></section>}
+      {state === 'ready' && filteredEvents.length === 0 && <section className="mx-auto max-w-[900px] px-4 py-16"><EmptyState title="Aucun événement publié ne correspond à ces filtres." /></section>}
 
       {state === 'ready' && filteredEvents.length > 0 && (
         <>
           <section className="mx-auto max-w-[1800px] px-4 pt-7 lg:px-8">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-4">{heroEvents.map((event) => <FeaturedPosterCard key={event.slug} event={event} />)}</div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">{heroEvents.map((event) => <FeaturedPosterCard key={event.slug} event={event} />)}</div>
           </section>
           <div className="mx-auto flex w-full max-w-xl items-center justify-center gap-5 border-b border-white/10 pb-2 pt-5 text-sm md:text-base">{tabs.map((tab) => <button key={tab.key} onClick={() => setActiveDateFilter(tab.key)} className={`relative pb-2 ${activeDateFilter === tab.key ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}>{tab.label}</button>)}</div>
           <section className="mx-auto max-w-[1800px] px-4 pt-7 lg:px-8"><div className="flex gap-4 overflow-x-auto pb-2">{filteredEvents.map((event) => <EventCard key={`strip-${event.id}`} event={event} compact />)}</div></section>

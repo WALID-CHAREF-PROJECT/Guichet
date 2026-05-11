@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import CategoryStrip from '../components/CategoryStrip';
 import PlatformTopNav from '../components/PlatformTopNav';
 import FavoriteButton from '../components/FavoriteButton';
+import EmptyState from '../components/EmptyState';
+import LoadingSkeleton from '../components/LoadingSkeleton';
+import MediaCard from '../components/MediaCard';
 import { getPublicEvents } from '../services/publicApi';
 import { EventItem } from '../types/api';
 
@@ -29,19 +32,23 @@ export default function EventTagsPage(): JSX.Element {
       <CategoryStrip />
       <section className="mx-auto max-w-[1800px] px-4 py-8 lg:px-8">
         <h1 className="mb-6 text-3xl font-bold">Tous les événements {tag}</h1>
-        {state === 'loading' && <p className="text-slate-300">Chargement des événements...</p>}
-        {state === 'error' && <div className="rounded-2xl border border-white/10 bg-[#071b45] p-8 text-center"><p>Impossible de charger cette catégorie.</p><p className="mt-2 text-slate-300">{error}</p><button onClick={load} className="mt-4 rounded-full bg-white px-5 py-2 font-semibold text-[#041743]">Réessayer</button></div>}
-        {state === 'ready' && events.length === 0 ? <p className="text-slate-300">Aucun événement publié pour cette catégorie.</p> : null}
+        {state === 'loading' && <LoadingSkeleton label="Chargement des événements..." />}
+        {state === 'error' && <EmptyState title="Impossible de charger cette catégorie." description={error} action={<button onClick={load} className="rounded-full bg-white px-5 py-2 font-semibold text-[#041743]">Réessayer</button>} />}
+        {state === 'ready' && events.length === 0 ? <EmptyState title="Aucun événement publié pour cette catégorie." /> : null}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {events.map((event) => {
             const location = event.location ?? [event.venue, event.city?.name].filter(Boolean).join(' · ');
             return (
-              <Link key={event.id} to={`/ma-fr/event/${event.slug}`} className="group relative rounded-2xl border border-white/10 bg-[#071b45] p-3 transition-all hover:-translate-y-1">
-                <div className="absolute right-3 top-3 z-10"><FavoriteButton itemId={event.slug} itemType="event" payload={{ slug: event.slug, title: event.title, image: event.image_url, location, date: event.starts_at_human, route: `/ma-fr/event/${event.slug}`, organizer: event.organizer }} /></div>
-                <img src={event.image_url} alt={event.title} className="h-72 w-full rounded-xl object-cover" />
-                <h3 className="mt-3 line-clamp-2 font-semibold">{event.title}</h3>
-                <p className="mt-1 text-xs text-slate-300">{location} · {event.starts_at_human}</p>
-              </Link>
+              <MediaCard
+                key={event.id}
+                to={`/ma-fr/event/${event.slug}`}
+                title={event.title}
+                image={event.image_url}
+                eyebrow={event.organizer}
+                meta={`${location} · ${event.starts_at_human}`}
+                price={event.is_free ? 'Gratuit' : `${event.price_mad} MAD`}
+                favorite={<FavoriteButton itemId={event.slug} itemType="event" payload={{ slug: event.slug, title: event.title, image: event.image_url, location, date: event.starts_at_human, route: `/ma-fr/event/${event.slug}`, organizer: event.organizer }} />}
+              />
             );
           })}
         </div>

@@ -3,6 +3,7 @@ import PlatformTopNav from '../components/PlatformTopNav';
 import TicketSelectionModal from '../components/commerce/TicketSelectionModal';
 import FavoriteButton from '../components/FavoriteButton';
 import SharePopover from '../components/SharePopover';
+import ResponsiveImage from '../components/ResponsiveImage';
 import SeatPlanModal from '../components/commerce/SeatPlanModal';
 import { useEffect, useState } from 'react';
 import { getPublicEvent } from '../services/publicApi';
@@ -65,11 +66,11 @@ export default function EventDetailsPage(): JSX.Element {
   return (
     <div className="-mx-4 min-h-screen bg-[#020b22] text-white lg:-mx-8">
       <PlatformTopNav active="billeterie" />
-      <section className="mx-auto grid max-w-[1400px] gap-8 px-4 py-8 lg:grid-cols-[1fr_1fr] lg:px-8">
+      <section className="mx-auto grid max-w-[1400px] gap-8 px-4 py-8 lg:grid-cols-[1.05fr_0.95fr] lg:px-8">
         <div className="space-y-4">
           <Link to="/ma-fr/billeterie" className="text-sm text-slate-300">← Retour</Link>
-          <div className="rounded-3xl border border-white/10 bg-[#06173c] p-4">
-            <img src={event.image} alt={event.title} className="h-full min-h-[560px] w-full rounded-2xl object-cover" />
+          <div className="rounded-3xl border border-white/10 bg-[#06173c] p-3 shadow-xl shadow-black/25">
+            <ResponsiveImage src={event.image} alt={event.title} aspect="video" loading="eager" className="max-h-[520px] min-h-[240px] rounded-2xl md:min-h-[360px]" />
           </div>
         </div>
 
@@ -79,7 +80,7 @@ export default function EventDetailsPage(): JSX.Element {
             <FavoriteButton itemId={event.slug} itemType="event" payload={{ slug: event.slug, title: event.title, image: event.image, location: event.location, date: `${event.date} · ${event.time}`, route: `/ma-fr/event/${event.slug}`, organizer: event.organizer }} />
           </div>
           <div className="mb-5 flex items-center gap-3">
-            <img src={event.organizerLogo} alt={event.organizer} className="h-10 w-10 rounded-full object-cover" />
+            <ResponsiveImage src={event.organizerLogo} alt={event.organizer} aspect="square" loading="lazy" className="h-10 w-10 rounded-full" />
             <Link to={`/ma-fr/event/producer/${organizerSlug(event.organizer)}`} className="text-sm text-slate-200 underline">{event.organizer}</Link>
           </div>
           <h1 className="text-4xl font-bold leading-tight">{event.title}</h1>
