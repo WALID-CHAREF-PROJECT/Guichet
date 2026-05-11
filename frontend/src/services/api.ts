@@ -1,6 +1,6 @@
-import { Category, City, EventItem, PaginatedResponse } from '../types/api';
+import { City } from '../types/api';
 import { API_BASE_URL } from './api/config';
-import { buildPaginatedEvents, mockCategories, mockCities, mockEvents } from './mockData';
+import { getPublicCategories, getPublicEvent, getPublicEvents } from './publicApi';
 
 interface EventFilters {
   search?: string;
@@ -13,9 +13,8 @@ interface EventFilters {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json'
-    },
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    cache: 'no-store',
     ...init
   });
 
@@ -33,64 +32,33 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-function filterMockEvents(filters: EventFilters): EventItem[] {
-  return mockEvents.filter((event) => {
-    const matchSearch = !filters.search || event.title.toLowerCase().includes(filters.search.toLowerCase());
-    const matchCategory = !filters.category || event.category.slug === filters.category;
-    const matchCity = !filters.city || event.city.slug === filters.city;
-    return matchSearch && matchCategory && matchCity;
+export async function getEvents(filters: EventFilters) {
+  return getPublicEvents({
+    search: filters.search,
+    category: filters.category,
+    city: filters.city,
+    quick_date: filters.quick_date,
+    sort: filters.sort,
+    page: filters.page,
   });
 }
 
-export async function getEvents(filters: EventFilters): Promise<PaginatedResponse<EventItem>> {
-  const params = new URLSearchParams();
-  Object.entries(filters).forEach(([key, value]) => {
-    if (value !== undefined && value !== '') params.append(key, String(value));
-  });
-
-  try {
-    return await request<PaginatedResponse<EventItem>>(`/events?${params.toString()}`);
-  } catch {
-    return buildPaginatedEvents(filterMockEvents(filters));
-  }
+export async function getEvent(slug: string) {
+  return getPublicEvent(slug);
 }
 
-export async function getEvent(slug: string): Promise<EventItem> {
-  try {
-    const response = await request<{ data: EventItem }>(`/events/${slug}`);
-    return response.data;
-  } catch {
-    const localEvent = mockEvents.find((event) => event.slug === slug);
-    if (!localEvent) throw new Error('Événement introuvable.');
-    return localEvent;
-  }
-}
-
-export async function getCategories(): Promise<Category[]> {
-  try {
-    const response = await request<{ data: Category[] }>('/categories');
-    return response.data;
-  } catch {
-    return mockCategories;
-  }
+export async function getCategories() {
+  return getPublicCategories();
 }
 
 export async function getCities(): Promise<City[]> {
-  try {
-    const response = await request<{ data: City[] }>('/cities');
-    return response.data;
-  } catch {
-    return mockCities;
-  }
+  const response = await request<{ data: City[] }>('/cities');
+  return response.data;
 }
 
 export async function subscribeNewsletter(email: string): Promise<{ message: string }> {
-  try {
-    return await request('/newsletter/subscribe', {
-      method: 'POST',
-      body: JSON.stringify({ email })
-    });
-  } catch {
-    return { message: `Inscription réussie pour ${email}.` };
-  }
+  return request('/newsletter/subscribe', {
+    method: 'POST',
+    body: JSON.stringify({ email })
+  });
 }

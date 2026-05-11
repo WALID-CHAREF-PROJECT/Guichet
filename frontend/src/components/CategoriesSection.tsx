@@ -27,11 +27,11 @@ export default function CategoriesSection({ categories }: Props): JSX.Element {
         {categories.map((category) => (
           <Link
             key={category.id}
-            to={`/events?category=${category.slug}`}
+            to={`/ma-fr/billeterie?category=${category.slug}`}
             className="group relative h-40 overflow-hidden rounded-2xl border border-blue-100"
           >
             <img
-              src={categoryImages[category.slug] ?? fallbackCategoryImage}
+              src={category.image || categoryImages[category.slug] || fallbackCategoryImage}
               alt={category.name}
               className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
             />

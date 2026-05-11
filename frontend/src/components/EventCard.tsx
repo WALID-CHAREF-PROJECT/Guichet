@@ -43,7 +43,7 @@ export default function EventCard({ event }: Props): JSX.Element {
           <span className="font-semibold text-orange-400">{event.is_free ? 'Gratuit' : `${event.price_mad} MAD`}</span>
           <div className="flex items-center gap-2">
             <button onClick={handleAddToCart} className="rounded-full bg-orange-500 px-3 py-1 text-sm font-medium text-white hover:bg-orange-600">Ajouter</button>
-            <Link to={`/events/${event.slug}`} className="rounded-full border border-white/40 px-3 py-1 text-sm font-medium">Voir</Link>
+            <Link to={`/ma-fr/event/${event.slug}`} className="rounded-full border border-white/40 px-3 py-1 text-sm font-medium">Voir</Link>
           </div>
         </div>
       </div>

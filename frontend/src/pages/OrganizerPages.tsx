@@ -2,6 +2,8 @@ import { ChangeEvent, FormEvent, ReactNode, useEffect, useMemo, useState } from 
 import { Link, NavLink, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { backofficeService, BackofficeEvent, EventStatus, TicketType } from '../services/backoffice';
 import { useUser } from '../contexts/UserContext';
+import { getPublicOrganizer as fetchPublicOrganizer, PublicOrganizerProfile } from '../services/publicApi';
+import { EventItem } from '../types/api';
 
 const sidebarItems = [
   { to: '/ma-fr/organizer/dashboard', label: 'Tableau de bord' },
@@ -337,21 +339,34 @@ export function OrganizerSettingsPage(): JSX.Element {
 
 export function OrganizerPublicPage(): JSX.Element {
   const { slug = '' } = useParams();
-  const publicData = backofficeService.getPublicOrganizer(slug);
-  if (!publicData) return <section className="rounded-2xl border border-white/10 bg-[#041743] p-6">Organisateur introuvable.</section>;
-  const { organizer, events } = publicData;
-  const upcoming = events.filter((event) => event.status === 'published');
-  const past = events.filter((event) => event.status === 'past');
+  const [organizer, setOrganizer] = useState<PublicOrganizerProfile | null>(null);
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const load = (): void => {
+    setLoading(true);
+    fetchPublicOrganizer(slug)
+      .then((payload) => { setOrganizer(payload.organizer); setEvents(payload.events); setError(''); })
+      .catch((err: unknown) => { setOrganizer(null); setEvents([]); setError(err instanceof Error ? err.message : 'Organisateur introuvable.'); })
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(load, [slug]);
+
+  if (loading) return <section className="rounded-2xl border border-white/10 bg-[#041743] p-6">Chargement de l’organisateur...</section>;
+  if (error || !organizer) return <section className="rounded-2xl border border-white/10 bg-[#041743] p-6"><p>{error || 'Organisateur introuvable.'}</p><button onClick={load} className="mt-4 rounded-full bg-white px-5 py-2 font-semibold text-[#041743]">Réessayer</button></section>;
 
   return (
     <section className="overflow-hidden rounded-3xl border border-white/10 bg-[#041743]">
-      <img src={organizer.coverImage} alt={organizer.companyName} className="h-48 w-full object-cover" />
+      {organizer.cover_image ? <img src={organizer.cover_image} alt={organizer.company_name} className="h-48 w-full object-cover" /> : <div className="h-48 w-full bg-[#10244f]" />}
       <div className="-mt-10 px-6 pb-6">
-        <img src={organizer.logo} alt={organizer.companyName} className="h-20 w-20 rounded-full border-4 border-[#041743] object-cover" />
-        <h1 className="mt-3 text-3xl font-bold">{organizer.companyName}</h1>
-        <div className="mt-4 grid gap-3 md:grid-cols-3"><Stat label="Followers" value="12.4K" /><Stat label="Active events" value={String(upcoming.length)} /><Stat label="Past events" value={String(past.length)} /></div>
+        {organizer.logo ? <img src={organizer.logo} alt={organizer.company_name} className="h-20 w-20 rounded-full border-4 border-[#041743] object-cover" /> : <div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-[#041743] bg-[#10244f]">🏢</div>}
+        <h1 className="mt-3 text-3xl font-bold">{organizer.company_name}</h1>
+        {organizer.description && <p className="mt-2 max-w-3xl text-slate-300">{organizer.description}</p>}
+        <div className="mt-4 grid gap-3 md:grid-cols-3"><Stat label="Active events" value={String(events.length)} /><Stat label="Ville" value={organizer.city || '—'} /><Stat label="Profil" value="Approuvé" /></div>
         <h2 className="mt-6 text-xl font-semibold">Événements en cours</h2>
-        <div className="mt-3 grid gap-3 md:grid-cols-2">{upcoming.map((event) => <Link key={event.id} to={`/ma-fr/event/${event.slug}`} className="rounded-xl border border-white/10 bg-white/5 p-3">{event.title}</Link>)}</div>
+        <div className="mt-3 grid gap-3 md:grid-cols-2">{events.length > 0 ? events.map((event) => <Link key={event.id} to={`/ma-fr/event/${event.slug}`} className="rounded-xl border border-white/10 bg-white/5 p-3">{event.title}</Link>) : <p className="text-slate-300">Aucun événement publié pour le moment.</p>}</div>
       </div>
     </section>
   );

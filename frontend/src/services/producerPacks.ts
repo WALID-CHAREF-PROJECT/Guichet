@@ -96,7 +96,10 @@ export async function uploadAdminMedia(file: File, collection = 'admin'): Promis
     throw new Error(payload.message ?? `API error ${response.status}`);
   }
   const payload = await response.json() as { path?: string; url?: string };
-  return payload.url ?? payload.path ?? '';
+  const mediaPath = payload.url ?? payload.path ?? '';
+  if (!mediaPath || /^(https?:|data:|blob:)/i.test(mediaPath)) return mediaPath;
+  const origin = API_BASE_URL.replace(/\/api\/?$/, '');
+  return mediaPath.startsWith('/') ? `${origin}${mediaPath}` : `${origin}/storage/${mediaPath.replace(/^storage\//, '')}`;
 }
 
 async function request<T>(path: string, init?: RequestInit, json = true): Promise<T> {

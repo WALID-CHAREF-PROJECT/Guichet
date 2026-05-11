@@ -32,6 +32,115 @@ class MarketplaceController extends Controller
         ];
     }
 
+
+    private function publicUrl(?string $path): ?string
+    {
+        if (!$path) {
+            return null;
+        }
+
+        if (Str::startsWith($path, ['http://', 'https://', 'data:'])) {
+            return $path;
+        }
+
+        $normalized = Str::startsWith($path, '/') ? $path : '/storage/'.ltrim($path, '/');
+        return request()->getSchemeAndHttpHost().$normalized;
+    }
+
+    private function isFeatured(mixed $value): bool
+    {
+        return in_array($value, [true, 1, '1', 'true'], true);
+    }
+
+    private function mapPublicEvent(Event $event): array
+    {
+        $date = $event->event_date ?: $event->starts_at?->toDateString();
+        $time = $event->event_time ?: $event->starts_at?->format('H:i');
+        $image = $this->publicUrl($event->hero_image ?: $event->image ?: $event->image_url);
+        $cityName = $event->city->name ?? $event->city_name ?? '';
+        $categoryName = $event->category->name ?? null;
+        $categorySlug = $event->category->slug ?? null;
+
+        return [
+            'id' => (string) $event->id,
+            'slug' => $event->slug,
+            'title' => $event->title,
+            'organizer' => $event->organizer,
+            'description' => $event->description,
+            'venue' => $event->venue,
+            'location' => trim(collect([$event->venue, $cityName])->filter()->implode(' · ')),
+            'city' => ['id' => (string) $event->city_id, 'name' => $cityName, 'slug' => $event->city->slug ?? null],
+            'category' => ['id' => (string) $event->category_id, 'name' => $categoryName, 'slug' => $categorySlug],
+            'image_url' => $image,
+            'image' => $image,
+            'hero_image' => $image,
+            'starts_at' => $event->starts_at?->toIso8601String(),
+            'starts_at_human' => trim(($date ?? '').' '.($time ?? '')),
+            'date' => $date,
+            'time' => $time,
+            'price_mad' => (float) $event->price_mad,
+            'price' => (float) $event->price_mad,
+            'is_free' => (bool) $event->is_free,
+            'is_sold_out' => (bool) $event->is_sold_out,
+            'badge' => $event->is_sold_out ? 'Complet' : ($event->is_free ? 'Gratuit' : null),
+            'type' => $event->type,
+            'tags' => array_values(array_filter([$event->type, $categorySlug])),
+            'buyingMode' => $event->buying_mode,
+            'hasPlan' => (bool) $event->has_plan,
+            'featured' => (bool) $event->featured,
+            'status' => $event->status,
+        ];
+    }
+
+    private function mapPublicTravel(object $travel): array
+    {
+        $gallery = [];
+        if (!empty($travel->gallery)) {
+            $decoded = json_decode((string) $travel->gallery, true);
+            $gallery = is_array($decoded) ? $decoded : [];
+        }
+        $image = $this->publicUrl($travel->image ?? null);
+
+        return [
+            'id' => (string) $travel->id,
+            'slug' => $travel->slug,
+            'title' => $travel->title,
+            'category' => $travel->category,
+            'collection' => $travel->category,
+            'destination' => $travel->destination,
+            'location' => $travel->destination,
+            'departure_date' => $travel->departure_date,
+            'departureDate' => $travel->departure_date,
+            'price' => (float) $travel->price,
+            'priceLabel' => number_format((float) $travel->price, 0, ',', ' ').' MAD',
+            'image' => $image,
+            'gallery' => array_values(array_filter(array_map(fn ($path) => $this->publicUrl((string) $path), $gallery))),
+            'description' => $travel->description,
+            'status' => $travel->status,
+            'featured' => $this->isFeatured($travel->featured ?? false),
+        ];
+    }
+
+    private function mapPublicMovie(object $movie): array
+    {
+        $poster = $this->publicUrl($movie->poster ?? null);
+        return [
+            'id' => (string) $movie->id,
+            'slug' => $movie->slug,
+            'title' => $movie->title,
+            'genre' => $movie->genre,
+            'duration' => $movie->duration,
+            'release_date' => $movie->release_date,
+            'releaseDate' => $movie->release_date,
+            'poster' => $poster,
+            'image' => $poster,
+            'synopsis' => $movie->synopsis,
+            'description' => $movie->synopsis,
+            'status' => $movie->status,
+            'featured' => $this->isFeatured($movie->featured ?? false),
+        ];
+    }
+
     public function register(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -480,68 +589,59 @@ class MarketplaceController extends Controller
     {
         $type = $request->query('type');
         $query = Event::query()->with('category', 'city')->where('status', 'published');
+
         if ($type) {
             $query->where('type', $type);
         }
+
+        if ($request->boolean('featured')) {
+            $query->where('featured', true);
+        }
+
         $categorySlug = $slug ?: ($request->filled('category') ? (string) $request->query('category') : null);
         if ($categorySlug) {
-            $cat = (string) $categorySlug;
-            $query->whereHas('category', fn ($q) => $q->where('slug', $cat));
+            $query->whereHas('category', fn ($q) => $q->where('slug', $categorySlug));
         }
-        $data = $query->orderBy('event_date')->get()->map(fn ($event) => [
-            'id' => (string) $event->id,
-            'slug' => $event->slug,
-            'title' => $event->title,
-            'organizer' => $event->organizer,
-            'description' => $event->description,
-            'venue' => $event->venue,
-            'city' => ['id' => (string) $event->city_id, 'name' => $event->city->name ?? $event->city_name, 'slug' => $event->city->slug ?? null],
-            'category' => ['id' => (string) $event->category_id, 'name' => $event->category->name ?? null, 'slug' => $event->category->slug ?? null],
-            'image_url' => $event->image ?: $event->image_url,
-            'starts_at_human' => $event->event_date.' '.$event->event_time,
-            'price_mad' => (float) $event->price_mad,
-            'type' => $event->type,
-            'buyingMode' => $event->buying_mode,
-            'hasPlan' => (bool) $event->has_plan,
-        ]);
+
+        if ($search = $request->string('q')->toString() ?: $request->string('search')->toString()) {
+            $query->where(fn ($q) => $q->where('title', 'like', "%{$search}%")->orWhere('venue', 'like', "%{$search}%")->orWhere('city_name', 'like', "%{$search}%"));
+        }
+
+        if ($city = $request->string('city')->toString()) {
+            $query->where(fn ($q) => $q->where('city_name', 'like', "%{$city}%")->orWhereHas('city', fn ($cityQuery) => $cityQuery->where('slug', $city)->orWhere('name', 'like', "%{$city}%")));
+        }
+
+        $data = $query->orderByDesc('featured')->orderBy('event_date')->orderBy('starts_at')->get()->map(fn (Event $event) => $this->mapPublicEvent($event));
         return response()->json(['data' => $data, 'meta' => ['total' => $data->count()]]);
     }
 
     public function eventBySlug(string $slug): JsonResponse
     {
-        $event = Event::query()->where('slug', $slug)->where('status', 'published')->firstOrFail();
-        return response()->json(['data' => [
-            'id' => (string) $event->id,
-            'slug' => $event->slug,
-            'title' => $event->title,
-            'organizer' => $event->organizer,
-            'description' => $event->description,
-            'venue' => $event->venue,
-            'city' => ['name' => $event->city_name],
-            'image_url' => $event->image ?: $event->image_url,
-            'starts_at_human' => $event->event_date.' '.$event->event_time,
-            'price_mad' => (float) $event->price_mad,
-            'type' => $event->type,
-            'buyingMode' => $event->buying_mode,
-            'hasPlan' => (bool) $event->has_plan,
-        ]]);
+        $event = Event::query()->with('category', 'city')->where('slug', $slug)->where('status', 'published')->firstOrFail();
+        return response()->json(['data' => $this->mapPublicEvent($event)]);
     }
 
     public function organizerBySlug(string $slug): JsonResponse
     {
-        $organizer = DB::table('organizers')->where('slug', $slug)->first();
+        $organizer = DB::table('organizers')->where('slug', $slug)->where('is_approved', true)->first();
         if (!$organizer) {
             return response()->json(['message' => 'Organisateur introuvable'], 404);
         }
 
         $events = Event::query()
+            ->with('category', 'city')
             ->where('organizer_id', $organizer->user_id)
             ->where('status', 'published')
             ->orderBy('event_date')
-            ->get();
+            ->get()
+            ->map(fn (Event $event) => $this->mapPublicEvent($event));
 
         return response()->json([
-            'organizer' => $organizer,
+            'organizer' => [
+                ...((array) $organizer),
+                'logo' => $this->publicUrl($organizer->logo ?? null),
+                'cover_image' => $this->publicUrl($organizer->cover_image ?? null),
+            ],
             'events' => $events,
         ]);
     }
@@ -570,28 +670,81 @@ class MarketplaceController extends Controller
         if ($request->filled('category')) {
             $query->where('category', $request->query('category'));
         }
-        return response()->json($query->get());
+        if ($request->boolean('featured')) {
+            $query->where('featured', true);
+        }
+        $data = $query->orderByDesc('featured')->orderByDesc('id')->get()->map(fn ($travel) => $this->mapPublicTravel($travel));
+        return response()->json(['data' => $data, 'meta' => ['total' => $data->count()]]);
     }
 
     public function travelBySlug(string $slug): JsonResponse
     {
-        return response()->json(DB::table('travels')->where('slug', $slug)->firstOrFail());
+        $travel = DB::table('travels')->where('slug', $slug)->where('status', 'published')->first();
+        if (!$travel) {
+            return response()->json(['message' => 'Voyage introuvable'], 404);
+        }
+        return response()->json(['data' => $this->mapPublicTravel($travel)]);
     }
 
-    public function movies(): JsonResponse
+    public function movies(Request $request): JsonResponse
     {
-        return response()->json(DB::table('movies')->where('status', 'published')->get());
+        $query = DB::table('movies')->where('status', 'published');
+        if ($request->boolean('featured')) {
+            $query->where('featured', true);
+        }
+        $data = $query->orderByDesc('featured')->orderByDesc('id')->get()->map(fn ($movie) => $this->mapPublicMovie($movie));
+        return response()->json(['data' => $data, 'meta' => ['total' => $data->count()]]);
     }
 
     public function movieBySlug(string $slug): JsonResponse
     {
-        return response()->json(DB::table('movies')->where('slug', $slug)->firstOrFail());
+        $movie = DB::table('movies')->where('slug', $slug)->where('status', 'published')->first();
+        if (!$movie) {
+            return response()->json(['message' => 'Film introuvable'], 404);
+        }
+        return response()->json(['data' => $this->mapPublicMovie($movie)]);
     }
 
     public function movieSessions(string $slug): JsonResponse
     {
-        $movieId = DB::table('movies')->where('slug', $slug)->value('id');
-        return response()->json(DB::table('movie_sessions')->where('movie_id', $movieId)->orderBy('session_date')->orderBy('session_time')->get());
+        $movieId = DB::table('movies')->where('slug', $slug)->where('status', 'published')->value('id');
+        if (!$movieId) {
+            return response()->json(['data' => []]);
+        }
+        return response()->json(['data' => DB::table('movie_sessions')->where('movie_id', $movieId)->orderBy('session_date')->orderBy('session_time')->get()]);
+    }
+
+    public function contentBlocks(): JsonResponse
+    {
+        $data = DB::table('content_blocks')
+            ->where('visible', true)
+            ->orderBy('display_order')
+            ->orderBy('id')
+            ->get()
+            ->map(fn ($block) => [
+                'id' => (string) $block->id,
+                'type' => $block->type,
+                'title' => $block->title,
+                'subtitle' => $block->subtitle,
+                'description' => $block->description ?? null,
+                'cta_label' => $block->cta_label ?? null,
+                'cta_link' => $block->cta_link ?? null,
+                'image' => $this->publicUrl($block->image ?? null),
+                'background_image' => $this->publicUrl($block->background_image ?? null),
+                'visible' => (bool) $block->visible,
+                'display_order' => (int) $block->display_order,
+            ]);
+
+        return response()->json(['data' => $data, 'meta' => ['total' => $data->count()]]);
+    }
+
+    public function featured(): JsonResponse
+    {
+        return response()->json([
+            'events' => Event::query()->with('category', 'city')->where('status', 'published')->where('featured', true)->orderBy('event_date')->get()->map(fn (Event $event) => $this->mapPublicEvent($event)),
+            'travels' => DB::table('travels')->where('status', 'published')->where('featured', true)->orderByDesc('id')->get()->map(fn ($travel) => $this->mapPublicTravel($travel)),
+            'movies' => DB::table('movies')->where('status', 'published')->where('featured', true)->orderByDesc('id')->get()->map(fn ($movie) => $this->mapPublicMovie($movie)),
+        ]);
     }
 
     public function organizerDashboard(Request $request): JsonResponse
