@@ -40,6 +40,7 @@ Route::get('/featured', [MarketplaceController::class, 'featured']);
 Route::get('/cities', [CityController::class, 'index']);
 Route::post('/newsletter/subscribe', [NewsletterController::class, 'store']);
 Route::get('/events/{id}/plan', [MarketplaceController::class, 'sportPlan']);
+Route::get('/events/{id}/sport-plan', [MarketplaceController::class, 'sportPlan']);
 Route::get('/sport/events/{id}/plan', [MarketplaceController::class, 'sportPlan']);
 Route::post('/sport/events/{id}/select-place', [MarketplaceController::class, 'sportSelect']);
 

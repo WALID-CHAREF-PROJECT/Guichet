@@ -68,10 +68,11 @@ export default function CinemaDetailsPage(): JSX.Element {
           <div className="mt-4 grid gap-2 text-sm text-slate-300 sm:grid-cols-2">
             <p><strong>Date de sortie:</strong> {movie.releaseDate || 'Non renseignée'}</p>
           </div>
+          <a href="#seances" className="mt-6 inline-flex rounded-full bg-white px-5 py-2 font-semibold text-[#041743]">Voir les séances</a>
         </article>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto">{dates.map((date) => <button key={date} onClick={() => setActiveDate(date)} className={`rounded-full px-4 py-2 text-sm ${activeDate === date ? 'bg-white text-[#041743]' : 'bg-white/10'}`}>{date}</button>)}</div>
+      <div id="seances" className="flex scroll-mt-6 gap-2 overflow-x-auto">{dates.map((date) => <button key={date} onClick={() => setActiveDate(date)} className={`rounded-full px-4 py-2 text-sm ${activeDate === date ? 'bg-white text-[#041743]' : 'bg-white/10'}`}>{date}</button>)}</div>
 
       <div className="space-y-4">
         {visibleSessions.map((session) => (
@@ -82,7 +83,7 @@ export default function CinemaDetailsPage(): JSX.Element {
                 <p className="text-sm text-slate-300">{session.city ?? 'Ville à confirmer'}</p>
               </div>
             </div>
-            <div className="mt-3 flex flex-wrap gap-2"><button onClick={() => reserveSession(session)} className="rounded-full border border-white/20 px-4 py-1 text-sm hover:bg-white/10">{session.session_time}</button></div>
+            <div className="mt-3 flex flex-wrap gap-2"><button onClick={() => reserveSession(session)} className="rounded-full border border-white/20 px-4 py-1 text-sm hover:bg-white/10">Réserver · {session.session_time}</button></div>
           </article>
         ))}
       </div>

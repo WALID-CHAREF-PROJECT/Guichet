@@ -98,9 +98,37 @@ function unwrapItem<T>(payload: T | { data: T }): T {
   return payload && typeof payload === 'object' && 'data' in payload ? (payload as { data: T }).data : payload as T;
 }
 
+function parseBoolean(value: unknown): boolean {
+  return value === true || value === 1 || value === '1' || value === 'true';
+}
+
+function normalizeBuyingMode(value: unknown): EventItem['buyingMode'] {
+  return value === 'plan' || value === 'reservation' ? value : 'ticket';
+}
+
+function normalizePlanType(value: unknown): EventItem['planType'] {
+  return value === 'stadium' || value === 'theatre' || value === 'generic' ? value : null;
+}
+
 function mapEvent(raw: EventItem & Record<string, unknown>): EventItem {
   const image = normalizeMediaUrl(raw.image_url ?? raw.image);
-  return { ...raw, image_url: image };
+  const buyingMode = normalizeBuyingMode(raw.buyingMode ?? raw.buying_mode);
+  const planType = normalizePlanType(raw.planType ?? raw.plan_type);
+  const hasPlan = parseBoolean(raw.hasPlan ?? raw.has_plan);
+  const seatingEnabled = parseBoolean(raw.seatingEnabled ?? raw.seating_enabled);
+
+  return {
+    ...raw,
+    image_url: image,
+    buyingMode,
+    buying_mode: buyingMode,
+    hasPlan,
+    has_plan: hasPlan,
+    planType,
+    plan_type: planType,
+    seatingEnabled,
+    seating_enabled: seatingEnabled,
+  };
 }
 
 function mapMovie(raw: Record<string, unknown>): PublicMovie {
@@ -182,20 +210,21 @@ export interface PublicPlanZone {
 
 export async function getEventPlan(eventId: number | string, planType?: string): Promise<{ eventId: string; planType: string; zones: PublicPlanZone[] }> {
   const search = planType ? `?planType=${encodeURIComponent(planType)}` : '';
-  const payload = await request<{ eventId: string; planType: string; zones: PublicPlanZone[] }>(`/events/${eventId}/plan${search}`);
+  const payload = await request<({ eventId?: string; event_id?: string; planType?: string; plan_type?: string; zones: (PublicPlanZone & { plan_type?: PublicPlanZone['planType']; available_capacity?: number })[] })>(`/events/${eventId}/plan${search}`);
+  const resolvedPlanType = String(payload.planType ?? payload.plan_type ?? planType ?? 'generic');
   return {
-    eventId: String(payload.eventId),
-    planType: String(payload.planType),
+    eventId: String(payload.eventId ?? payload.event_id ?? eventId),
+    planType: resolvedPlanType,
     zones: payload.zones.map((zone) => ({
       id: String(zone.id),
       name: String(zone.name),
       label: String(zone.label ?? zone.name),
       price: Number(zone.price ?? 0),
       available: zone.available === true,
-      capacity: Number(zone.capacity ?? zone.availableCapacity ?? 0),
-      availableCapacity: Number(zone.availableCapacity ?? zone.capacity ?? 0),
+      capacity: Number(zone.capacity ?? zone.availableCapacity ?? zone.available_capacity ?? 0),
+      availableCapacity: Number(zone.availableCapacity ?? zone.available_capacity ?? zone.capacity ?? 0),
       color: String(zone.color ?? '#f97316'),
-      planType: (zone.planType ?? payload.planType ?? 'generic') as PublicPlanZone['planType'],
+      planType: (zone.planType ?? zone.plan_type ?? resolvedPlanType) as PublicPlanZone['planType'],
     })),
   };
 }
