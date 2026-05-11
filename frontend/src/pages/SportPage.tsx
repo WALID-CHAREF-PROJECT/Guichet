@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import ServiceTabs from '../components/ServiceTabs';
 import FavoriteButton from '../components/FavoriteButton';
 import EmptyState from '../components/EmptyState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import MediaCard from '../components/MediaCard';
+import DateFilterTabs, { DateFilterValue } from '../components/DateFilterTabs';
 import { getPublicEvents } from '../services/publicApi';
 import { EventItem } from '../types/api';
 
@@ -19,24 +20,27 @@ export default function SportPage(): JSX.Element {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [state, setState] = useState<LoadState>('loading');
   const [error, setError] = useState('');
+  const [activeDateFilter, setActiveDateFilter] = useState<DateFilterValue>((searchParams.get('date_filter') as DateFilterValue) ?? '');
 
-  const load = (): void => {
+  const load = useCallback((): void => {
     setState('loading');
-    getPublicEvents({ type: 'sport', q: searchParams.get('q') ?? undefined })
+    getPublicEvents({ type: 'sport', q: searchParams.get('q') ?? undefined, city: searchParams.get('city') ?? undefined, date_filter: activeDateFilter || undefined })
       .then((payload) => { setEvents(payload.data); setState('ready'); setError(''); })
       .catch((err: unknown) => { setError(err instanceof Error ? err.message : 'Erreur de chargement'); setState('error'); });
-  };
+  }, [activeDateFilter, searchParams]);
 
-  useEffect(load, [searchParams]);
+  useEffect(load, [load]);
 
-  const filtered = events.filter((item) => {
-    const city = (searchParams.get('city') ?? '').toLowerCase();
-    return !city || locationOf(item).toLowerCase().includes(city);
-  });
+  useEffect(() => {
+    setActiveDateFilter((searchParams.get('date_filter') as DateFilterValue) ?? '');
+  }, [searchParams]);
+
+  const filtered = events;
 
   return (
     <section className="space-y-8">
       <ServiceTabs active="sport" />
+      <DateFilterTabs active={activeDateFilter} onChange={setActiveDateFilter} className="mx-auto max-w-3xl" />
       {state === 'loading' && <LoadingSkeleton label="Chargement des événements sportifs..." />}
       {state === 'error' && <EmptyState title="Impossible de charger les événements sportifs." description={error} action={<button onClick={load} className="rounded-full bg-white px-5 py-2 font-semibold text-[#041743]">Réessayer</button>} />}
       {state === 'ready' && filtered.length > 0 && (
@@ -61,7 +65,7 @@ export default function SportPage(): JSX.Element {
         </div>
       )}
       {state === 'ready' && filtered.length === 0 && (
-        <EmptyState title="Aucun résultat sportif publié" description="Ajustez les filtres ou revenez plus tard pour les nouveaux événements." />
+        <EmptyState title="Aucun événement sportif pour cette période" description="Essayez une autre date ou réinitialisez le filtre pour voir toute la programmation sportive." action={<button onClick={() => setActiveDateFilter('')} className="rounded-full bg-white px-5 py-2 font-semibold text-[#041743]">Voir tous les sports</button>} />
       )}
     </section>
   );

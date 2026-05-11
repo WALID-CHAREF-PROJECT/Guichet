@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 class MarketplaceController extends Controller
@@ -50,6 +51,38 @@ class MarketplaceController extends Controller
     private function isFeatured(mixed $value): bool
     {
         return in_array($value, [true, 1, '1', 'true'], true);
+    }
+
+
+    private function applyEventDateFilter($query, ?string $filter): void
+    {
+        $today = Carbon::today();
+        [$start, $end] = match ($filter) {
+            'today' => [$today->copy(), $today->copy()],
+            'tomorrow' => [$today->copy()->addDay(), $today->copy()->addDay()],
+            'week' => [$today->copy(), $today->copy()->endOfWeek()->startOfDay()],
+            'weekend' => [$today->copy()->startOfWeek()->addDays(5), $today->copy()->startOfWeek()->addDays(6)],
+            'month' => [$today->copy()->startOfMonth(), $today->copy()->endOfMonth()->startOfDay()],
+            default => [null, null],
+        };
+
+        if (!$start || !$end) {
+            return;
+        }
+
+        $startDate = $start->toDateString();
+        $endDate = $end->toDateString();
+
+        $query->where(function ($dateQuery) use ($startDate, $endDate): void {
+            $dateQuery
+                ->whereBetween('event_date', [$startDate, $endDate])
+                ->orWhere(function ($fallbackQuery) use ($startDate, $endDate): void {
+                    $fallbackQuery
+                        ->whereNull('event_date')
+                        ->whereDate('starts_at', '>=', $startDate)
+                        ->whereDate('starts_at', '<=', $endDate);
+                });
+        });
     }
 
     private function mapPublicEvent(Event $event): array
@@ -610,6 +643,8 @@ class MarketplaceController extends Controller
         if ($city = $request->string('city')->toString()) {
             $query->where(fn ($q) => $q->where('city_name', 'like', "%{$city}%")->orWhereHas('city', fn ($cityQuery) => $cityQuery->where('slug', $city)->orWhere('name', 'like', "%{$city}%")));
         }
+
+        $this->applyEventDateFilter($query, $request->string('date_filter')->toString() ?: $request->string('quick_date')->toString());
 
         $data = $query->orderByDesc('featured')->orderBy('event_date')->orderBy('starts_at')->get()->map(fn (Event $event) => $this->mapPublicEvent($event));
         return response()->json(['data' => $data, 'meta' => ['total' => $data->count()]]);

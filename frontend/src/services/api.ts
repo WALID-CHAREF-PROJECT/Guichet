@@ -7,6 +7,7 @@ interface EventFilters {
   category?: string;
   city?: string;
   quick_date?: string;
+  date_filter?: string;
   sort?: string;
   page?: number;
 }
@@ -38,6 +39,7 @@ export async function getEvents(filters: EventFilters) {
     category: filters.category,
     city: filters.city,
     quick_date: filters.quick_date,
+    date_filter: filters.date_filter ?? filters.quick_date,
     sort: filters.sort,
     page: filters.page,
   });

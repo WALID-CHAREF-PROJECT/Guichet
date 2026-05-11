@@ -26,7 +26,7 @@ export default function FiltersBar(props: Props): JSX.Element {
         {props.cities.map((item) => <option key={item.id} value={item.slug}>{item.name}</option>)}
       </select>
       <select value={props.quickDate} onChange={(e) => props.onChange('quickDate', e.target.value)} className={fieldClass}>
-        <option value="">Date rapide</option><option value="today">Aujourd'hui</option><option value="weekend">Ce week-end</option><option value="7d">7 prochains jours</option><option value="30d">30 prochains jours</option>
+        <option value="">Toutes dates</option><option value="today">Aujourd’hui</option><option value="tomorrow">Demain</option><option value="week">Cette semaine</option><option value="weekend">Ce weekend</option><option value="month">Ce mois-ci</option>
       </select>
       <select value={props.sort} onChange={(e) => props.onChange('sort', e.target.value)} className={fieldClass}>
         <option value="date_asc">Date croissante</option><option value="date_desc">Date décroissante</option><option value="price_asc">Prix croissant</option><option value="price_desc">Prix décroissant</option>
