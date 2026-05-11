@@ -87,7 +87,7 @@ export default function OrderConfirmationPage(): JSX.Element {
     category: item?.ticketType ?? item?.productType ?? 'event_ticket',
     description: `Accès pour ${item?.quantity ?? 1} billet(s)`,
     price: formatMad(item?.subtotal ?? order.totalNow),
-    placement: item?.selectedSeats?.join(', ') || 'Libre',
+    placement: item?.selectedZone || item?.selectedSeats?.join(', ') || 'Libre',
     eventDate: item?.date ?? '-',
     purchaseDate: new Date(order.createdAt).toLocaleString('fr-MA'),
     location: item?.location ?? '-',

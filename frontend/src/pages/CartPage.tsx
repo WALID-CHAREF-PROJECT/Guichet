@@ -30,6 +30,7 @@ export default function CartPage(): JSX.Element {
                   <p className="text-sm text-slate-300">{item.location}</p>
                   <p className="text-xs text-slate-400">{item.date}</p>
                   {item.ticketType && <p className="text-xs text-orange-300">Offre: {item.ticketType}</p>}
+                  {item.selectedZone && <p className="text-xs text-orange-300">Zone: {item.selectedZone}{item.planType ? ` · ${item.planType}` : ''}</p>}
                   {item.selectedSeats?.length ? <p className="text-xs text-orange-300">Places: {item.selectedSeats.join(', ')}</p> : null}
                 </div>
               </div>

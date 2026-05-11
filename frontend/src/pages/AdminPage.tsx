@@ -49,8 +49,37 @@ const ghost =
 const danger =
   "rounded-2xl border border-red-300/20 bg-red-500/15 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/25";
 
-type EditableKind = "travel" | "movie" | "category" | "content";
+type EditableKind = "event" | "travel" | "movie" | "category" | "content";
 type Editable = Record<string, any> & { id?: string; kind?: EditableKind };
+
+const defaultPlanZones = [
+  { id: 'zone-orchestre', name: 'Orchestre', label: 'Face scène', price: 280, capacity: 220, availableCapacity: 180, color: '#38bdf8', sortOrder: 0, isAvailable: true },
+  { id: 'zone-balcon', name: 'Balcon', label: 'Vue surélevée', price: 180, capacity: 140, availableCapacity: 100, color: '#818cf8', sortOrder: 1, isAvailable: true },
+  { id: 'zone-vip', name: 'VIP', label: 'Premium', price: 520, capacity: 32, availableCapacity: 12, color: '#f59e0b', sortOrder: 2, isAvailable: true },
+];
+const emptyEvent: Editable = {
+  kind: "event",
+  title: "",
+  slug: "",
+  category: "Concerts",
+  city: "Casablanca",
+  location: "",
+  date: "",
+  time: "20:00",
+  image: "",
+  shortDescription: "",
+  description: "",
+  status: "draft",
+  featured: false,
+  ticketsSold: 0,
+  revenue: 0,
+  buyingMode: "ticket",
+  hasPlan: false,
+  planType: "theatre",
+  seatingEnabled: false,
+  planZones: [],
+  ticketTypes: [{ id: 'ticket-normal', name: 'Normal', price: 150, stock: 300, seatPlanRequired: false }],
+};
 const emptyTravel: Editable = {
   kind: "travel",
   title: "",
@@ -494,6 +523,10 @@ function AdminPageContent(): JSX.Element {
       setEditing(null);
       refresh();
     };
+    if (editing.kind === "event")
+      void adminPersistence
+        .saveEvent(editing as any)
+        .then(done);
     if (editing.kind === "travel")
       void adminPersistence
         .saveTravel(editing as Omit<TravelModel, "id"> & { id?: string })
@@ -585,6 +618,12 @@ function AdminPageContent(): JSX.Element {
                     }
                   >
                     Ajouter bloc contenu
+                  </button>
+                  <button
+                    className={ghost}
+                    onClick={() => setEditing({ ...emptyEvent })}
+                  >
+                    Ajouter événement
                   </button>
                   <button
                     className={ghost}
@@ -685,6 +724,7 @@ function AdminPageContent(): JSX.Element {
         {sectionStatus("des événements", <TableSkeleton />)}
         {!isLoading && (
           <div className={panel}>
+            <button className={btn + " mb-4"} onClick={() => setEditing({ ...emptyEvent })}>Créer événement</button>
             {db.events.length === 0 ? (
               <EmptyState />
             ) : (
@@ -695,6 +735,7 @@ function AdminPageContent(): JSX.Element {
                 >
                   <strong>{e.title}</strong>
                   <span>{e.status}</span>
+                  {e.buyingMode === "plan" && <span className="rounded-full bg-orange-500/20 px-2 py-1 text-xs text-orange-100">Plan interactif · {e.planType}</span>}
                   <button
                     className={ghost}
                     onClick={() =>
@@ -719,6 +760,12 @@ function AdminPageContent(): JSX.Element {
                     Feature
                   </button>
                   <button
+                    className={ghost}
+                    onClick={() => setEditing({ ...e, kind: "event" })}
+                  >
+                    Modifier
+                  </button>
+                  <button
                     className={danger}
                     onClick={() =>
                       adminPersistence.deleteEvent(e.id).then(refresh)
@@ -733,6 +780,13 @@ function AdminPageContent(): JSX.Element {
               ))
             )}
           </div>
+        )}
+        {editing && (
+          <Editor
+            editing={editing}
+            setEditing={setEditing}
+            saveEditable={saveEditable}
+          />
         )}
       </Shell>
     );
@@ -1036,6 +1090,59 @@ function Editor({
 }): JSX.Element {
   const set = (key: string, value: string | number | boolean): void =>
     setEditing({ ...editing, [key]: value });
+  const setZone = (index: number, key: string, value: string | number | boolean): void => {
+    const zones = [...(editing.planZones ?? [])];
+    zones[index] = { ...zones[index], [key]: value };
+    setEditing({ ...editing, planZones: zones });
+  };
+  if (editing.kind === "event") {
+    const usePlan = editing.buyingMode === "plan";
+    const zones = editing.planZones ?? [];
+    return (
+      <form className={panel + " grid gap-4 md:grid-cols-2"} onSubmit={saveEditable}>
+        <h2 className="md:col-span-2 text-xl font-bold">{editing.id ? "Modifier" : "Créer"} événement</h2>
+        <input className={input} placeholder="Titre" value={editing.title ?? ""} onChange={(e) => set("title", e.target.value)} />
+        <input className={input} placeholder="Slug" value={editing.slug ?? ""} onChange={(e) => set("slug", e.target.value)} />
+        <input className={input} placeholder="Catégorie" value={editing.category ?? ""} onChange={(e) => set("category", e.target.value)} />
+        <input className={input} placeholder="Ville" value={editing.city ?? ""} onChange={(e) => set("city", e.target.value)} />
+        <input className={input} placeholder="Lieu / salle" value={editing.location ?? ""} onChange={(e) => set("location", e.target.value)} />
+        <input className={input} type="date" value={editing.date ?? ""} onChange={(e) => set("date", e.target.value)} />
+        <input className={input} type="time" value={editing.time ?? ""} onChange={(e) => set("time", e.target.value)} />
+        <input className={input} type="number" placeholder="Prix normal" value={editing.ticketTypes?.[0]?.price ?? 0} onChange={(e) => setEditing({ ...editing, ticketTypes: [{ ...(editing.ticketTypes?.[0] ?? { id: 'ticket-normal', name: 'Normal', stock: 300, seatPlanRequired: false }), price: Number(e.target.value) }] })} />
+        <textarea className={input + " md:col-span-2"} placeholder="Description" value={editing.description ?? ""} onChange={(e) => set("description", e.target.value)} />
+        <MediaInput label="Image" value={editing.image ?? ""} onChange={(value) => set("image", value)} />
+        <div className="space-y-3 rounded-2xl border border-white/10 p-4">
+          <label className="block text-sm font-semibold">Mode d’achat</label>
+          <select className={input} value={editing.buyingMode ?? "ticket"} onChange={(e) => {
+            const buyingMode = e.target.value;
+            setEditing({ ...editing, buyingMode, hasPlan: buyingMode === 'plan', seatingEnabled: buyingMode === 'plan', planType: buyingMode === 'plan' ? (editing.planType ?? 'theatre') : null, planZones: buyingMode === 'plan' ? (zones.length ? zones : defaultPlanZones) : [] });
+          }}>
+            <option value="ticket">Normal ticket</option>
+            <option value="plan">Via plan</option>
+          </select>
+          {usePlan && <select className={input} value={editing.planType ?? "theatre"} onChange={(e) => set("planType", e.target.value)}>
+            <option value="theatre">Theatre / salle</option>
+            <option value="stadium">Stadium / sport</option>
+          </select>}
+          {usePlan && <label className="flex gap-2 text-sm"><input type="checkbox" checked={editing.seatingEnabled ?? true} onChange={(e) => set("seatingEnabled", e.target.checked)} /> Seating enabled</label>}
+          <label className="flex gap-2 text-sm"><input type="checkbox" checked={editing.status === "published"} onChange={(e) => set("status", e.target.checked ? "published" : "draft")} /> Publié</label>
+          <label className="flex gap-2 text-sm"><input type="checkbox" checked={editing.featured ?? false} onChange={(e) => set("featured", e.target.checked)} /> Mis en avant</label>
+        </div>
+        {usePlan && <div className="md:col-span-2 space-y-3 rounded-2xl border border-white/10 p-4">
+          <div className="flex items-center justify-between"><h3 className="font-bold">Zones / catégories du plan</h3><button type="button" className={ghost} onClick={() => setEditing({ ...editing, planZones: [...zones, { id: String(Date.now()), name: 'Nouvelle zone', label: '', price: 100, capacity: 100, availableCapacity: 100, color: '#f97316', sortOrder: zones.length, isAvailable: true }] })}>Ajouter zone</button></div>
+          {zones.map((zone: any, index: number) => <div key={zone.id ?? index} className="grid gap-2 rounded-xl bg-white/[0.04] p-3 md:grid-cols-6">
+            <input className={input} placeholder="Nom" value={zone.name} onChange={(e) => setZone(index, 'name', e.target.value)} />
+            <input className={input} placeholder="Label" value={zone.label ?? ''} onChange={(e) => setZone(index, 'label', e.target.value)} />
+            <input className={input} type="number" placeholder="Prix" value={zone.price} onChange={(e) => setZone(index, 'price', Number(e.target.value))} />
+            <input className={input} type="number" placeholder="Capacité" value={zone.capacity} onChange={(e) => setZone(index, 'capacity', Number(e.target.value))} />
+            <input className={input} type="color" value={zone.color} onChange={(e) => setZone(index, 'color', e.target.value)} />
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={zone.isAvailable !== false} onChange={(e) => setZone(index, 'isAvailable', e.target.checked)} /> active</label>
+          </div>)}
+        </div>}
+        <div className="md:col-span-2 flex gap-2"><button className={btn} type="submit">Enregistrer</button><button className={ghost} type="button" onClick={() => setEditing(null)}>Annuler</button></div>
+      </form>
+    );
+  }
   return (
     <form
       className={panel + " grid gap-4 md:grid-cols-2"}

@@ -187,6 +187,11 @@ function EventForm({ initial, onSubmit }: { initial?: BackofficeEvent; onSubmit:
       gallery: form.image ? [form.image] : [],
       tags: form.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
       featured: initial?.featured ?? false,
+      buyingMode: 'ticket',
+      hasPlan: false,
+      planType: null,
+      seatingEnabled: false,
+      planZones: [],
       ticketTypes
     });
     navigate('/ma-fr/organizer/events');

@@ -39,6 +39,7 @@ Route::get('/homepage/content', [MarketplaceController::class, 'contentBlocks'])
 Route::get('/featured', [MarketplaceController::class, 'featured']);
 Route::get('/cities', [CityController::class, 'index']);
 Route::post('/newsletter/subscribe', [NewsletterController::class, 'store']);
+Route::get('/events/{id}/plan', [MarketplaceController::class, 'sportPlan']);
 Route::get('/sport/events/{id}/plan', [MarketplaceController::class, 'sportPlan']);
 Route::post('/sport/events/{id}/select-place', [MarketplaceController::class, 'sportSelect']);
 
@@ -96,8 +97,8 @@ Route::middleware('auth.token')->group(function (): void {
         Route::put('/admin/organizers/{id}', fn (string $id) => response()->json(tap(DB::table('organizers')->where('id', $id)->update(request()->all()), fn () => null)));
         Route::delete('/admin/organizers/{id}', fn (string $id) => response()->json(['success' => DB::table('organizers')->where('id', $id)->delete() > 0]));
         Route::get('/admin/events', fn () => response()->json(DB::table('events')->get()));
-        Route::post('/admin/events', fn () => response()->json(['id' => DB::table('events')->insertGetId(array_merge(request()->all(), ['created_at' => now(), 'updated_at' => now()]))], 201));
-        Route::put('/admin/events/{id}', fn (string $id) => response()->json(['success' => DB::table('events')->where('id', $id)->update(array_merge(request()->all(), ['updated_at' => now()])) > 0]));
+        Route::post('/admin/events', [MarketplaceController::class, 'adminStoreEvent']);
+        Route::put('/admin/events/{id}', [MarketplaceController::class, 'adminUpdateEvent']);
         Route::delete('/admin/events/{id}', fn (string $id) => response()->json(['success' => DB::table('events')->where('id', $id)->delete() > 0]));
         Route::get('/admin/orders', fn () => response()->json(DB::table('orders')->get()));
         Route::get('/admin/categories', fn () => response()->json(DB::table('categories')->get()));

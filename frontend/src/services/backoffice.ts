@@ -30,6 +30,18 @@ export interface TicketType {
   seatPlanRequired: boolean;
 }
 
+export interface PlanZoneModel {
+  id: string;
+  name: string;
+  label?: string;
+  price: number;
+  capacity: number;
+  availableCapacity: number;
+  color: string;
+  sortOrder: number;
+  isAvailable: boolean;
+}
+
 export interface BackofficeEvent {
   id: string;
   organizerId: string;
@@ -52,6 +64,11 @@ export interface BackofficeEvent {
   featured: boolean;
   ticketsSold: number;
   revenue: number;
+  buyingMode: 'ticket' | 'plan' | 'reservation';
+  hasPlan: boolean;
+  planType?: 'theatre' | 'stadium' | 'generic' | null;
+  seatingEnabled: boolean;
+  planZones: PlanZoneModel[];
   ticketTypes: TicketType[];
   createdAt: string;
   updatedAt: string;
@@ -185,6 +202,15 @@ function buildPublicEvents(existingEvents: BackofficeEvent[], organizers: Organi
       featured: index % 4 === 0,
       ticketsSold: 40 + index * 22,
       revenue: 12000 + index * 6400,
+      buyingMode: index === 0 ? 'plan' : 'ticket',
+      hasPlan: index === 0,
+      planType: index === 0 ? 'theatre' : null,
+      seatingEnabled: index === 0,
+      planZones: index === 0 ? [
+        { id: uid('zone'), name: 'Orchestre', label: 'Face scène', price: 280, capacity: 220, availableCapacity: 180, color: '#38bdf8', sortOrder: 0, isAvailable: true },
+        { id: uid('zone'), name: 'Balcon', label: 'Vue surélevée', price: 180, capacity: 140, availableCapacity: 100, color: '#818cf8', sortOrder: 1, isAvailable: true },
+        { id: uid('zone'), name: 'VIP', label: 'Loges premium', price: 520, capacity: 32, availableCapacity: 12, color: '#f59e0b', sortOrder: 2, isAvailable: true }
+      ] : [],
       ticketTypes: [
         { id: uid('ticket'), name: 'Normal', price: Number.parseInt(event.price.replace(/[^\d]/g, ''), 10) || 150, stock: 300, seatPlanRequired: false },
         { id: uid('ticket'), name: 'VIP', price: (Number.parseInt(event.price.replace(/[^\d]/g, ''), 10) || 150) + 200, stock: 120, seatPlanRequired: true }
@@ -239,6 +265,15 @@ function makeSeedData(): DbShape {
     featured: index === 0,
     ticketsSold: 40 + index * 22,
     revenue: 12000 + index * 6400,
+    buyingMode: index === 0 ? 'plan' : 'ticket',
+    hasPlan: index === 0,
+    planType: index === 0 ? 'theatre' : null,
+    seatingEnabled: index === 0,
+    planZones: index === 0 ? [
+      { id: uid('zone'), name: 'Orchestre', label: 'Face scène', price: 280, capacity: 220, availableCapacity: 180, color: '#38bdf8', sortOrder: 0, isAvailable: true },
+      { id: uid('zone'), name: 'Balcon', label: 'Vue surélevée', price: 180, capacity: 140, availableCapacity: 100, color: '#818cf8', sortOrder: 1, isAvailable: true },
+      { id: uid('zone'), name: 'VIP', label: 'Loges premium', price: 520, capacity: 32, availableCapacity: 12, color: '#f59e0b', sortOrder: 2, isAvailable: true }
+    ] : [],
     ticketTypes: [
       { id: uid('ticket'), name: 'Normal', price: 150, stock: 300, seatPlanRequired: false },
       { id: uid('ticket'), name: 'VIP', price: 350, stock: 120, seatPlanRequired: true }
@@ -435,6 +470,11 @@ export const backofficeService = {
     db.organizers[idx] = { ...db.organizers[idx], ...patch };
     saveDb(db);
     return db.organizers[idx];
+  },
+  createEvent(payload: Omit<BackofficeEvent, 'id'>): void {
+    const db = getDb();
+    db.events.unshift({ ...payload, id: uid('evt') });
+    saveDb(db);
   },
   updateEventByAdmin(eventId: string, patch: Partial<BackofficeEvent>): BackofficeEvent {
     const db = getDb();

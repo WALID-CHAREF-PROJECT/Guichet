@@ -42,7 +42,8 @@ return new class extends Migration {
                 $table->string('hero_image')->nullable()->after('image');
                 $table->string('type')->default('event')->after('hero_image');
                 $table->string('buying_mode')->default('ticket')->after('type');
-                $table->boolean('has_plan')->default(false)->after('buying_mode');
+                $table->string('plan_type')->nullable()->after('buying_mode');
+                $table->boolean('has_plan')->default(false)->after('plan_type');
                 $table->boolean('seating_enabled')->default(false)->after('has_plan');
                 $table->string('status')->default('published')->after('seating_enabled');
                 $table->boolean('featured')->default(false)->after('status');
@@ -79,11 +80,15 @@ return new class extends Migration {
         Schema::create('sport_plan_zones', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('event_id')->constrained('events')->cascadeOnDelete();
+            $table->string('plan_type')->default('stadium');
             $table->string('name');
+            $table->string('label')->nullable();
             $table->string('code')->nullable();
             $table->decimal('price', 10, 2);
             $table->unsignedInteger('capacity')->default(0);
             $table->unsignedInteger('available_capacity')->default(0);
+            $table->string('color')->default('#f97316');
+            $table->unsignedInteger('sort_order')->default(0);
             $table->boolean('is_available')->default(true);
             $table->json('shape_data')->nullable();
             $table->timestamps();

@@ -32,6 +32,7 @@ export default function TicketSelectionModal({ event, open, onClose }: { event: 
         id: uid('cart'),
         productType: 'event_ticket' as const,
         slug: event.slug,
+        productId: String(event.id),
         title: event.title,
         image: event.image,
         date: `${event.date} · ${event.time}`,

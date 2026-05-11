@@ -31,6 +31,8 @@ class MarketplaceSeeder extends Seeder
 
         Category::query()->updateOrCreate(['slug' => 'voyage-organise'], ['name' => 'Voyage organisé', 'type' => 'travel', 'display_order' => 9, 'is_active' => true]);
         Category::query()->updateOrCreate(['slug' => 'cinema'], ['name' => 'Cinéma', 'type' => 'movie', 'display_order' => 10, 'is_active' => true]);
+        $theatreCategory = Category::query()->updateOrCreate(['slug' => 'theatre-humour'], ['name' => 'Théâtre & Humour', 'type' => 'event', 'display_order' => 3, 'is_active' => true]);
+        $concertCategory = Category::query()->updateOrCreate(['slug' => 'concerts'], ['name' => 'Concerts', 'type' => 'event', 'display_order' => 2, 'is_active' => true]);
 
         $sportCategory = Category::query()->firstWhere('slug', 'sport');
         $city = City::query()->first() ?? City::query()->create(['name' => 'Casablanca', 'slug' => 'casablanca']);
@@ -52,7 +54,9 @@ class MarketplaceSeeder extends Seeder
             'image' => 'https://picsum.photos/seed/sport/1200/700',
             'type' => 'sport',
             'buying_mode' => 'plan',
+            'plan_type' => 'stadium',
             'has_plan' => true,
+            'seating_enabled' => true,
             'status' => 'published',
             'featured' => true,
             'starts_at' => now()->addWeeks(2),
@@ -60,8 +64,70 @@ class MarketplaceSeeder extends Seeder
         ]);
 
         DB::table('ticket_types')->updateOrInsert(['event_id' => $sportEvent->id, 'name' => 'Tribune A'], ['price' => 100, 'stock' => 200, 'requires_seat_selection' => true, 'updated_at' => now(), 'created_at' => now()]);
-        DB::table('sport_plan_zones')->updateOrInsert(['event_id' => $sportEvent->id, 'name' => 'Tribune A'], ['code' => 'A', 'price' => 100, 'capacity' => 200, 'available_capacity' => 180, 'is_available' => true, 'shape_data' => json_encode(['x' => 10, 'y' => 20]), 'updated_at' => now(), 'created_at' => now()]);
-        DB::table('sport_plan_zones')->updateOrInsert(['event_id' => $sportEvent->id, 'name' => 'Tribune B'], ['code' => 'B', 'price' => 150, 'capacity' => 120, 'available_capacity' => 90, 'is_available' => true, 'shape_data' => json_encode(['x' => 40, 'y' => 30]), 'updated_at' => now(), 'created_at' => now()]);
+        DB::table('sport_plan_zones')->updateOrInsert(['event_id' => $sportEvent->id, 'name' => 'Tribune Nord'], ['plan_type' => 'stadium', 'label' => 'Virage Nord', 'code' => 'NORD', 'price' => 100, 'capacity' => 200, 'available_capacity' => 180, 'color' => '#22c55e', 'sort_order' => 0, 'is_available' => true, 'shape_data' => json_encode(['x' => 10, 'y' => 20]), 'updated_at' => now(), 'created_at' => now()]);
+        DB::table('sport_plan_zones')->updateOrInsert(['event_id' => $sportEvent->id, 'name' => 'Tribune Ouest'], ['plan_type' => 'stadium', 'label' => 'Latérale Ouest', 'code' => 'OUEST', 'price' => 150, 'capacity' => 120, 'available_capacity' => 90, 'color' => '#6366f1', 'sort_order' => 1, 'is_available' => true, 'shape_data' => json_encode(['x' => 40, 'y' => 30]), 'updated_at' => now(), 'created_at' => now()]);
+
+        $normalEvent = Event::query()->updateOrCreate(['slug' => 'festival-normal-ticket-demo'], [
+            'category_id' => $concertCategory?->id,
+            'city_id' => $city->id,
+            'organizer_id' => $organizer->id,
+            'organizer' => 'Guichet Organizer',
+            'title' => 'Festival normal ticket demo',
+            'short_description' => 'Événement sans plan interactif.',
+            'description' => 'Demo achat normal avec billets simples et sans ouverture de plan.',
+            'city_name' => 'Casablanca',
+            'venue' => 'Parc Casa',
+            'address' => 'Ain Diab',
+            'event_date' => now()->addDays(10)->toDateString(),
+            'event_time' => '19:00:00',
+            'image_url' => 'https://picsum.photos/seed/normal-event/1200/700',
+            'image' => 'https://picsum.photos/seed/normal-event/1200/700',
+            'type' => 'concert',
+            'buying_mode' => 'ticket',
+            'plan_type' => null,
+            'has_plan' => false,
+            'seating_enabled' => false,
+            'status' => 'published',
+            'featured' => false,
+            'starts_at' => now()->addDays(10),
+            'price_mad' => 150,
+        ]);
+        DB::table('ticket_types')->updateOrInsert(['event_id' => $normalEvent->id, 'name' => 'Normal'], ['price' => 150, 'stock' => 500, 'requires_seat_selection' => false, 'updated_at' => now(), 'created_at' => now()]);
+
+        $theatreEvent = Event::query()->updateOrCreate(['slug' => 'theatre-salle-plan-demo'], [
+            'category_id' => $theatreCategory?->id,
+            'city_id' => $city->id,
+            'organizer_id' => $organizer->id,
+            'organizer' => 'Guichet Organizer',
+            'title' => 'Théâtre salle plan demo',
+            'short_description' => 'Spectacle avec plan de salle.',
+            'description' => 'Demo théâtre avec choix de zones Orchestre, Balcon, Mezzanine et VIP.',
+            'city_name' => 'Casablanca',
+            'venue' => 'Théâtre Mohammed Zefzaf',
+            'address' => 'Maarif',
+            'event_date' => now()->addDays(18)->toDateString(),
+            'event_time' => '20:30:00',
+            'image_url' => 'https://picsum.photos/seed/theatre-plan/1200/700',
+            'image' => 'https://picsum.photos/seed/theatre-plan/1200/700',
+            'type' => 'theatre',
+            'buying_mode' => 'plan',
+            'plan_type' => 'theatre',
+            'has_plan' => true,
+            'seating_enabled' => true,
+            'status' => 'published',
+            'featured' => true,
+            'starts_at' => now()->addDays(18),
+            'price_mad' => 180,
+        ]);
+        foreach ([
+            ['Orchestre', 'Face scène', 280, 220, 180, '#38bdf8'],
+            ['Balcon', 'Vue surélevée', 180, 140, 100, '#818cf8'],
+            ['Mezzanine', 'Centre mezzanine', 220, 90, 45, '#a78bfa'],
+            ['VIP', 'Loges premium', 520, 32, 12, '#f59e0b'],
+        ] as $index => [$name, $label, $price, $capacity, $available, $color]) {
+            DB::table('sport_plan_zones')->updateOrInsert(['event_id' => $theatreEvent->id, 'name' => $name], ['plan_type' => 'theatre', 'label' => $label, 'code' => Str::upper(Str::slug($name, '_')), 'price' => $price, 'capacity' => $capacity, 'available_capacity' => $available, 'color' => $color, 'sort_order' => $index, 'is_available' => true, 'updated_at' => now(), 'created_at' => now()]);
+        }
+
 
         DB::table('travels')->updateOrInsert(['slug' => 'desert-premium'], ['title' => 'Voyage désert premium', 'category' => 'Voyage organisé', 'destination' => 'Merzouga', 'departure_date' => now()->addMonth()->toDateString(), 'price' => 4200, 'image' => 'https://picsum.photos/seed/travel/1200/700', 'description' => 'Road trip premium.', 'status' => 'published', 'updated_at' => now(), 'created_at' => now()]);
 
