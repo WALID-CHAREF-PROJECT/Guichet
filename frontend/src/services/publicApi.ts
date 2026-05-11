@@ -206,11 +206,13 @@ export interface PublicPlanZone {
   availableCapacity: number;
   color: string;
   planType: 'theatre' | 'stadium' | 'generic';
+  sortOrder?: number;
 }
+
 
 export async function getEventPlan(eventId: number | string, planType?: string): Promise<{ eventId: string; planType: string; zones: PublicPlanZone[] }> {
   const search = planType ? `?planType=${encodeURIComponent(planType)}` : '';
-  const payload = await request<({ eventId?: string; event_id?: string; planType?: string; plan_type?: string; zones: (PublicPlanZone & { plan_type?: PublicPlanZone['planType']; available_capacity?: number })[] })>(`/events/${eventId}/plan${search}`);
+  const payload = await request<({ eventId?: string; event_id?: string; planType?: string; plan_type?: string; zones: (PublicPlanZone & { plan_type?: PublicPlanZone['planType']; available_capacity?: number; sort_order?: number })[] })>(`/events/${eventId}/plan${search}`);
   const resolvedPlanType = String(payload.planType ?? payload.plan_type ?? planType ?? 'generic');
   return {
     eventId: String(payload.eventId ?? payload.event_id ?? eventId),
@@ -225,6 +227,7 @@ export async function getEventPlan(eventId: number | string, planType?: string):
       availableCapacity: Number(zone.availableCapacity ?? zone.available_capacity ?? zone.capacity ?? 0),
       color: String(zone.color ?? '#f97316'),
       planType: (zone.planType ?? zone.plan_type ?? resolvedPlanType) as PublicPlanZone['planType'],
+      sortOrder: Number(zone.sortOrder ?? zone.sort_order ?? 0),
     })),
   };
 }

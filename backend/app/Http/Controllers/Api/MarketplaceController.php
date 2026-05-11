@@ -100,6 +100,8 @@ class MarketplaceController extends Controller
             'color' => $zone->color ?: '#f97316',
             'planType' => $zone->plan_type ?: $fallbackPlanType ?: 'generic',
             'plan_type' => $zone->plan_type ?: $fallbackPlanType ?: 'generic',
+            'sortOrder' => (int) ($zone->sort_order ?? 0),
+            'sort_order' => (int) ($zone->sort_order ?? 0),
         ];
     }
 
