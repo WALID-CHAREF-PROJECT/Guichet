@@ -17,12 +17,33 @@ export interface PublicMovie {
   featured: boolean;
 }
 
+export type CinemaSeatStatus = 'available' | 'reserved' | 'unavailable';
+export type CinemaSeatTemplate = 'small' | 'medium' | 'large';
+
+export interface CinemaSeat {
+  id: string;
+  row: string;
+  number: number;
+  status: CinemaSeatStatus;
+  price: number;
+}
+
 export interface MovieSession {
   id: number | string;
+  movie_id?: number | string;
   session_date: string;
   session_time: string;
   cinema: string | null;
   city: string | null;
+  hallName?: string;
+  hall_name?: string;
+  seatingEnabled: boolean;
+  seating_enabled?: boolean | number | string;
+  seatTemplate: CinemaSeatTemplate;
+  seat_template?: CinemaSeatTemplate;
+  reservedSeats?: string[];
+  reserved_seats?: string[] | string | null;
+  seats?: CinemaSeat[];
   price: number;
 }
 
@@ -245,8 +266,64 @@ export async function getPublicMovie(slug: string): Promise<PublicMovie> {
   return mapMovie(unwrapItem(await request<Record<string, unknown> | { data: Record<string, unknown> }>(`/movies/${slug}`)));
 }
 
+function parseStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map(String);
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      const decoded = JSON.parse(value) as unknown;
+      return Array.isArray(decoded) ? decoded.map(String) : value.split(',').map((item) => item.trim()).filter(Boolean);
+    } catch {
+      return value.split(',').map((item) => item.trim()).filter(Boolean);
+    }
+  }
+  return [];
+}
+
+export function cinemaTemplateDimensions(template: unknown): { rows: number; columns: number } {
+  if (template === 'small') return { rows: 6, columns: 10 };
+  if (template === 'large') return { rows: 12, columns: 18 };
+  return { rows: 9, columns: 14 };
+}
+
+export function generateCinemaSeats(session: Pick<MovieSession, 'id' | 'price' | 'seatTemplate' | 'reservedSeats'>): CinemaSeat[] {
+  const dimensions = cinemaTemplateDimensions(session.seatTemplate);
+  const reserved = new Set(session.reservedSeats ?? []);
+  return Array.from({ length: dimensions.rows }).flatMap((_, rowIndex) => {
+    const row = String.fromCharCode(65 + rowIndex);
+    return Array.from({ length: dimensions.columns }).map((__, seatIndex) => {
+      const number = seatIndex + 1;
+      const id = `${session.id}-${row}${number}`;
+      const code = `${row}${number}`;
+      const patternedUnavailable = (rowIndex + number) % 19 === 0 || (rowIndex === 0 && number % 6 === 0);
+      return { id, row, number, price: Number(session.price || 0), status: reserved.has(code) || reserved.has(id) || patternedUnavailable ? 'reserved' : 'available' } as CinemaSeat;
+    });
+  });
+}
+
+function mapMovieSession(raw: MovieSession & Record<string, unknown>): MovieSession {
+  const reservedSeats = parseStringArray(raw.reservedSeats ?? raw.reserved_seats);
+  const seatTemplate = (raw.seatTemplate ?? raw.seat_template ?? 'medium') as CinemaSeatTemplate;
+  const session: MovieSession = {
+    ...raw,
+    id: raw.id,
+    session_date: String(raw.session_date ?? ''),
+    session_time: String(raw.session_time ?? ''),
+    cinema: raw.cinema ? String(raw.cinema) : null,
+    city: raw.city ? String(raw.city) : null,
+    hallName: String(raw.hallName ?? raw.hall_name ?? 'Salle 1'),
+    hall_name: String(raw.hall_name ?? raw.hallName ?? 'Salle 1'),
+    seatingEnabled: parseBoolean(raw.seatingEnabled ?? raw.seating_enabled),
+    seating_enabled: raw.seating_enabled,
+    seatTemplate,
+    seat_template: seatTemplate,
+    reservedSeats,
+    price: Number(raw.price ?? 0),
+  };
+  return { ...session, seats: Array.isArray(raw.seats) ? raw.seats : generateCinemaSeats(session) };
+}
+
 export async function getMovieSessions(slug: string): Promise<MovieSession[]> {
-  return unwrapList(await request<MovieSession[] | { data: MovieSession[] }>(`/movies/${slug}/sessions`));
+  return unwrapList(await request<MovieSession[] | { data: MovieSession[] }>(`/movies/${slug}/sessions`)).map((session) => mapMovieSession(session as MovieSession & Record<string, unknown>));
 }
 
 export async function getPublicTravels(params: Record<string, string | undefined> = {}): Promise<PublicTravel[]> {

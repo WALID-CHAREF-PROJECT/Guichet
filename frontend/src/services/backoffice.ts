@@ -114,7 +114,9 @@ export interface CategoryModel {
 }
 
 export interface TravelModel { id: string; image: string; gallery?: string[]; title: string; category: string; destination: string; departureDate: string; price: number; description?: string; status: EventStatus; featured: boolean }
-export interface MovieModel { id: string; poster: string; title: string; genre: string; duration: string; releaseDate: string; cinemas: string; description?: string; status: EventStatus; featured: boolean }
+export type CinemaSeatTemplate = 'small' | 'medium' | 'large';
+export interface MovieSessionModel { id: string; sessionDate: string; sessionTime: string; cinema: string; city: string; hallName: string; price: number; seatingEnabled: boolean; seatTemplate: CinemaSeatTemplate; reservedSeats?: string[] }
+export interface MovieModel { id: string; poster: string; title: string; genre: string; duration: string; releaseDate: string; cinemas: string; description?: string; status: EventStatus; featured: boolean; sessions: MovieSessionModel[] }
 export interface ContentBlock { id: string; type: 'banner' | 'section' | 'hero' | 'cta'; title: string; subtitle?: string; description?: string; ctaLabel?: string; ctaLink?: string; image?: string; backgroundImage?: string; visible: boolean; order: number }
 
 export interface DbShape {
@@ -152,8 +154,9 @@ const stadiumSeedZones = (): PlanZoneModel[] => [
   { id: uid('zone'), name: 'Tribune Sud', label: 'Virage Sud', price: 120, capacity: 1200, availableCapacity: 580, color: '#14b8a6', sortOrder: 1, isAvailable: true },
   { id: uid('zone'), name: 'Tribune Est', label: 'Latérale Est', price: 180, capacity: 900, availableCapacity: 340, color: '#3b82f6', sortOrder: 2, isAvailable: true },
   { id: uid('zone'), name: 'Tribune Ouest', label: 'Latérale Ouest', price: 220, capacity: 820, availableCapacity: 260, color: '#6366f1', sortOrder: 3, isAvailable: true },
-  { id: uid('zone'), name: 'VIP', label: 'Salon premium', price: 650, capacity: 120, availableCapacity: 40, color: '#f97316', sortOrder: 4, isAvailable: true },
-  { id: uid('zone'), name: 'Virage', label: 'Supporters', price: 90, capacity: 1600, availableCapacity: 900, color: '#ef4444', sortOrder: 5, isAvailable: true },
+  { id: uid('zone'), name: 'Virage Nord', label: 'Supporters Nord', price: 90, capacity: 1600, availableCapacity: 900, color: '#ef4444', sortOrder: 4, isAvailable: true },
+  { id: uid('zone'), name: 'Virage Sud', label: 'Supporters Sud', price: 90, capacity: 1500, availableCapacity: 760, color: '#f97316', sortOrder: 5, isAvailable: true },
+  { id: uid('zone'), name: 'VIP', label: 'Loges présidentielles', price: 650, capacity: 120, availableCapacity: 40, color: '#eab308', sortOrder: 6, isAvailable: true },
 ];
 const seedIsoDate = (offsetDays: number): string => new Date(Date.now() + offsetDays * 86400000).toISOString().slice(0, 10);
 function seedPlanFor(category: string, slug: string): { buyingMode: BackofficeEvent['buyingMode']; hasPlan: boolean; planType: BackofficeEvent['planType']; seatingEnabled: boolean; planZones: PlanZoneModel[] } {
@@ -324,7 +327,10 @@ function makeSeedData(): DbShape {
   ];
 
   const travels: TravelModel[] = voyages.map((travel, i) => ({ id: `travel-${travel.id}`, image: travel.image, title: travel.title, category: travel.collection, destination: travel.location, departureDate: seedIsoDate(7 + i * 9), price: Number.parseInt(travel.price, 10) || 3000, status: 'published', featured: i === 0 }));
-  const movieItems: MovieModel[] = movies.map((movie, i) => ({ id: `movie-${movie.id}`, poster: movie.image, title: movie.title, genre: movie.genre, duration: movie.duration, releaseDate: seedIsoDate(i - 2), cinemas: 'Megarama, Imax, Pathé Californie', status: 'published', featured: i === 0 }));
+  const movieItems: MovieModel[] = movies.map((movie, i) => ({ id: `movie-${movie.id}`, poster: movie.image, title: movie.title, genre: movie.genre, duration: movie.duration, releaseDate: seedIsoDate(i - 2), cinemas: 'Megarama, Imax, Pathé Californie', status: 'published', featured: i === 0, sessions: [
+    { id: uid('session'), sessionDate: seedIsoDate(1 + i), sessionTime: '18:00', cinema: 'Megarama', city: 'Casablanca', hallName: 'Salle Atlas', price: 70, seatingEnabled: i === 0, seatTemplate: i === 0 ? 'medium' : 'small', reservedSeats: ['A6', 'C4', 'D8'] },
+    { id: uid('session'), sessionDate: seedIsoDate(2 + i), sessionTime: '20:45', cinema: 'Pathé Californie', city: 'Casablanca', hallName: 'Salle Rif', price: 85, seatingEnabled: false, seatTemplate: 'small', reservedSeats: [] },
+  ] }));
   const content: ContentBlock[] = [
     { id: uid('content'), type: 'banner', title: 'Hero principal', subtitle: 'Campagne été', image: platformEvents[0]?.image, visible: true, order: 1 },
     { id: uid('content'), type: 'section', title: 'Événements promus', visible: true, order: 2 }
@@ -361,8 +367,13 @@ function getDb(): DbShape {
     const parsed = JSON.parse(raw) as DbShape;
     const organizers = buildPublicOrganizers(parsed.organizers ?? []);
     const events = buildPublicEvents(parsed.events ?? [], organizers);
-    if (organizers.length !== (parsed.organizers ?? []).length || events.length !== (parsed.events ?? []).length) {
-      const upgraded = { ...parsed, organizers, events };
+    const hasMoviesWithoutSessions = (parsed.movies ?? []).some((movie) => !movie.sessions);
+    const moviesWithSessions = (parsed.movies ?? []).map((movie, index) => ({ ...movie, sessions: movie.sessions ?? [
+      { id: uid('session'), sessionDate: seedIsoDate(1 + index), sessionTime: '18:00', cinema: movie.cinemas?.split(',')[0]?.trim() || 'Megarama', city: 'Casablanca', hallName: 'Salle Atlas', price: 70, seatingEnabled: index === 0, seatTemplate: index === 0 ? 'medium' : 'small', reservedSeats: ['A6', 'C4'] },
+      { id: uid('session'), sessionDate: seedIsoDate(2 + index), sessionTime: '20:45', cinema: 'Pathé Californie', city: 'Casablanca', hallName: 'Salle Rif', price: 85, seatingEnabled: false, seatTemplate: 'small', reservedSeats: [] },
+    ] }));
+    if (organizers.length !== (parsed.organizers ?? []).length || events.length !== (parsed.events ?? []).length || hasMoviesWithoutSessions) {
+      const upgraded = { ...parsed, organizers, events, movies: moviesWithSessions };
       localStorage.setItem(DB_KEY, JSON.stringify(upgraded));
       return upgraded;
     }

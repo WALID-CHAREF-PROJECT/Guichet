@@ -33,7 +33,12 @@ export interface CartItem {
   ticketType?: string;
   selectedSeats?: string[];
   selectedZone?: string;
-  planType?: 'theatre' | 'stadium' | 'generic';
+  planType?: 'theatre' | 'stadium' | 'generic' | 'cinema';
+  movieId?: string;
+  movieTitle?: string;
+  sessionId?: string;
+  sessionDateTime?: string;
+  hallName?: string;
   selectedDate?: string;
   quantity: number;
   unitPrice: number;
