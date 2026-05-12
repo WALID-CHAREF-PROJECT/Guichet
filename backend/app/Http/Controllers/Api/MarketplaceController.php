@@ -786,6 +786,75 @@ class MarketplaceController extends Controller
         return response()->json(['data' => $this->mapPublicTravel($travel)]);
     }
 
+
+
+    public function adminMovies(): JsonResponse
+    {
+        $movies = DB::table('movies')->get()->map(function ($movie) {
+            $movie->sessions = DB::table('movie_sessions')
+                ->where('movie_id', $movie->id)
+                ->orderBy('session_date')
+                ->orderBy('session_time')
+                ->get()
+                ->map(fn ($session) => [
+                    'id' => (string) $session->id,
+                    'sessionDate' => $session->session_date,
+                    'sessionTime' => $session->session_time,
+                    'cinema' => $session->cinema,
+                    'city' => $session->city,
+                    'hallName' => $session->hall_name ?? 'Salle 1',
+                    'price' => (float) $session->price,
+                    'seatingEnabled' => (bool) ($session->seating_enabled ?? false),
+                    'seatTemplate' => $session->seat_template ?? 'medium',
+                    'reservedSeats' => $session->reserved_seats ? json_decode($session->reserved_seats, true) : [],
+                ]);
+            return $movie;
+        });
+        return response()->json($movies);
+    }
+
+    private function syncMovieSessions(int|string $movieId, array $sessions): void
+    {
+        DB::table('movie_sessions')->where('movie_id', $movieId)->delete();
+        foreach ($sessions as $session) {
+            DB::table('movie_sessions')->insert([
+                'movie_id' => $movieId,
+                'session_date' => $session['session_date'] ?? now()->toDateString(),
+                'session_time' => $session['session_time'] ?? '20:00',
+                'cinema' => $session['cinema'] ?? null,
+                'city' => $session['city'] ?? null,
+                'hall_name' => $session['hall_name'] ?? 'Salle 1',
+                'price' => $session['price'] ?? 0,
+                'seating_enabled' => (bool) ($session['seating_enabled'] ?? false),
+                'seat_template' => $session['seat_template'] ?? 'medium',
+                'reserved_seats' => $session['reserved_seats'] ?? json_encode([]),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+
+    private function moviePayloadFromRequest(Request $request): array
+    {
+        return collect($request->except('sessions'))->only(['title', 'slug', 'genre', 'duration', 'release_date', 'poster', 'synopsis', 'status', 'featured'])->all();
+    }
+
+    public function adminStoreMovie(Request $request): JsonResponse
+    {
+        $movieId = DB::table('movies')->insertGetId(array_merge($this->moviePayloadFromRequest($request), ['created_at' => now(), 'updated_at' => now()]));
+        $this->syncMovieSessions($movieId, $request->input('sessions', []));
+        return response()->json(['id' => $movieId], 201);
+    }
+
+    public function adminUpdateMovie(Request $request, string $id): JsonResponse
+    {
+        $updated = DB::table('movies')->where('id', $id)->update(array_merge($this->moviePayloadFromRequest($request), ['updated_at' => now()])) > 0;
+        if ($request->has('sessions')) {
+            $this->syncMovieSessions($id, $request->input('sessions', []));
+        }
+        return response()->json(['success' => $updated]);
+    }
+
     public function movies(Request $request): JsonResponse
     {
         $query = DB::table('movies')->where('status', 'published');
@@ -811,7 +880,14 @@ class MarketplaceController extends Controller
         if (!$movieId) {
             return response()->json(['data' => []]);
         }
-        return response()->json(['data' => DB::table('movie_sessions')->where('movie_id', $movieId)->orderBy('session_date')->orderBy('session_time')->get()]);
+        $sessions = DB::table('movie_sessions')->where('movie_id', $movieId)->orderBy('session_date')->orderBy('session_time')->get()->map(function ($session) {
+            $session->hallName = $session->hall_name ?? 'Salle 1';
+            $session->seatingEnabled = (bool) ($session->seating_enabled ?? false);
+            $session->seatTemplate = $session->seat_template ?? 'medium';
+            $session->reservedSeats = $session->reserved_seats ? json_decode($session->reserved_seats, true) : [];
+            return $session;
+        });
+        return response()->json(['data' => $sessions]);
     }
 
     public function contentBlocks(): JsonResponse

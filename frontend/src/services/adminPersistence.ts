@@ -109,7 +109,20 @@ function normalizeTravel(raw: Partial<TravelModel> & Record<string, unknown>): T
 }
 
 function normalizeMovie(raw: Partial<MovieModel> & Record<string, unknown>): MovieModel {
-  return { id: String(raw.id ?? crypto.randomUUID()), poster: mediaUrl(raw.poster ?? raw.image ?? raw.image_url), title: str(raw.title), genre: str(raw.genre), duration: str(raw.duration), releaseDate: str(raw.releaseDate ?? raw.release_date ?? raw.starts_at), cinemas: str(raw.cinemas ?? raw.venue), description: str(raw.description), status: (str(raw.status, 'draft') as MovieModel['status']), featured: bool(raw.featured ?? raw.is_featured) };
+  const sessionsRaw = Array.isArray(raw.sessions) ? raw.sessions : [];
+  return {
+    id: String(raw.id ?? crypto.randomUUID()),
+    poster: mediaUrl(raw.poster ?? raw.image ?? raw.image_url),
+    title: str(raw.title),
+    genre: str(raw.genre),
+    duration: str(raw.duration),
+    releaseDate: str(raw.releaseDate ?? raw.release_date ?? raw.starts_at),
+    cinemas: str(raw.cinemas ?? raw.venue),
+    description: str(raw.description ?? raw.synopsis),
+    status: (str(raw.status, 'draft') as MovieModel['status']),
+    featured: bool(raw.featured ?? raw.is_featured),
+    sessions: sessionsRaw.map((session: any) => ({ id: String(session.id ?? crypto.randomUUID()), sessionDate: str(session.sessionDate ?? session.session_date), sessionTime: str(session.sessionTime ?? session.session_time), cinema: str(session.cinema), city: str(session.city), hallName: str(session.hallName ?? session.hall_name, 'Salle 1'), price: num(session.price, 70), seatingEnabled: bool(session.seatingEnabled ?? session.seating_enabled), seatTemplate: (str(session.seatTemplate ?? session.seat_template, 'medium') as any), reservedSeats: Array.isArray(session.reservedSeats) ? session.reservedSeats : [] })),
+  };
 }
 
 
@@ -230,6 +243,18 @@ function moviePayload(value: Partial<MovieModel>): Record<string, unknown> {
     synopsis: value.description,
     status: value.status,
     featured: value.featured,
+    sessions: value.sessions?.map((session) => ({
+      id: session.id,
+      session_date: session.sessionDate,
+      session_time: session.sessionTime,
+      cinema: session.cinema,
+      city: session.city,
+      hall_name: session.hallName,
+      price: session.price,
+      seating_enabled: session.seatingEnabled,
+      seat_template: session.seatTemplate,
+      reserved_seats: JSON.stringify(session.reservedSeats ?? []),
+    })),
   });
 }
 

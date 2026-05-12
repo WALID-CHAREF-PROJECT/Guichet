@@ -65,8 +65,9 @@ const stadiumPlanZones: PlanZoneModel[] = [
   { id: 'zone-tribune-sud', name: 'Tribune Sud', label: 'Virage Sud', price: 120, capacity: 1200, availableCapacity: 1200, color: '#14b8a6', sortOrder: 1, isAvailable: true },
   { id: 'zone-tribune-est', name: 'Tribune Est', label: 'Latérale Est', price: 180, capacity: 900, availableCapacity: 900, color: '#3b82f6', sortOrder: 2, isAvailable: true },
   { id: 'zone-tribune-ouest', name: 'Tribune Ouest', label: 'Latérale Ouest', price: 220, capacity: 820, availableCapacity: 820, color: '#6366f1', sortOrder: 3, isAvailable: true },
-  { id: 'zone-vip', name: 'VIP', label: 'Salon premium', price: 650, capacity: 120, availableCapacity: 120, color: '#f97316', sortOrder: 4, isAvailable: true },
-  { id: 'zone-virage', name: 'Virage', label: 'Supporters', price: 90, capacity: 1600, availableCapacity: 1600, color: '#ef4444', sortOrder: 5, isAvailable: true },
+  { id: 'zone-virage-nord', name: 'Virage Nord', label: 'Supporters Nord', price: 90, capacity: 1600, availableCapacity: 1600, color: '#ef4444', sortOrder: 4, isAvailable: true },
+  { id: 'zone-virage-sud', name: 'Virage Sud', label: 'Supporters Sud', price: 90, capacity: 1500, availableCapacity: 1500, color: '#f97316', sortOrder: 5, isAvailable: true },
+  { id: 'zone-vip', name: 'VIP', label: 'Loges présidentielles', price: 650, capacity: 120, availableCapacity: 120, color: '#eab308', sortOrder: 6, isAvailable: true },
 ];
 const clonePlanZones = (zones: PlanZoneModel[]): PlanZoneModel[] => zones.map((zone, index) => ({ ...zone, id: `${zone.id}-${Date.now()}-${index}` }));
 const inferPlanType = (category?: string): 'theatre' | 'stadium' => {
@@ -121,6 +122,7 @@ const emptyMovie: Editable = {
   description: "",
   status: "draft",
   featured: false,
+  sessions: [{ id: 'session-demo', sessionDate: '', sessionTime: '20:00', cinema: 'Megarama', city: 'Casablanca', hallName: 'Salle 1', price: 70, seatingEnabled: true, seatTemplate: 'medium', reservedSeats: [] }],
 };
 const emptyCategory: Editable = {
   kind: "category",
@@ -1119,6 +1121,11 @@ function Editor({
     zones[index] = { ...zones[index], [key]: value };
     setEditing({ ...editing, planZones: zones });
   };
+  const setMovieSession = (index: number, key: string, value: string | number | boolean): void => {
+    const sessions = [...(editing.sessions ?? [])];
+    sessions[index] = { ...sessions[index], [key]: value };
+    setEditing({ ...editing, sessions });
+  };
   if (editing.kind === "event") {
     const usePlan = editing.buyingMode === "plan";
     const zones = editing.planZones ?? [];
@@ -1329,6 +1336,28 @@ function Editor({
           editing.kind === "movie" ? set("poster", value) : set("image", value)
         }
       />
+      {editing.kind === "movie" && <section className="md:col-span-2 space-y-3 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="font-bold text-cyan-100">Séances cinéma</h3>
+            <p className="text-xs text-slate-300">Activez le seating pour ouvrir le plan cinéma public, sinon la séance garde le bouton Réserver normal.</p>
+          </div>
+          <button type="button" className={btn} onClick={() => setEditing({ ...editing, sessions: [...(editing.sessions ?? []), { id: String(Date.now()), sessionDate: '', sessionTime: '20:00', cinema: editing.cinemas?.split(',')[0]?.trim() || 'Megarama', city: 'Casablanca', hallName: 'Salle 1', price: 70, seatingEnabled: true, seatTemplate: 'medium', reservedSeats: [] }] })}>Ajouter séance</button>
+        </div>
+        {(editing.sessions ?? []).map((session: any, index: number) => <div key={session.id ?? index} className="grid gap-2 rounded-xl bg-white/[0.04] p-3 md:grid-cols-8">
+          <input className={input} type="date" value={session.sessionDate ?? ''} onChange={(e) => setMovieSession(index, 'sessionDate', e.target.value)} />
+          <input className={input} type="time" value={session.sessionTime ?? ''} onChange={(e) => setMovieSession(index, 'sessionTime', e.target.value)} />
+          <input className={input} placeholder="Cinéma" value={session.cinema ?? ''} onChange={(e) => setMovieSession(index, 'cinema', e.target.value)} />
+          <input className={input} placeholder="Ville" value={session.city ?? ''} onChange={(e) => setMovieSession(index, 'city', e.target.value)} />
+          <input className={input} placeholder="Salle" value={session.hallName ?? ''} onChange={(e) => setMovieSession(index, 'hallName', e.target.value)} />
+          <input className={input} type="number" min="0" placeholder="Prix" value={session.price ?? 0} onChange={(e) => setMovieSession(index, 'price', Number(e.target.value))} />
+          <select className={input} value={session.seatTemplate ?? 'medium'} onChange={(e) => setMovieSession(index, 'seatTemplate', e.target.value)}><option value="small">Small room</option><option value="medium">Medium room</option><option value="large">Large room</option></select>
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <label className="flex items-center gap-2"><input type="checkbox" checked={session.seatingEnabled !== false} onChange={(e) => setMovieSession(index, 'seatingEnabled', e.target.checked)} /> seating</label>
+            <button type="button" className={danger} onClick={() => setEditing({ ...editing, sessions: (editing.sessions ?? []).filter((_: any, sessionIndex: number) => sessionIndex !== index) })}>Remove</button>
+          </div>
+        </div>)}
+      </section>}
       <div className="space-y-3">
         <label className="flex gap-2">
           <input

@@ -65,14 +65,15 @@ class MarketplaceSeeder extends Seeder
             'price_mad' => 100,
         ]);
 
-        DB::table('ticket_types')->updateOrInsert(['event_id' => $sportEvent->id, 'name' => 'Tribune A'], ['price' => 100, 'stock' => 200, 'requires_seat_selection' => true, 'updated_at' => now(), 'created_at' => now()]);
+        DB::table('ticket_types')->updateOrInsert(['event_id' => $sportEvent->id, 'name' => 'Tribune Nord'], ['price' => 100, 'stock' => 200, 'requires_seat_selection' => true, 'updated_at' => now(), 'created_at' => now()]);
         foreach ([
             ['Tribune Nord', 'Virage Nord', 120, 1200, 640, '#22c55e'],
             ['Tribune Sud', 'Virage Sud', 120, 1200, 580, '#14b8a6'],
             ['Tribune Est', 'Latérale Est', 180, 900, 340, '#3b82f6'],
             ['Tribune Ouest', 'Latérale Ouest', 220, 820, 260, '#6366f1'],
-            ['VIP', 'Salon premium', 650, 120, 40, '#f97316'],
-            ['Virage', 'Supporters', 90, 1600, 900, '#ef4444'],
+            ['Virage Nord', 'Supporters Nord', 90, 1600, 900, '#ef4444'],
+            ['Virage Sud', 'Supporters Sud', 90, 1500, 760, '#f97316'],
+            ['VIP', 'Loges présidentielles', 650, 120, 40, '#eab308'],
         ] as $index => [$name, $label, $price, $capacity, $available, $color]) {
             DB::table('sport_plan_zones')->updateOrInsert(['event_id' => $sportEvent->id, 'name' => $name], ['plan_type' => 'stadium', 'label' => $label, 'code' => Str::upper(Str::slug($name, '_')), 'price' => $price, 'capacity' => $capacity, 'available_capacity' => $available, 'color' => $color, 'sort_order' => $index, 'is_available' => true, 'shape_data' => json_encode(['template' => 'stadium']), 'updated_at' => now(), 'created_at' => now()]);
         }
@@ -145,8 +146,8 @@ class MarketplaceSeeder extends Seeder
         $movieId = DB::table('movies')->updateOrInsert(['slug' => 'casablanca-nocturne'], ['title' => 'Casablanca Nocturne', 'genre' => 'Action', 'duration' => '2h10', 'release_date' => now()->subDays(10)->toDateString(), 'poster' => 'https://picsum.photos/seed/movie/900/1200', 'synopsis' => 'Thriller urbain.', 'status' => 'published', 'updated_at' => now(), 'created_at' => now()]);
         $movie = DB::table('movies')->where('slug', 'casablanca-nocturne')->first();
         if ($movie) {
-            DB::table('movie_sessions')->updateOrInsert(['movie_id' => $movie->id, 'session_date' => now()->toDateString(), 'session_time' => '19:00'], ['cinema' => 'Megarama', 'city' => 'Casablanca', 'price' => 70, 'updated_at' => now(), 'created_at' => now()]);
-            DB::table('movie_sessions')->updateOrInsert(['movie_id' => $movie->id, 'session_date' => now()->addDay()->toDateString(), 'session_time' => '21:30'], ['cinema' => 'IMAX Morocco Mall', 'city' => 'Casablanca', 'price' => 90, 'updated_at' => now(), 'created_at' => now()]);
+            DB::table('movie_sessions')->updateOrInsert(['movie_id' => $movie->id, 'session_date' => now()->toDateString(), 'session_time' => '19:00'], ['cinema' => 'Megarama', 'city' => 'Casablanca', 'hall_name' => 'Salle Atlas', 'price' => 70, 'seating_enabled' => true, 'seat_template' => 'medium', 'reserved_seats' => json_encode(['A6', 'C4', 'D8']), 'updated_at' => now(), 'created_at' => now()]);
+            DB::table('movie_sessions')->updateOrInsert(['movie_id' => $movie->id, 'session_date' => now()->addDay()->toDateString(), 'session_time' => '21:30'], ['cinema' => 'IMAX Morocco Mall', 'city' => 'Casablanca', 'hall_name' => 'Salle Rif', 'price' => 90, 'seating_enabled' => false, 'seat_template' => 'small', 'reserved_seats' => json_encode([]), 'updated_at' => now(), 'created_at' => now()]);
         }
 
         foreach ([
@@ -203,8 +204,8 @@ class MarketplaceSeeder extends Seeder
             DB::table('movies')->updateOrInsert(['slug' => $slug], ['title' => $title, 'genre' => $genre, 'duration' => $duration, 'release_date' => $releaseDate->toDateString(), 'poster' => $poster, 'synopsis' => 'Film démo publié avec séances.', 'status' => 'published', 'featured' => $slug === 'atlas-quest', 'updated_at' => now(), 'created_at' => now()]);
             $seedMovie = DB::table('movies')->where('slug', $slug)->first();
             if ($seedMovie) {
-                DB::table('movie_sessions')->updateOrInsert(['movie_id' => $seedMovie->id, 'session_date' => now()->toDateString(), 'session_time' => '18:00'], ['cinema' => 'Megarama', 'city' => 'Casablanca', 'price' => 70, 'updated_at' => now(), 'created_at' => now()]);
-                DB::table('movie_sessions')->updateOrInsert(['movie_id' => $seedMovie->id, 'session_date' => now()->addDays(2)->toDateString(), 'session_time' => '20:45'], ['cinema' => 'Pathé Californie', 'city' => 'Casablanca', 'price' => 85, 'updated_at' => now(), 'created_at' => now()]);
+                DB::table('movie_sessions')->updateOrInsert(['movie_id' => $seedMovie->id, 'session_date' => now()->toDateString(), 'session_time' => '18:00'], ['cinema' => 'Megarama', 'city' => 'Casablanca', 'hall_name' => 'Salle Atlas', 'price' => 70, 'seating_enabled' => $slug === 'atlas-quest', 'seat_template' => $slug === 'atlas-quest' ? 'medium' : 'small', 'reserved_seats' => json_encode(['A6', 'C4']), 'updated_at' => now(), 'created_at' => now()]);
+                DB::table('movie_sessions')->updateOrInsert(['movie_id' => $seedMovie->id, 'session_date' => now()->addDays(2)->toDateString(), 'session_time' => '20:45'], ['cinema' => 'Pathé Californie', 'city' => 'Casablanca', 'hall_name' => 'Salle Rif', 'price' => 85, 'seating_enabled' => false, 'seat_template' => 'small', 'reserved_seats' => json_encode([]), 'updated_at' => now(), 'created_at' => now()]);
             }
         }
 

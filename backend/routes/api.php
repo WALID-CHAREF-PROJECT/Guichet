@@ -110,9 +110,9 @@ Route::middleware('auth.token')->group(function (): void {
         Route::post('/admin/travels', fn () => response()->json(['id' => DB::table('travels')->insertGetId(array_merge(request()->all(), ['created_at' => now(), 'updated_at' => now()]))], 201));
         Route::put('/admin/travels/{id}', fn (string $id) => response()->json(['success' => DB::table('travels')->where('id', $id)->update(array_merge(request()->all(), ['updated_at' => now()])) > 0]));
         Route::delete('/admin/travels/{id}', fn (string $id) => response()->json(['success' => DB::table('travels')->where('id', $id)->delete() > 0]));
-        Route::get('/admin/movies', fn () => response()->json(DB::table('movies')->get()));
-        Route::post('/admin/movies', fn () => response()->json(['id' => DB::table('movies')->insertGetId(array_merge(request()->all(), ['created_at' => now(), 'updated_at' => now()]))], 201));
-        Route::put('/admin/movies/{id}', fn (string $id) => response()->json(['success' => DB::table('movies')->where('id', $id)->update(array_merge(request()->all(), ['updated_at' => now()])) > 0]));
+        Route::get('/admin/movies', [MarketplaceController::class, 'adminMovies']);
+        Route::post('/admin/movies', [MarketplaceController::class, 'adminStoreMovie']);
+        Route::put('/admin/movies/{id}', [MarketplaceController::class, 'adminUpdateMovie']);
         Route::delete('/admin/movies/{id}', fn (string $id) => response()->json(['success' => DB::table('movies')->where('id', $id)->delete() > 0]));
         Route::get('/admin/content', fn () => response()->json(DB::table('content_blocks')->get()));
         Route::post('/admin/content', fn () => response()->json(['id' => DB::table('content_blocks')->insertGetId(array_merge(request()->all(), ['created_at' => now(), 'updated_at' => now()]))], 201));
