@@ -7,6 +7,7 @@ use App\Models\City;
 use App\Models\Event;
 use App\Models\Producer;
 use App\Models\User;
+use App\Support\SlugNormalizer;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -14,6 +15,108 @@ use Illuminate\Support\Str;
 
 class MarketplaceSeeder extends Seeder
 {
+
+    /** @return array<int, string> */
+    private function seededOrganizerNames(): array
+    {
+        return [
+            'Guichet Organizer',
+            'Atlas Live',
+            'Rire Capital',
+            'Marrakech Vibes',
+            'Fondation Horizon',
+            'Fès Running Club',
+            'Creative North',
+            'Makers Kénitra',
+            'Legacy Stage',
+            'Rythme Urbain',
+            'Casa Culture',
+            'Smile Factory',
+            'Derby Events',
+            'Étoile du Cœur',
+            'Pixel Atlas',
+            'Vintage Nights',
+            'Sunset Records',
+        ];
+    }
+
+    private function upsertPublicOrganizerProfile(string $name, ?User $user = null): User
+    {
+        $slug = SlugNormalizer::ascii($name);
+        $profileUser = $user ?: User::query()->updateOrCreate(
+            ['email' => "producer+{$slug}@guichet.ma"],
+            [
+                'name' => $name,
+                'first_name' => $name,
+                'last_name' => '',
+                'role' => 'producer',
+                'password' => Hash::make('Organizer123!'),
+                'phone' => '+212600000000',
+                'is_active' => true,
+                'company_name' => $name,
+                'organization_slug' => $slug,
+            ]
+        );
+
+        if ($user) {
+            $profileUser->forceFill([
+                'company_name' => $name,
+                'organization_slug' => $slug,
+            ])->save();
+        }
+
+        DB::table('organizers')->updateOrInsert(
+            ['slug' => $slug],
+            [
+                'user_id' => $profileUser->id,
+                'company_name' => $name,
+                'logo' => "https://picsum.photos/seed/{$slug}-logo/300/300",
+                'cover_image' => "https://picsum.photos/seed/{$slug}-cover/1200/400",
+                'description' => "Page publique démo de {$name}.",
+                'city' => 'Casablanca',
+                'address' => null,
+                'website' => null,
+                'support_email' => $profileUser->email,
+                'support_phone' => $profileUser->phone,
+                'is_approved' => true,
+                'updated_at' => now(),
+                'created_at' => now(),
+            ]
+        );
+
+        Producer::query()->updateOrCreate(
+            ['slug' => $slug],
+            [
+                'user_id' => $profileUser->id,
+                'name' => $name,
+                'email' => $profileUser->email,
+                'phone' => $profileUser->phone,
+                'logo' => "https://picsum.photos/seed/{$slug}-logo/300/300",
+                'cover_image' => "https://picsum.photos/seed/{$slug}-cover/1200/400",
+                'city' => 'Casablanca',
+                'address' => null,
+                'support_email' => $profileUser->email,
+                'support_phone' => $profileUser->phone,
+                'description' => "Page publique démo de {$name}.",
+                'is_active' => true,
+            ]
+        );
+
+        return $profileUser;
+    }
+
+    private function syncSeededOrganizerProfiles(?User $mainOrganizer = null): void
+    {
+        $names = collect($this->seededOrganizerNames())
+            ->merge(DB::table('events')->whereNotNull('organizer')->pluck('organizer'))
+            ->filter(fn (?string $name): bool => is_string($name) && trim($name) !== '')
+            ->unique(fn (string $name): string => SlugNormalizer::ascii($name));
+
+        foreach ($names as $name) {
+            $this->upsertPublicOrganizerProfile($name, $name === 'Guichet Organizer' ? $mainOrganizer : null);
+        }
+    }
+
     public function run(): void
     {
         $admin = User::query()->updateOrCreate(['email' => 'admin@guichet.ma'], [
@@ -26,12 +129,7 @@ class MarketplaceSeeder extends Seeder
             'name' => 'Client Guichet', 'first_name' => 'Client', 'last_name' => 'Guichet', 'role' => 'client', 'password' => Hash::make('Client123!'), 'phone' => '+212600000003', 'is_active' => true,
         ]);
 
-        DB::table('organizers')->updateOrInsert(['user_id' => $organizer->id], [
-            'company_name' => 'Guichet Organizer', 'slug' => 'guichet-organizer', 'logo' => 'https://picsum.photos/seed/organizer/300/300', 'cover_image' => 'https://picsum.photos/seed/organizer-cover/1200/400', 'description' => 'Organisateur officiel.', 'city' => 'Casablanca', 'address' => 'Ain Diab', 'website' => 'https://guichet.local', 'support_email' => 'support@guichet.com', 'support_phone' => '+212522000000', 'is_approved' => true, 'updated_at' => now(), 'created_at' => now(),
-        ]);
-        Producer::query()->updateOrCreate(['user_id' => $organizer->id], [
-            'name' => 'Guichet Organizer', 'slug' => 'guichet-organizer', 'email' => 'fournisseur@guichet.ma', 'phone' => '+212600000002', 'logo' => 'https://picsum.photos/seed/organizer/300/300', 'cover_image' => 'https://picsum.photos/seed/organizer-cover/1200/400', 'city' => 'Casablanca', 'address' => 'Ain Diab', 'support_email' => 'support@guichet.com', 'support_phone' => '+212522000000', 'description' => 'Organisateur officiel.', 'is_active' => true,
-        ]);
+        $this->syncSeededOrganizerProfiles($organizer);
 
         Category::query()->updateOrCreate(['slug' => 'voyage-organise'], ['name' => 'Voyage organisé', 'type' => 'travel', 'display_order' => 9, 'is_active' => true, 'icon' => '✈️']);
         Category::query()->updateOrCreate(['slug' => 'last-minute'], ['name' => 'Last Minute', 'type' => 'travel', 'display_order' => 10, 'is_active' => true, 'icon' => '⚡']);
@@ -41,7 +139,7 @@ class MarketplaceSeeder extends Seeder
         $concertCategory = Category::query()->updateOrCreate(['slug' => 'concerts'], ['name' => 'Concerts', 'type' => 'event', 'display_order' => 2, 'is_active' => true, 'icon' => '🎤']);
         Category::query()->updateOrCreate(['slug' => 'spectacle'], ['name' => 'Spectacle', 'type' => 'event', 'display_order' => 4, 'is_active' => true, 'icon' => '✨']);
         $sportCategory = Category::query()->updateOrCreate(['slug' => 'sport'], ['name' => 'Sport', 'type' => 'sport', 'display_order' => 5, 'is_active' => true, 'icon' => '🏟️']);
-        $city = City::query()->first() ?? City::query()->create(['name' => 'Casablanca', 'slug' => 'casablanca']);
+        $city = City::query()->updateOrCreate(['slug' => 'casablanca'], ['name' => 'Casablanca']);
 
         $sportEvent = Event::query()->updateOrCreate(['slug' => 'bal-casablanca-finals-night'], [
             'category_id' => $sportCategory?->id,
@@ -218,8 +316,7 @@ class MarketplaceSeeder extends Seeder
 
         DB::table('settings')->updateOrInsert(['key' => 'platform_name'], ['value' => 'Guichet Marketplace', 'updated_at' => now(), 'created_at' => now()]);
 
-        $orderId = DB::table('orders')->insertGetId([
-            'reference' => 'CMD-DEMO-001',
+        DB::table('orders')->updateOrInsert(['reference' => 'CMD-DEMO-001'], [
             'user_id' => $client->id,
             'organizer_id' => $organizer->id,
             'total' => 200,
@@ -229,7 +326,11 @@ class MarketplaceSeeder extends Seeder
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        $itemId = DB::table('order_items')->insertGetId(['order_id' => $orderId, 'product_type' => 'event_ticket', 'product_id' => (string) $sportEvent->id, 'title' => $sportEvent->title, 'quantity' => 2, 'unit_price' => 100, 'subtotal' => 200, 'selected_zone' => 'Tribune A', 'metadata' => json_encode(['seed' => true]), 'created_at' => now(), 'updated_at' => now()]);
-        DB::table('tickets')->insert(['order_item_id' => $itemId, 'ticket_number' => 'TKT-'.strtoupper(Str::random(8)), 'qr_code' => 'QR-'.strtoupper(Str::random(12)), 'created_at' => now(), 'updated_at' => now()]);
+        $orderId = DB::table('orders')->where('reference', 'CMD-DEMO-001')->value('id');
+        if ($orderId) {
+            DB::table('order_items')->where('order_id', $orderId)->delete();
+            $itemId = DB::table('order_items')->insertGetId(['order_id' => $orderId, 'product_type' => 'event_ticket', 'product_id' => (string) $sportEvent->id, 'title' => $sportEvent->title, 'quantity' => 2, 'unit_price' => 100, 'subtotal' => 200, 'selected_zone' => 'Tribune A', 'metadata' => json_encode(['seed' => true]), 'created_at' => now(), 'updated_at' => now()]);
+            DB::table('tickets')->updateOrInsert(['ticket_number' => 'TKT-DEMO-0001'], ['order_item_id' => $itemId, 'qr_code' => 'QR-DEMO-0001', 'created_at' => now(), 'updated_at' => now()]);
+        }
     }
 }

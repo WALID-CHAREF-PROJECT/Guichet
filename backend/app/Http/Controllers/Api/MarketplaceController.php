@@ -126,6 +126,11 @@ class MarketplaceController extends Controller
 
     private function publicOrganizerSlugForEvent(Event $event): ?string
     {
+        $eventOrganizerSlug = SlugNormalizer::ascii((string) $event->organizer);
+        if ($eventOrganizerSlug !== '') {
+            return $eventOrganizerSlug;
+        }
+
         if (!$event->organizer_id) {
             return null;
         }
@@ -757,11 +762,34 @@ class MarketplaceController extends Controller
                 });
         }
 
+        $fallbackEventOrganizer = null;
         if (!$organizer && !$producer) {
-            return response()->json(['message' => 'Organisateur introuvable'], 404);
+            $fallbackEventOrganizer = Event::query()
+                ->where('status', 'published')
+                ->whereNotNull('organizer')
+                ->get(['organizer'])
+                ->first(fn (Event $event): bool => SlugNormalizer::matches($event->organizer, $candidates));
+
+            if (!$fallbackEventOrganizer) {
+                return response()->json(['message' => 'Organisateur introuvable'], 404);
+            }
         }
 
-        $profile = $organizer ? (array) $organizer : [
+        $profile = $fallbackEventOrganizer ? [
+            'id' => 'event-organizer-'.SlugNormalizer::ascii($fallbackEventOrganizer->organizer),
+            'user_id' => null,
+            'company_name' => $fallbackEventOrganizer->organizer,
+            'slug' => SlugNormalizer::ascii($fallbackEventOrganizer->organizer),
+            'logo' => 'https://picsum.photos/seed/'.SlugNormalizer::ascii($fallbackEventOrganizer->organizer).'-logo/300/300',
+            'cover_image' => 'https://picsum.photos/seed/'.SlugNormalizer::ascii($fallbackEventOrganizer->organizer).'-cover/1200/400',
+            'description' => 'Profil public généré depuis les événements publiés de '.$fallbackEventOrganizer->organizer.'.',
+            'city' => null,
+            'address' => null,
+            'support_email' => null,
+            'support_phone' => null,
+            'is_approved' => false,
+            'is_active' => false,
+        ] : ($organizer ? (array) $organizer : [
             'id' => $producer->id,
             'user_id' => $producer->user_id,
             'company_name' => $producer->name ?: ($producer->user_company_name ?? null),
@@ -775,13 +803,14 @@ class MarketplaceController extends Controller
             'support_phone' => $producer->support_phone ?: ($producer->phone ?: ($producer->user_phone ?? null)),
             'is_approved' => (bool) $producer->is_active,
             'is_active' => (bool) $producer->is_active,
-        ];
+        ]);
 
         $profileSlug = SlugNormalizer::ascii((string) ($profile['slug'] ?? $profile['company_name'] ?? ''));
         $profileNames = array_values(array_unique(array_filter([
             $profile['company_name'] ?? null,
-            $producer->name ?? null,
-            $organizer->user_company_name ?? null,
+            $producer?->name ?? null,
+            $organizer?->user_company_name ?? null,
+            $fallbackEventOrganizer->organizer ?? null,
         ])));
         $eventOwnerIds = array_values(array_unique(array_filter([$profile['user_id'] ?? null], fn ($id): bool => $id !== null && $id !== '')));
 
@@ -804,7 +833,7 @@ class MarketplaceController extends Controller
             })
             ->orderBy('event_date')
             ->get()
-            ->filter(fn (Event $event): bool => $eventOwnerIds || in_array($event->organizer, $profileNames, true) || SlugNormalizer::ascii($event->organizer) === $profileSlug)
+            ->filter(fn (Event $event): bool => $eventOwnerIds || in_array($event->organizer, $profileNames, true) || SlugNormalizer::ascii($event->organizer) === $profileSlug || SlugNormalizer::matches($event->organizer, $candidates))
             ->map(fn (Event $event) => $this->mapPublicEvent($event))
             ->values();
 

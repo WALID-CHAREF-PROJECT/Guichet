@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\City;
 use App\Models\Event;
 use Illuminate\Database\Seeder;
+use App\Support\SlugNormalizer;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
@@ -36,12 +37,11 @@ class EventSeeder extends Seeder
             $category = Category::query()->where('slug', $categorySlug)->firstOrFail();
             $city = City::query()->where('slug', $citySlug)->firstOrFail();
 
-            Event::query()->create([
+            Event::query()->updateOrCreate(['slug' => SlugNormalizer::ascii($title)], [
                 'category_id' => $category->id,
                 'city_id' => $city->id,
                 'organizer' => $organizer,
                 'title' => $title,
-                'slug' => Str::slug($title),
                 'venue' => $venue,
                 'description' => 'Une expérience originale TicketFlow avec une ambiance moderne, des performances locales et une billetterie simplifiée.',
                 'image_url' => 'https://picsum.photos/seed/' . Str::slug($title) . '/1200/700',
