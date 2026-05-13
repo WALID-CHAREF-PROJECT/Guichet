@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Category;
 use App\Models\City;
 use App\Models\Event;
+use App\Models\Producer;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +28,9 @@ class MarketplaceSeeder extends Seeder
 
         DB::table('organizers')->updateOrInsert(['user_id' => $organizer->id], [
             'company_name' => 'Guichet Organizer', 'slug' => 'guichet-organizer', 'logo' => 'https://picsum.photos/seed/organizer/300/300', 'cover_image' => 'https://picsum.photos/seed/organizer-cover/1200/400', 'description' => 'Organisateur officiel.', 'city' => 'Casablanca', 'address' => 'Ain Diab', 'website' => 'https://guichet.local', 'support_email' => 'support@guichet.com', 'support_phone' => '+212522000000', 'is_approved' => true, 'updated_at' => now(), 'created_at' => now(),
+        ]);
+        Producer::query()->updateOrCreate(['user_id' => $organizer->id], [
+            'name' => 'Guichet Organizer', 'slug' => 'guichet-organizer', 'email' => 'fournisseur@guichet.ma', 'phone' => '+212600000002', 'logo' => 'https://picsum.photos/seed/organizer/300/300', 'cover_image' => 'https://picsum.photos/seed/organizer-cover/1200/400', 'city' => 'Casablanca', 'address' => 'Ain Diab', 'support_email' => 'support@guichet.com', 'support_phone' => '+212522000000', 'description' => 'Organisateur officiel.', 'is_active' => true,
         ]);
 
         Category::query()->updateOrCreate(['slug' => 'voyage-organise'], ['name' => 'Voyage organisé', 'type' => 'travel', 'display_order' => 9, 'is_active' => true, 'icon' => '✈️']);

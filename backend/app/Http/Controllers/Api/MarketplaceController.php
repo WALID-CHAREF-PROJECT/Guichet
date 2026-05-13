@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Event;
+use App\Models\Producer;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -117,6 +118,24 @@ class MarketplaceController extends Controller
             ->get();
     }
 
+    private function normalizedSlugCandidates(string $slug): array
+    {
+        $decoded = rawurldecode($slug);
+        $normalized = Str::slug($decoded);
+
+        return array_values(array_unique(array_filter([$slug, $decoded, $normalized])));
+    }
+
+    private function publicOrganizerSlugForEvent(Event $event): ?string
+    {
+        if (!$event->organizer_id) {
+            return null;
+        }
+
+        return DB::table('organizers')->where('user_id', $event->organizer_id)->value('slug')
+            ?: DB::table('producers')->where('user_id', $event->organizer_id)->value('slug');
+    }
+
     private function mapPublicEvent(Event $event): array
     {
         $date = $event->event_date ?: $event->starts_at?->toDateString();
@@ -137,6 +156,7 @@ class MarketplaceController extends Controller
             'slug' => $event->slug,
             'title' => $event->title,
             'organizer' => $event->organizer,
+            'organizer_slug' => $this->publicOrganizerSlugForEvent($event),
             'description' => $event->description,
             'venue' => $event->venue,
             'location' => trim(collect([$event->venue, $cityName])->filter()->implode(' · ')),
@@ -703,14 +723,59 @@ class MarketplaceController extends Controller
 
     public function organizerBySlug(string $slug): JsonResponse
     {
-        $organizer = DB::table('organizers')->where('slug', $slug)->where('is_approved', true)->first();
+        $candidates = $this->normalizedSlugCandidates($slug);
+        $normalized = end($candidates) ?: rawurldecode($slug);
+
+        $organizer = DB::table('organizers')
+            ->where('is_approved', true)
+            ->whereIn('slug', $candidates)
+            ->first();
+
+        if (!$organizer && $normalized) {
+            $organizer = DB::table('organizers')
+                ->where('is_approved', true)
+                ->get()
+                ->first(fn (object $row): bool => Str::slug((string) $row->slug) === $normalized);
+        }
+
+        $producer = null;
         if (!$organizer) {
+            $producer = Producer::query()
+                ->where('is_active', true)
+                ->whereIn('slug', $candidates)
+                ->first();
+
+            if (!$producer && $normalized) {
+                $producer = Producer::query()
+                    ->where('is_active', true)
+                    ->get()
+                    ->first(fn (Producer $row): bool => Str::slug((string) $row->slug) === $normalized);
+            }
+        }
+
+        if (!$organizer && !$producer) {
             return response()->json(['message' => 'Organisateur introuvable'], 404);
         }
 
+        $profile = $organizer ? (array) $organizer : [
+            'id' => $producer->id,
+            'user_id' => $producer->user_id,
+            'company_name' => $producer->name,
+            'slug' => $producer->slug,
+            'logo' => $producer->logo,
+            'cover_image' => $producer->cover_image,
+            'description' => $producer->description,
+            'city' => $producer->city,
+            'address' => $producer->address,
+            'support_email' => $producer->support_email ?: $producer->email,
+            'support_phone' => $producer->support_phone ?: $producer->phone,
+            'is_approved' => (bool) $producer->is_active,
+            'is_active' => (bool) $producer->is_active,
+        ];
+
         $events = Event::query()
             ->with('category', 'city')
-            ->where('organizer_id', $organizer->user_id)
+            ->where('organizer_id', $profile['user_id'] ?? null)
             ->where('status', 'published')
             ->orderBy('event_date')
             ->get()
@@ -718,9 +783,20 @@ class MarketplaceController extends Controller
 
         return response()->json([
             'organizer' => [
-                ...((array) $organizer),
-                'logo' => $this->publicUrl($organizer->logo ?? null),
-                'cover_image' => $this->publicUrl($organizer->cover_image ?? null),
+                'id' => (string) $profile['id'],
+                'user_id' => isset($profile['user_id']) ? (string) $profile['user_id'] : null,
+                'company_name' => $profile['company_name'],
+                'name' => $profile['company_name'],
+                'slug' => $profile['slug'],
+                'logo' => $this->publicUrl($profile['logo'] ?? null),
+                'cover_image' => $this->publicUrl($profile['cover_image'] ?? null),
+                'description' => $profile['description'] ?? null,
+                'city' => $profile['city'] ?? null,
+                'address' => $profile['address'] ?? null,
+                'support_email' => $profile['support_email'] ?? null,
+                'support_phone' => $profile['support_phone'] ?? null,
+                'verified' => (bool) ($profile['is_approved'] ?? $profile['is_active'] ?? false),
+                'is_active' => (bool) ($profile['is_active'] ?? $profile['is_approved'] ?? true),
             ],
             'events' => $events,
         ]);

@@ -22,6 +22,7 @@ export interface EventItem {
   id: number;
   slug: string;
   organizer: string;
+  organizer_slug?: string | null;
   title: string;
   venue: string;
   city: City;

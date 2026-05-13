@@ -21,6 +21,7 @@ export interface PlatformEvent {
   slug: string;
   title: string;
   organizer: string;
+  organizerSlug?: string | null;
   organizerLogo: string;
   image: string;
   tags: string[];

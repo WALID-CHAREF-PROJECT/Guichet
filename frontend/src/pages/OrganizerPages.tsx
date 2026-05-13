@@ -359,19 +359,89 @@ export function OrganizerPublicPage(): JSX.Element {
 
   useEffect(load, [slug]);
 
-  if (loading) return <section className="rounded-2xl border border-white/10 bg-[#041743] p-6">Chargement de l’organisateur...</section>;
-  if (error || !organizer) return <section className="rounded-2xl border border-white/10 bg-[#041743] p-6"><p>{error || 'Organisateur introuvable.'}</p><button onClick={load} className="mt-4 rounded-full bg-white px-5 py-2 font-semibold text-[#041743]">Réessayer</button></section>;
+  if (loading) {
+    return <section className="rounded-3xl border border-white/10 bg-[#041743] p-8 text-white shadow-2xl">Chargement du profil organisateur...</section>;
+  }
+
+  if (error || !organizer) {
+    return (
+      <section className="rounded-3xl border border-white/10 bg-[#041743] p-8 text-white shadow-2xl">
+        <p className="text-sm uppercase tracking-[0.2em] text-orange-200">Profil public</p>
+        <h1 className="mt-2 text-3xl font-black">Organisateur introuvable</h1>
+        <p className="mt-3 max-w-2xl text-slate-300">{error || 'Ce profil n’est pas disponible publiquement.'}</p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link to="/ma-fr/billeterie" className="rounded-full bg-white px-5 py-2.5 font-semibold text-[#041743]">Retour à la billetterie</Link>
+          <button onClick={load} className="rounded-full border border-white/20 px-5 py-2.5 font-semibold text-white transition hover:bg-white/10">Réessayer</button>
+        </div>
+      </section>
+    );
+  }
+
+  const contact = [organizer.city, organizer.address].filter(Boolean).join(' · ');
 
   return (
-    <section className="overflow-hidden rounded-3xl border border-white/10 bg-[#041743]">
-      {organizer.cover_image ? <img src={organizer.cover_image} alt={organizer.company_name} className="h-48 w-full object-cover" /> : <div className="h-48 w-full bg-[#10244f]" />}
-      <div className="-mt-10 px-6 pb-6">
-        {organizer.logo ? <img src={organizer.logo} alt={organizer.company_name} className="h-20 w-20 rounded-full border-4 border-[#041743] object-cover" /> : <div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-[#041743] bg-[#10244f]">🏢</div>}
-        <h1 className="mt-3 text-3xl font-bold">{organizer.company_name}</h1>
-        {organizer.description && <p className="mt-2 max-w-3xl text-slate-300">{organizer.description}</p>}
-        <div className="mt-4 grid gap-3 md:grid-cols-3"><Stat label="Active events" value={String(events.length)} /><Stat label="Ville" value={organizer.city || '—'} /><Stat label="Profil" value="Approuvé" /></div>
-        <h2 className="mt-6 text-xl font-semibold">Événements en cours</h2>
-        <div className="mt-3 grid gap-3 md:grid-cols-2">{events.length > 0 ? events.map((event) => <Link key={event.id} to={`/ma-fr/event/${event.slug}`} className="rounded-xl border border-white/10 bg-white/5 p-3">{event.title}</Link>) : <p className="text-slate-300">Aucun événement publié pour le moment.</p>}</div>
+    <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br from-[#041743] via-[#061d48] to-[#020b22] text-white shadow-2xl shadow-black/30">
+      <div className="relative min-h-[230px] bg-[#10244f]">
+        {organizer.cover_image ? <img src={organizer.cover_image} alt={organizer.company_name} className="absolute inset-0 h-full w-full object-cover opacity-80" /> : null}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#041743] via-[#041743]/35 to-transparent" />
+        <div className="relative flex min-h-[230px] items-end p-6 md:p-8">
+          <div className="flex flex-col gap-4 md:flex-row md:items-end">
+            {organizer.logo ? <img src={organizer.logo} alt={organizer.company_name} className="h-24 w-24 rounded-3xl border-4 border-[#041743] object-cover shadow-xl" /> : <div className="flex h-24 w-24 items-center justify-center rounded-3xl border-4 border-[#041743] bg-white/10 text-4xl shadow-xl">🏢</div>}
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-xs font-bold uppercase tracking-[0.22em] text-orange-200">Producteur / organisateur</p>
+                {organizer.verified ? <span className="rounded-full border border-emerald-300/30 bg-emerald-400/15 px-2 py-1 text-xs font-semibold text-emerald-100">Vérifié</span> : null}
+              </div>
+              <h1 className="mt-2 text-3xl font-black md:text-5xl">{organizer.company_name}</h1>
+              {contact ? <p className="mt-2 text-sm text-slate-200">📍 {contact}</p> : null}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-6 p-6 md:p-8 lg:grid-cols-[1fr_320px]">
+        <div className="space-y-6">
+          <article className="rounded-3xl border border-white/10 bg-white/[0.06] p-5">
+            <h2 className="text-xl font-bold">À propos</h2>
+            <p className="mt-3 leading-7 text-slate-300">{organizer.description || 'Cet organisateur publie prochainement sa présentation.'}</p>
+          </article>
+
+          <article>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm uppercase tracking-[0.2em] text-slate-400">Catalogue</p>
+                <h2 className="text-2xl font-black">Événements publiés</h2>
+              </div>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-slate-200">{events.length} événement{events.length > 1 ? 's' : ''}</span>
+            </div>
+            {events.length > 0 ? (
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                {events.map((event) => (
+                  <Link key={event.id} to={`/ma-fr/event/${event.slug}`} className="group overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06] transition hover:-translate-y-0.5 hover:border-orange-300/40">
+                    <img src={event.image_url} alt={event.title} className="h-36 w-full object-cover transition group-hover:scale-[1.02]" />
+                    <div className="p-4">
+                      <p className="text-xs uppercase tracking-[0.16em] text-orange-200">{event.city?.name || event.location || 'Événement'}</p>
+                      <h3 className="mt-1 text-lg font-bold">{event.title}</h3>
+                      <p className="mt-2 text-sm text-slate-300">{event.starts_at_human || event.date || 'Date à confirmer'}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-4 rounded-3xl border border-dashed border-white/15 bg-white/[0.04] p-8 text-center text-slate-300">Aucun événement publié pour le moment.</div>
+            )}
+          </article>
+        </div>
+
+        <aside className="h-fit rounded-3xl border border-white/10 bg-[#020b22]/60 p-5">
+          <h2 className="text-lg font-bold">Contact & support</h2>
+          <div className="mt-4 space-y-3 text-sm text-slate-300">
+            <p><span className="text-slate-500">Ville</span><br />{organizer.city || 'Non renseignée'}</p>
+            <p><span className="text-slate-500">Adresse</span><br />{organizer.address || 'Non renseignée'}</p>
+            <p><span className="text-slate-500">Email support</span><br />{organizer.support_email || 'Non renseigné'}</p>
+            <p><span className="text-slate-500">Téléphone support</span><br />{organizer.support_phone || 'Non renseigné'}</p>
+          </div>
+        </aside>
       </div>
     </section>
   );

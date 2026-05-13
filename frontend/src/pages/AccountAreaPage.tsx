@@ -3,16 +3,20 @@ import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 
 
-const menu = [
-  { to: '/ma-fr/account', label: 'Tableau de bord', end: true },
-  { to: '/ma-fr/account/profile', label: 'Mes informations' },
-  { to: '/ma-fr/account/reservations', label: 'Mes réservations' },
-  { to: '/ma-fr/account/travels', label: 'Mes voyages' },
-  { to: '/ma-fr/account/movies', label: 'Mes films' },
-  { to: '/ma-fr/account/favorites', label: 'Mes favoris' },
-  { to: '/ma-fr/account/balance', label: 'Mon solde' },
-  { to: '/ma-fr/account/security', label: 'Sécurité' },
-  { to: '/ma-fr/account/status', label: 'Désactivation et suppression' }
+const primaryMenu = [
+  { to: '/ma-fr/account/profile', label: 'Mes informations', icon: '👤' },
+  { to: '/ma-fr/account/security', label: 'Mot de passe', icon: '🔐' },
+  { to: '/ma-fr/account/reservations', label: 'Mes réservations', icon: '🎟️' },
+  { to: '/ma-fr/account/travels', label: 'Mes voyages', icon: '✈️' },
+  { to: '/ma-fr/account/favorites', label: 'Mes favoris', icon: '❤️' },
+  { to: '/ma-fr/account/balance', label: 'Mon solde', icon: '💳' },
+];
+
+const helpMenu = [
+  { to: '/ma-fr/account/help/contact', label: 'Contacter le service client' },
+  { to: '/ma-fr/account/help/legal', label: 'Conditions légales' },
+  { to: '/ma-fr/account/help/faq', label: 'F.A.Q' },
+  { to: '/ma-fr/account/help/refund', label: 'Politique de remboursement' },
 ];
 
 export default function AccountAreaPage(): JSX.Element {
@@ -28,31 +32,54 @@ export default function AccountAreaPage(): JSX.Element {
     );
   }
 
+  const initials = `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase() || 'G';
+  const navClass = ({ isActive }: { isActive: boolean }): string => `flex items-center gap-3 rounded-2xl border px-3 py-3 text-sm transition ${isActive ? 'border-orange-300/60 bg-orange-400/15 font-semibold text-white shadow-[0_10px_28px_rgba(249,115,22,0.14)]' : 'border-transparent bg-white/[0.04] text-slate-200 hover:border-white/15 hover:bg-white/[0.08] hover:text-white'}`;
+
   return (
-    <div className="grid gap-6 lg:grid-cols-[290px_1fr]">
-      <aside className="space-y-3 rounded-3xl border border-white/10 bg-gradient-to-b from-[#071b45] to-[#04122f] p-4 shadow-[0_20px_55px_rgba(2,8,28,0.55)]">
-        <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Compte</p>
-        {menu.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end}
-            className={({ isActive }) => `block rounded-xl border px-4 py-2.5 text-sm transition ${isActive ? 'border-orange-300/60 bg-gradient-to-r from-orange-500/25 to-orange-400/10 font-semibold text-white shadow-[0_8px_20px_rgba(249,115,22,0.18)]' : 'border-transparent bg-white/5 text-slate-100 hover:border-white/15 hover:bg-white/10'}`}
-          >
-            {item.label}
-          </NavLink>
-        ))}
+    <div className="grid min-w-0 gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
+      <aside className="min-w-0 overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-b from-[#071b45] via-[#041743] to-[#020b22] p-4 text-white shadow-[0_20px_55px_rgba(2,8,28,0.55)] lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
+        <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-300 to-orange-600 text-lg font-black text-[#041743] shadow-lg shadow-orange-500/20">{initials}</div>
+            <div className="min-w-0">
+              <p className="truncate text-base font-bold">{user.firstName} {user.lastName}</p>
+              <p className="truncate text-xs text-slate-300">{user.email}</p>
+            </div>
+          </div>
+          <Link to="/ma-fr/account" className="mt-4 flex items-center justify-between rounded-2xl border border-white/10 bg-[#020b22]/50 px-3 py-2 text-sm text-slate-200 transition hover:bg-white/10">
+            <span>Tableau de bord</span><span>→</span>
+          </Link>
+        </div>
+
+        <nav className="mt-5 space-y-2" aria-label="Menu du compte">
+          <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Compte</p>
+          {primaryMenu.map((item) => (
+            <NavLink key={item.to} to={item.to} className={navClass}>
+              <span aria-hidden>{item.icon}</span><span>{item.label}</span>
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="mt-6 border-t border-white/10 pt-5">
+          <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Aide</p>
+          <div className="mt-2 space-y-1.5">
+            {helpMenu.map((item) => <NavLink key={item.to} to={item.to} className={navClass}>{item.label}</NavLink>)}
+          </div>
+        </div>
+
         <button
           onClick={() => {
             logout();
             navigate('/ma-fr/login');
           }}
-          className="mt-3 w-full rounded-xl border border-red-300/35 bg-red-500/15 px-4 py-2.5 text-left text-sm font-semibold text-red-100 transition hover:bg-red-500/25"
+          className="mt-6 w-full rounded-2xl border border-red-300/35 bg-red-500/15 px-4 py-3 text-left text-sm font-semibold text-red-100 transition hover:bg-red-500/25"
         >
           Se déconnecter
         </button>
       </aside>
-      <Outlet />
+      <main className="min-w-0 overflow-hidden">
+        <Outlet />
+      </main>
     </div>
   );
 }
@@ -191,6 +218,11 @@ export function AccountStatus(): JSX.Element {
       <button onClick={() => alert(selected === 'delete' ? 'Suppression simulée.' : 'Désactivation simulée.')} className="mt-4 rounded-full bg-red-500 px-4 py-2">{selected === 'delete' ? 'Supprimer mon compte' : 'Désactiver mon compte'}</button>
     </section>
   );
+}
+
+
+export function AccountHelpPlaceholder({ title, subtitle }: { title: string; subtitle?: string }): JSX.Element {
+  return <Empty title={title} subtitle={subtitle ?? 'Cette rubrique sera bientôt disponible. Notre équipe prépare une page claire et complète.'} />;
 }
 
 function Empty({ title, subtitle }: { title: string; subtitle: string }): JSX.Element {
