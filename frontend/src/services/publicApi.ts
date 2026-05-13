@@ -18,14 +18,18 @@ export interface PublicMovie {
 }
 
 export type CinemaSeatStatus = 'available' | 'reserved' | 'unavailable';
-export type CinemaSeatTemplate = 'small' | 'medium' | 'large';
+export type CinemaSeatTemplate = 'small' | 'medium' | 'large' | 'premium';
+export type CinemaSeatCategory = 'Balcon' | 'Standard' | 'VIP' | 'VVIP';
 
 export interface CinemaSeat {
   id: string;
   row: string;
   number: number;
   status: CinemaSeatStatus;
+  category: CinemaSeatCategory;
+  zone: CinemaSeatCategory;
   price: number;
+  section: 'left' | 'center' | 'right' | 'rear';
 }
 
 export interface MovieSession {
@@ -45,6 +49,14 @@ export interface MovieSession {
   reserved_seats?: string[] | string | null;
   seats?: CinemaSeat[];
   price: number;
+  standardPrice?: number;
+  standard_price?: number;
+  vipPrice?: number;
+  vip_price?: number;
+  vvipPrice?: number;
+  vvip_price?: number;
+  reservedSeatCount?: number;
+  reserved_seat_count?: number;
 }
 
 export interface PublicTravel {
@@ -266,42 +278,94 @@ export async function getPublicMovie(slug: string): Promise<PublicMovie> {
   return mapMovie(unwrapItem(await request<Record<string, unknown> | { data: Record<string, unknown> }>(`/movies/${slug}`)));
 }
 
-function parseStringArray(value: unknown): string[] {
-  if (Array.isArray(value)) return value.map(String);
+type ReservedSeatInput = string | { row?: unknown; number?: unknown; seat?: unknown; id?: unknown };
+
+function seatCodeFromReserved(value: ReservedSeatInput): string | null {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const objectMatch = trimmed.match(/^([A-Za-z]+)\s*[-:]?\s*(\d+)$/);
+    return objectMatch ? `${objectMatch[1].toUpperCase()}${Number(objectMatch[2])}` : trimmed.toUpperCase();
+  }
+  if (value && typeof value === 'object') {
+    if (typeof value.seat === 'string') return seatCodeFromReserved(value.seat);
+    if (typeof value.id === 'string') return value.id.toUpperCase();
+    const row = String(value.row ?? '').trim().toUpperCase();
+    const number = Number(value.number ?? 0);
+    if (row && number > 0) return `${row}${number}`;
+  }
+  return null;
+}
+
+function parseReservedSeats(value: unknown): string[] {
+  const normalizeArray = (items: unknown[]): string[] => items.map((item) => seatCodeFromReserved(item as ReservedSeatInput)).filter((item): item is string => Boolean(item));
+  if (Array.isArray(value)) return normalizeArray(value);
   if (typeof value === 'string' && value.trim()) {
     try {
       const decoded = JSON.parse(value) as unknown;
-      return Array.isArray(decoded) ? decoded.map(String) : value.split(',').map((item) => item.trim()).filter(Boolean);
+      if (Array.isArray(decoded)) return normalizeArray(decoded);
     } catch {
-      return value.split(',').map((item) => item.trim()).filter(Boolean);
+      // fall through to comma-separated legacy format
     }
+    return value.split(',').map((item) => seatCodeFromReserved(item)).filter((item): item is string => Boolean(item));
   }
   return [];
 }
 
-export function cinemaTemplateDimensions(template: unknown): { rows: number; columns: number } {
-  if (template === 'small') return { rows: 6, columns: 10 };
-  if (template === 'large') return { rows: 12, columns: 18 };
-  return { rows: 9, columns: 14 };
+export function cinemaTemplateDimensions(template: unknown): { rows: number; maxColumns: number; rowCounts: number[] } {
+  if (template === 'small') return { rows: 8, maxColumns: 17, rowCounts: [7, 9, 11, 13, 15, 17, 16, 16] };
+  if (template === 'large') return { rows: 12, maxColumns: 27, rowCounts: [11, 13, 17, 19, 21, 23, 25, 27, 26, 26, 28, 28] };
+  if (template === 'premium') return { rows: 12, maxColumns: 23, rowCounts: [8, 10, 14, 16, 18, 20, 22, 22, 20, 20, 18, 18] };
+  return { rows: 12, maxColumns: 23, rowCounts: [9, 11, 13, 15, 17, 19, 21, 23, 22, 22, 24, 24] };
 }
 
-export function generateCinemaSeats(session: Pick<MovieSession, 'id' | 'price' | 'seatTemplate' | 'reservedSeats'>): CinemaSeat[] {
+function categoryForRow(rowIndex: number, totalRows: number): CinemaSeatCategory {
+  if (rowIndex >= totalRows - 3) return 'VVIP';
+  if (rowIndex >= Math.floor(totalRows * 0.35) && rowIndex < totalRows - 3) return 'VIP';
+  return rowIndex <= 1 ? 'Balcon' : 'Standard';
+}
+
+function priceForCategory(session: Pick<MovieSession, 'price' | 'standardPrice' | 'standard_price' | 'vipPrice' | 'vip_price' | 'vvipPrice' | 'vvip_price'>, category: CinemaSeatCategory): number {
+  const standard = Number(session.standardPrice ?? session.standard_price ?? session.price ?? 0);
+  if (category === 'VIP') return Number(session.vipPrice ?? session.vip_price ?? Math.round(standard * 1.45));
+  if (category === 'VVIP') return Number(session.vvipPrice ?? session.vvip_price ?? Math.round(standard * 2.1));
+  return standard;
+}
+
+function sectionForSeat(seatIndex: number, count: number, rowIndex: number, totalRows: number): CinemaSeat['section'] {
+  if (rowIndex >= totalRows - 2) return 'rear';
+  const third = count / 3;
+  if (seatIndex < third) return 'left';
+  if (seatIndex >= third * 2) return 'right';
+  return 'center';
+}
+
+function deterministicReserved(sessionId: MovieSession['id'], rowIndex: number, number: number, reservedSeatCount: number): boolean {
+  const seed = String(sessionId).split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const hash = (seed + (rowIndex + 3) * 31 + number * 17) % 29;
+  return hash === 0 || hash === 7 || (reservedSeatCount > 0 && ((rowIndex + 1) * number + seed) % 37 < Math.min(9, reservedSeatCount));
+}
+
+export function generateCinemaSeats(session: Pick<MovieSession, 'id' | 'price' | 'seatTemplate' | 'reservedSeats' | 'reservedSeatCount' | 'reserved_seat_count' | 'standardPrice' | 'standard_price' | 'vipPrice' | 'vip_price' | 'vvipPrice' | 'vvip_price'>): CinemaSeat[] {
   const dimensions = cinemaTemplateDimensions(session.seatTemplate);
   const reserved = new Set(session.reservedSeats ?? []);
-  return Array.from({ length: dimensions.rows }).flatMap((_, rowIndex) => {
+  const reservedSeatCount = Number(session.reservedSeatCount ?? session.reserved_seat_count ?? 0);
+  return dimensions.rowCounts.flatMap((count, rowIndex) => {
     const row = String.fromCharCode(65 + rowIndex);
-    return Array.from({ length: dimensions.columns }).map((__, seatIndex) => {
+    const category = categoryForRow(rowIndex, dimensions.rows);
+    return Array.from({ length: count }).map((__, seatIndex) => {
       const number = seatIndex + 1;
       const id = `${session.id}-${row}${number}`;
       const code = `${row}${number}`;
-      const patternedUnavailable = (rowIndex + number) % 19 === 0 || (rowIndex === 0 && number % 6 === 0);
-      return { id, row, number, price: Number(session.price || 0), status: reserved.has(code) || reserved.has(id) || patternedUnavailable ? 'reserved' : 'available' } as CinemaSeat;
+      const status: CinemaSeatStatus = reserved.has(code) || reserved.has(id.toUpperCase()) || deterministicReserved(session.id, rowIndex, number, reservedSeatCount) ? 'reserved' : 'available';
+      const section = sectionForSeat(seatIndex, count, rowIndex, dimensions.rows);
+      return { id, row, number, category, zone: category, price: priceForCategory(session, category), status, section } as CinemaSeat;
     });
   });
 }
 
 function mapMovieSession(raw: MovieSession & Record<string, unknown>): MovieSession {
-  const reservedSeats = parseStringArray(raw.reservedSeats ?? raw.reserved_seats);
+  const reservedSeats = parseReservedSeats(raw.reservedSeats ?? raw.reserved_seats);
   const seatTemplate = (raw.seatTemplate ?? raw.seat_template ?? 'medium') as CinemaSeatTemplate;
   const session: MovieSession = {
     ...raw,
@@ -318,6 +382,14 @@ function mapMovieSession(raw: MovieSession & Record<string, unknown>): MovieSess
     seat_template: seatTemplate,
     reservedSeats,
     price: Number(raw.price ?? 0),
+    standardPrice: Number(raw.standardPrice ?? raw.standard_price ?? raw.price ?? 0),
+    standard_price: Number(raw.standard_price ?? raw.standardPrice ?? raw.price ?? 0),
+    vipPrice: Number(raw.vipPrice ?? raw.vip_price ?? Math.round(Number(raw.price ?? 0) * 1.45)),
+    vip_price: Number(raw.vip_price ?? raw.vipPrice ?? Math.round(Number(raw.price ?? 0) * 1.45)),
+    vvipPrice: Number(raw.vvipPrice ?? raw.vvip_price ?? Math.round(Number(raw.price ?? 0) * 2.1)),
+    vvip_price: Number(raw.vvip_price ?? raw.vvipPrice ?? Math.round(Number(raw.price ?? 0) * 2.1)),
+    reservedSeatCount: Number(raw.reservedSeatCount ?? raw.reserved_seat_count ?? 0),
+    reserved_seat_count: Number(raw.reserved_seat_count ?? raw.reservedSeatCount ?? 0),
   };
   return { ...session, seats: Array.isArray(raw.seats) ? raw.seats : generateCinemaSeats(session) };
 }

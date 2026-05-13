@@ -9,7 +9,7 @@ import ResponsiveImage from '../components/ResponsiveImage';
 import EmptyState from '../components/EmptyState';
 import { CinemaSeat, getMovieSessions, getPublicMovie, MovieSession, PublicMovie } from '../services/publicApi';
 import PlanModal from '../components/plans/PlanModal';
-import CinemaSeatMap from '../components/plans/CinemaSeatMap';
+import CinemaSeatMap, { SelectedSeatSummary } from '../components/plans/CinemaSeatMap';
 
 const fallbackDates = ['Aujourd’hui', 'Demain', 'Vendredi', 'Samedi'];
 
@@ -70,9 +70,9 @@ export default function CinemaDetailsPage(): JSX.Element {
 
   const addSelectedSeats = (): void => {
     if (!seatSession || selectedSeats.length === 0) return;
-    const price = Number(seatSession.price || selectedSeats[0]?.price || 70);
+    const subtotal = selectedSeats.reduce((sum, seat) => sum + seat.price, 0);
     const seatCodes = selectedSeats.map((seat) => `${seat.row}${seat.number}`);
-    addItems([{ id: uid('cart'), productType: 'movie_ticket', slug: movie.slug, productId: movie.id, movieId: movie.id, movieTitle: movie.title, sessionId: String(seatSession.id), sessionDateTime: `${seatSession.session_date} ${seatSession.session_time}`, title: `${movie.title} · sièges ${seatCodes.join(', ')}`, image: movie.image, date: `${seatSession.session_date} ${seatSession.session_time}`, location: `${seatSession.cinema ?? 'Cinéma'}, ${seatSession.city ?? ''}`, hallName: seatSession.hallName, ticketType: 'Sièges cinéma', selectedSeats: seatCodes, planType: 'cinema', quantity: selectedSeats.length, unitPrice: price, subtotal: price * selectedSeats.length }]);
+    addItems([{ id: uid('cart'), productType: 'movie_ticket', slug: movie.slug, productId: movie.id, movieId: movie.id, movieTitle: movie.title, sessionId: String(seatSession.id), sessionDateTime: `${seatSession.session_date} ${seatSession.session_time}`, title: `${movie.title} · sièges ${seatCodes.join(', ')}`, image: movie.image, date: `${seatSession.session_date} ${seatSession.session_time}`, location: `${seatSession.cinema ?? 'Cinéma'}, ${seatSession.city ?? ''}`, hallName: seatSession.hallName ?? seatSession.hall_name, ticketType: 'Sièges cinéma', selectedSeats: seatCodes, cinemaSeats: selectedSeats.map((seat) => ({ row: seat.row, number: seat.number, category: seat.category, price: seat.price })), planType: 'cinema', quantity: selectedSeats.length, unitPrice: selectedSeats.length > 0 ? subtotal / selectedSeats.length : 0, subtotal }]);
     setSeatSession(null);
     setSelectedSeats([]);
     navigate('/ma-fr/panier');
@@ -114,12 +114,7 @@ export default function CinemaDetailsPage(): JSX.Element {
       <Link to="/ma-fr/panier" className="inline-flex rounded-full bg-white px-5 py-2 font-semibold text-[#041743]">Continuer vers réservation</Link>
       <PlanModal open={Boolean(seatSession)} onClose={() => setSeatSession(null)} eyebrow={movie.title} title="Plan cinéma" helper={seatSession ? `${seatSession.cinema ?? 'Cinéma'} · ${seatSession.hallName ?? 'Salle 1'} · ${seatSession.session_date} ${seatSession.session_time}` : ''}>
         {seatSession && <CinemaSeatMap session={seatSession} selectedSeats={selectedSeats.map((seat) => seat.id)} onToggleSeat={toggleSeat} />}
-        <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.06] p-4">
-          <p className="text-sm text-slate-300">Sièges sélectionnés</p>
-          <p className="text-xl font-black">{selectedSeats.length > 0 ? selectedSeats.map((seat) => `${seat.row}${seat.number}`).join(', ') : 'Aucun siège'}</p>
-          <p className="text-sm text-slate-300">{selectedSeats.length} place(s) · Sous-total {formatMad(selectedSeats.reduce((sum, seat) => sum + seat.price, 0))}</p>
-        </div>
-        <button type="button" onClick={addSelectedSeats} disabled={selectedSeats.length === 0} className="mt-6 w-full rounded-full bg-white px-6 py-3 font-bold text-[#031438] disabled:cursor-not-allowed disabled:opacity-50">Ajouter au panier</button>
+        {seatSession && <div className="mt-5"><SelectedSeatSummary movieTitle={movie.title} session={seatSession} selectedSeats={selectedSeats} onAddToCart={addSelectedSeats} /></div>}
       </PlanModal>
     </section>
   );
