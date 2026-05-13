@@ -804,6 +804,10 @@ class MarketplaceController extends Controller
                     'city' => $session->city,
                     'hallName' => $session->hall_name ?? 'Salle 1',
                     'price' => (float) $session->price,
+                    'standardPrice' => (float) ($session->standard_price ?? $session->price),
+                    'vipPrice' => (float) ($session->vip_price ?? (($session->price ?? 0) * 1.45)),
+                    'vvipPrice' => (float) ($session->vvip_price ?? (($session->price ?? 0) * 2.1)),
+                    'reservedSeatCount' => (int) ($session->reserved_seat_count ?? 0),
                     'seatingEnabled' => (bool) ($session->seating_enabled ?? false),
                     'seatTemplate' => $session->seat_template ?? 'medium',
                     'reservedSeats' => $session->reserved_seats ? json_decode($session->reserved_seats, true) : [],
@@ -825,6 +829,10 @@ class MarketplaceController extends Controller
                 'city' => $session['city'] ?? null,
                 'hall_name' => $session['hall_name'] ?? 'Salle 1',
                 'price' => $session['price'] ?? 0,
+                'standard_price' => $session['standard_price'] ?? ($session['price'] ?? 0),
+                'vip_price' => $session['vip_price'] ?? round(($session['price'] ?? 0) * 1.45),
+                'vvip_price' => $session['vvip_price'] ?? round(($session['price'] ?? 0) * 2.1),
+                'reserved_seat_count' => (int) ($session['reserved_seat_count'] ?? 0),
                 'seating_enabled' => (bool) ($session['seating_enabled'] ?? false),
                 'seat_template' => $session['seat_template'] ?? 'medium',
                 'reserved_seats' => $session['reserved_seats'] ?? json_encode([]),
@@ -884,6 +892,10 @@ class MarketplaceController extends Controller
             $session->hallName = $session->hall_name ?? 'Salle 1';
             $session->seatingEnabled = (bool) ($session->seating_enabled ?? false);
             $session->seatTemplate = $session->seat_template ?? 'medium';
+            $session->standardPrice = (float) ($session->standard_price ?? $session->price);
+            $session->vipPrice = (float) ($session->vip_price ?? (($session->price ?? 0) * 1.45));
+            $session->vvipPrice = (float) ($session->vvip_price ?? (($session->price ?? 0) * 2.1));
+            $session->reservedSeatCount = (int) ($session->reserved_seat_count ?? 0);
             $session->reservedSeats = $session->reserved_seats ? json_decode($session->reserved_seats, true) : [];
             return $session;
         });

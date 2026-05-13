@@ -122,7 +122,7 @@ const emptyMovie: Editable = {
   description: "",
   status: "draft",
   featured: false,
-  sessions: [{ id: 'session-demo', sessionDate: '', sessionTime: '20:00', cinema: 'Megarama', city: 'Casablanca', hallName: 'Salle 1', price: 70, seatingEnabled: true, seatTemplate: 'medium', reservedSeats: [] }],
+  sessions: [{ id: 'session-demo', sessionDate: '', sessionTime: '20:00', cinema: 'Megarama', city: 'Casablanca', hallName: 'Salle 1', price: 70, standardPrice: 70, vipPrice: 100, vvipPrice: 150, reservedSeatCount: 12, seatingEnabled: true, seatTemplate: 'medium', reservedSeats: [] }],
 };
 const emptyCategory: Editable = {
   kind: "category",
@@ -1121,10 +1121,25 @@ function Editor({
     zones[index] = { ...zones[index], [key]: value };
     setEditing({ ...editing, planZones: zones });
   };
-  const setMovieSession = (index: number, key: string, value: string | number | boolean): void => {
+  const setMovieSession = (index: number, key: string, value: string | number | boolean | unknown[]): void => {
     const sessions = [...(editing.sessions ?? [])];
     sessions[index] = { ...sessions[index], [key]: value };
     setEditing({ ...editing, sessions });
+  };
+
+  const reservedSeatsText = (value: unknown): string => {
+    if (Array.isArray(value)) return JSON.stringify(value, null, 2);
+    if (typeof value === 'string') return value;
+    return '[]';
+  };
+  const parseReservedSeatsInput = (value: string): unknown[] => {
+    if (!value.trim()) return [];
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return value.split(',').map((item) => item.trim()).filter(Boolean);
+    }
   };
   if (editing.kind === "event") {
     const usePlan = editing.buyingMode === "plan";
@@ -1342,7 +1357,7 @@ function Editor({
             <h3 className="font-bold text-cyan-100">Séances cinéma</h3>
             <p className="text-xs text-slate-300">Activez le seating pour ouvrir le plan cinéma public, sinon la séance garde le bouton Réserver normal.</p>
           </div>
-          <button type="button" className={btn} onClick={() => setEditing({ ...editing, sessions: [...(editing.sessions ?? []), { id: String(Date.now()), sessionDate: '', sessionTime: '20:00', cinema: editing.cinemas?.split(',')[0]?.trim() || 'Megarama', city: 'Casablanca', hallName: 'Salle 1', price: 70, seatingEnabled: true, seatTemplate: 'medium', reservedSeats: [] }] })}>Ajouter séance</button>
+          <button type="button" className={btn} onClick={() => setEditing({ ...editing, sessions: [...(editing.sessions ?? []), { id: String(Date.now()), sessionDate: '', sessionTime: '20:00', cinema: editing.cinemas?.split(',')[0]?.trim() || 'Megarama', city: 'Casablanca', hallName: 'Salle 1', price: 70, standardPrice: 70, vipPrice: 100, vvipPrice: 150, reservedSeatCount: 12, seatingEnabled: true, seatTemplate: 'medium', reservedSeats: [] }] })}>Ajouter séance</button>
         </div>
         {(editing.sessions ?? []).map((session: any, index: number) => <div key={session.id ?? index} className="grid gap-2 rounded-xl bg-white/[0.04] p-3 md:grid-cols-8">
           <input className={input} type="date" value={session.sessionDate ?? ''} onChange={(e) => setMovieSession(index, 'sessionDate', e.target.value)} />
@@ -1350,12 +1365,16 @@ function Editor({
           <input className={input} placeholder="Cinéma" value={session.cinema ?? ''} onChange={(e) => setMovieSession(index, 'cinema', e.target.value)} />
           <input className={input} placeholder="Ville" value={session.city ?? ''} onChange={(e) => setMovieSession(index, 'city', e.target.value)} />
           <input className={input} placeholder="Salle" value={session.hallName ?? ''} onChange={(e) => setMovieSession(index, 'hallName', e.target.value)} />
-          <input className={input} type="number" min="0" placeholder="Prix" value={session.price ?? 0} onChange={(e) => setMovieSession(index, 'price', Number(e.target.value))} />
-          <select className={input} value={session.seatTemplate ?? 'medium'} onChange={(e) => setMovieSession(index, 'seatTemplate', e.target.value)}><option value="small">Small room</option><option value="medium">Medium room</option><option value="large">Large room</option></select>
+          <input className={input} type="number" min="0" placeholder="Prix standard/Balcon" value={session.standardPrice ?? session.price ?? 0} onChange={(e) => { setMovieSession(index, 'standardPrice', Number(e.target.value)); setMovieSession(index, 'price', Number(e.target.value)); }} />
+          <select className={input} value={session.seatTemplate ?? 'medium'} onChange={(e) => setMovieSession(index, 'seatTemplate', e.target.value)}><option value="small">Small room</option><option value="medium">Medium room</option><option value="large">Large room</option><option value="premium">Premium room</option></select>
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <label className="flex items-center gap-2"><input type="checkbox" checked={session.seatingEnabled !== false} onChange={(e) => setMovieSession(index, 'seatingEnabled', e.target.checked)} /> seating</label>
             <button type="button" className={danger} onClick={() => setEditing({ ...editing, sessions: (editing.sessions ?? []).filter((_: any, sessionIndex: number) => sessionIndex !== index) })}>Remove</button>
           </div>
+          <input className={input} type="number" min="0" placeholder="Prix VIP" value={session.vipPrice ?? 0} onChange={(e) => setMovieSession(index, 'vipPrice', Number(e.target.value))} />
+          <input className={input} type="number" min="0" placeholder="Prix VVIP" value={session.vvipPrice ?? 0} onChange={(e) => setMovieSession(index, 'vvipPrice', Number(e.target.value))} />
+          <input className={input} type="number" min="0" placeholder="Réservés démo" value={session.reservedSeatCount ?? 0} onChange={(e) => setMovieSession(index, 'reservedSeatCount', Number(e.target.value))} />
+          <textarea className={input + ' md:col-span-5'} rows={3} placeholder={'Sièges réservés JSON, ex: [{"row":"C","number":5}] ou C5,C6'} value={reservedSeatsText(session.reservedSeats)} onChange={(e) => setMovieSession(index, 'reservedSeats', parseReservedSeatsInput(e.target.value))} />
         </div>)}
       </section>}
       <div className="space-y-3">

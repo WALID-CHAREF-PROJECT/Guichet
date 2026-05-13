@@ -121,7 +121,7 @@ function normalizeMovie(raw: Partial<MovieModel> & Record<string, unknown>): Mov
     description: str(raw.description ?? raw.synopsis),
     status: (str(raw.status, 'draft') as MovieModel['status']),
     featured: bool(raw.featured ?? raw.is_featured),
-    sessions: sessionsRaw.map((session: any) => ({ id: String(session.id ?? crypto.randomUUID()), sessionDate: str(session.sessionDate ?? session.session_date), sessionTime: str(session.sessionTime ?? session.session_time), cinema: str(session.cinema), city: str(session.city), hallName: str(session.hallName ?? session.hall_name, 'Salle 1'), price: num(session.price, 70), seatingEnabled: bool(session.seatingEnabled ?? session.seating_enabled), seatTemplate: (str(session.seatTemplate ?? session.seat_template, 'medium') as any), reservedSeats: Array.isArray(session.reservedSeats) ? session.reservedSeats : [] })),
+    sessions: sessionsRaw.map((session: any) => ({ id: String(session.id ?? crypto.randomUUID()), sessionDate: str(session.sessionDate ?? session.session_date), sessionTime: str(session.sessionTime ?? session.session_time), cinema: str(session.cinema), city: str(session.city), hallName: str(session.hallName ?? session.hall_name, 'Salle 1'), price: num(session.price, 70), seatingEnabled: bool(session.seatingEnabled ?? session.seating_enabled), seatTemplate: (str(session.seatTemplate ?? session.seat_template, 'medium') as any), standardPrice: num(session.standardPrice ?? session.standard_price ?? session.price, 70), vipPrice: num(session.vipPrice ?? session.vip_price ?? Math.round(num(session.price, 70) * 1.45)), vvipPrice: num(session.vvipPrice ?? session.vvip_price ?? Math.round(num(session.price, 70) * 2.1)), reservedSeatCount: num(session.reservedSeatCount ?? session.reserved_seat_count, 0), reservedSeats: Array.isArray(session.reservedSeats) ? session.reservedSeats : [] })),
   };
 }
 
@@ -251,6 +251,10 @@ function moviePayload(value: Partial<MovieModel>): Record<string, unknown> {
       city: session.city,
       hall_name: session.hallName,
       price: session.price,
+      standard_price: session.standardPrice ?? session.price,
+      vip_price: session.vipPrice ?? Math.round(Number(session.price) * 1.45),
+      vvip_price: session.vvipPrice ?? Math.round(Number(session.price) * 2.1),
+      reserved_seat_count: session.reservedSeatCount ?? 0,
       seating_enabled: session.seatingEnabled,
       seat_template: session.seatTemplate,
       reserved_seats: JSON.stringify(session.reservedSeats ?? []),

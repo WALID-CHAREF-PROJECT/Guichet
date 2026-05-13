@@ -32,6 +32,7 @@ export interface CartItem {
   location: string;
   ticketType?: string;
   selectedSeats?: string[];
+  cinemaSeats?: Array<{ row: string; number: number; category: string; price: number }>;
   selectedZone?: string;
   planType?: 'theatre' | 'stadium' | 'generic' | 'cinema';
   movieId?: string;

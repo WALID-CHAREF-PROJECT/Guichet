@@ -114,8 +114,8 @@ export interface CategoryModel {
 }
 
 export interface TravelModel { id: string; image: string; gallery?: string[]; title: string; category: string; destination: string; departureDate: string; price: number; description?: string; status: EventStatus; featured: boolean }
-export type CinemaSeatTemplate = 'small' | 'medium' | 'large';
-export interface MovieSessionModel { id: string; sessionDate: string; sessionTime: string; cinema: string; city: string; hallName: string; price: number; seatingEnabled: boolean; seatTemplate: CinemaSeatTemplate; reservedSeats?: string[] }
+export type CinemaSeatTemplate = 'small' | 'medium' | 'large' | 'premium';
+export interface MovieSessionModel { id: string; sessionDate: string; sessionTime: string; cinema: string; city: string; hallName: string; price: number; seatingEnabled: boolean; seatTemplate: CinemaSeatTemplate; standardPrice?: number; vipPrice?: number; vvipPrice?: number; reservedSeatCount?: number; reservedSeats?: Array<string | { row: string; number: number }> }
 export interface MovieModel { id: string; poster: string; title: string; genre: string; duration: string; releaseDate: string; cinemas: string; description?: string; status: EventStatus; featured: boolean; sessions: MovieSessionModel[] }
 export interface ContentBlock { id: string; type: 'banner' | 'section' | 'hero' | 'cta'; title: string; subtitle?: string; description?: string; ctaLabel?: string; ctaLink?: string; image?: string; backgroundImage?: string; visible: boolean; order: number }
 
@@ -328,8 +328,8 @@ function makeSeedData(): DbShape {
 
   const travels: TravelModel[] = voyages.map((travel, i) => ({ id: `travel-${travel.id}`, image: travel.image, title: travel.title, category: travel.collection, destination: travel.location, departureDate: seedIsoDate(7 + i * 9), price: Number.parseInt(travel.price, 10) || 3000, status: 'published', featured: i === 0 }));
   const movieItems: MovieModel[] = movies.map((movie, i) => ({ id: `movie-${movie.id}`, poster: movie.image, title: movie.title, genre: movie.genre, duration: movie.duration, releaseDate: seedIsoDate(i - 2), cinemas: 'Megarama, Imax, Pathé Californie', status: 'published', featured: i === 0, sessions: [
-    { id: uid('session'), sessionDate: seedIsoDate(1 + i), sessionTime: '18:00', cinema: 'Megarama', city: 'Casablanca', hallName: 'Salle Atlas', price: 70, seatingEnabled: i === 0, seatTemplate: i === 0 ? 'medium' : 'small', reservedSeats: ['A6', 'C4', 'D8'] },
-    { id: uid('session'), sessionDate: seedIsoDate(2 + i), sessionTime: '20:45', cinema: 'Pathé Californie', city: 'Casablanca', hallName: 'Salle Rif', price: 85, seatingEnabled: false, seatTemplate: 'small', reservedSeats: [] },
+    { id: uid('session'), sessionDate: seedIsoDate(1 + i), sessionTime: '18:00', cinema: 'Megarama', city: 'Casablanca', hallName: 'Salle Atlas', price: 70, standardPrice: 70, vipPrice: 100, vvipPrice: 150, reservedSeatCount: 12, seatingEnabled: i === 0, seatTemplate: i === 0 ? 'medium' : 'small', reservedSeats: ['A6', 'C4', 'D8'] },
+    { id: uid('session'), sessionDate: seedIsoDate(2 + i), sessionTime: '20:45', cinema: 'Pathé Californie', city: 'Casablanca', hallName: 'Salle Rif', price: 85, standardPrice: 85, vipPrice: 125, vvipPrice: 180, reservedSeatCount: 0, seatingEnabled: false, seatTemplate: 'small', reservedSeats: [] },
   ] }));
   const content: ContentBlock[] = [
     { id: uid('content'), type: 'banner', title: 'Hero principal', subtitle: 'Campagne été', image: platformEvents[0]?.image, visible: true, order: 1 },
@@ -369,8 +369,8 @@ function getDb(): DbShape {
     const events = buildPublicEvents(parsed.events ?? [], organizers);
     const hasMoviesWithoutSessions = (parsed.movies ?? []).some((movie) => !movie.sessions);
     const moviesWithSessions = (parsed.movies ?? []).map((movie, index) => ({ ...movie, sessions: movie.sessions ?? [
-      { id: uid('session'), sessionDate: seedIsoDate(1 + index), sessionTime: '18:00', cinema: movie.cinemas?.split(',')[0]?.trim() || 'Megarama', city: 'Casablanca', hallName: 'Salle Atlas', price: 70, seatingEnabled: index === 0, seatTemplate: index === 0 ? 'medium' : 'small', reservedSeats: ['A6', 'C4'] },
-      { id: uid('session'), sessionDate: seedIsoDate(2 + index), sessionTime: '20:45', cinema: 'Pathé Californie', city: 'Casablanca', hallName: 'Salle Rif', price: 85, seatingEnabled: false, seatTemplate: 'small', reservedSeats: [] },
+      { id: uid('session'), sessionDate: seedIsoDate(1 + index), sessionTime: '18:00', cinema: movie.cinemas?.split(',')[0]?.trim() || 'Megarama', city: 'Casablanca', hallName: 'Salle Atlas', price: 70, standardPrice: 70, vipPrice: 100, vvipPrice: 150, reservedSeatCount: 12, seatingEnabled: index === 0, seatTemplate: index === 0 ? 'medium' : 'small', reservedSeats: ['A6', 'C4'] },
+      { id: uid('session'), sessionDate: seedIsoDate(2 + index), sessionTime: '20:45', cinema: 'Pathé Californie', city: 'Casablanca', hallName: 'Salle Rif', price: 85, standardPrice: 85, vipPrice: 125, vvipPrice: 180, reservedSeatCount: 0, seatingEnabled: false, seatTemplate: 'small', reservedSeats: [] },
     ] }));
     if (organizers.length !== (parsed.organizers ?? []).length || events.length !== (parsed.events ?? []).length || hasMoviesWithoutSessions) {
       const upgraded = { ...parsed, organizers, events, movies: moviesWithSessions };
