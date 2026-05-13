@@ -15,6 +15,19 @@ use Illuminate\Support\Str;
 
 class ProducerController extends Controller
 {
+    private function normalizeSlug(string $value): string
+    {
+        return Str::slug($value) ?: Str::lower(trim($value));
+    }
+
+    private function prepareSlug(Request $request): void
+    {
+        $source = $request->input('slug') ?: $request->input('name');
+        if (is_string($source) && trim($source) !== '') {
+            $request->merge(['slug' => $this->normalizeSlug($source)]);
+        }
+    }
+
     public function index(): JsonResponse
     {
         return response()->json(Producer::query()->latest()->get());
@@ -22,6 +35,8 @@ class ProducerController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $this->prepareSlug($request);
+
         $data = $request->validate([
             'firstName' => ['required', 'string', 'max:255'],
             'lastName' => ['required', 'string', 'max:255'],
@@ -74,8 +89,8 @@ class ProducerController extends Controller
                     'cover_image' => $data['cover_image'] ?? null,
                     'city' => $data['city'] ?? null,
                     'address' => $data['address'] ?? null,
-                    'email' => $data['support_email'] ?? $data['email'],
-                    'phone' => $data['support_phone'] ?? ($data['phone'] ?? null),
+                    'support_email' => $data['support_email'] ?? $data['email'],
+                    'support_phone' => $data['support_phone'] ?? ($data['phone'] ?? null),
                     'description' => $data['description'] ?? null,
                     'is_approved' => true,
                     'created_at' => now(),
@@ -122,6 +137,8 @@ class ProducerController extends Controller
 
     public function update(Request $request, Producer $producer): JsonResponse
     {
+        $this->prepareSlug($request);
+
         $data = $request->validate([
             'user_id' => ['nullable', 'integer', 'exists:users,id', 'unique:producers,user_id,' . $producer->id],
             'name' => ['sometimes', 'string', 'max:255'],
@@ -145,7 +162,39 @@ class ProducerController extends Controller
             $data['cover_image'] = Storage::url($request->file('cover_image')->store('admin/producers/covers', 'public'));
         }
 
-        $producer->update($data);
+        DB::transaction(function () use ($producer, $data): void {
+            $producer->update($data);
+
+            if ($producer->user_id) {
+                $organizerUpdates = [];
+                if (array_key_exists('name', $data)) {
+                    $organizerUpdates['company_name'] = $data['name'];
+                }
+                if (array_key_exists('slug', $data)) {
+                    $organizerUpdates['slug'] = $data['slug'];
+                }
+                foreach (['logo', 'cover_image', 'city', 'address', 'description', 'support_email', 'support_phone'] as $field) {
+                    if (array_key_exists($field, $data)) {
+                        $organizerUpdates[$field] = $data[$field];
+                    }
+                }
+                if (array_key_exists('is_active', $data)) {
+                    $organizerUpdates['is_approved'] = (bool) $data['is_active'];
+                }
+                if ($organizerUpdates) {
+                    $organizerUpdates['company_name'] ??= $producer->name;
+                    $organizerUpdates['slug'] ??= $producer->slug;
+                    $organizerUpdates['updated_at'] = now();
+                    DB::table('organizers')->updateOrInsert(['user_id' => $producer->user_id], array_merge($organizerUpdates, ['created_at' => now()]));
+                }
+
+                User::query()->whereKey($producer->user_id)->update(array_filter([
+                    'company_name' => $data['name'] ?? null,
+                    'organization_slug' => $data['slug'] ?? null,
+                    'is_active' => array_key_exists('is_active', $data) ? (bool) $data['is_active'] : null,
+                ], fn ($value) => $value !== null));
+            }
+        });
 
         return response()->json($producer->fresh());
     }

@@ -9,10 +9,7 @@ import { useEffect, useState } from 'react';
 import { getPublicEvent } from '../services/publicApi';
 import { EventItem } from '../types/api';
 import { PlatformEvent } from '../services/platformData';
-
-function organizerSlug(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-}
+import { asciiSlug } from '../utils/slug';
 
 function toPlatformEvent(event: EventItem): PlatformEvent {
   const buyingMode = event.buyingMode ?? event.buying_mode ?? 'ticket';
@@ -28,6 +25,7 @@ function toPlatformEvent(event: EventItem): PlatformEvent {
     title: event.title,
     organizer: event.organizer,
     organizerLogo: event.image_url,
+    organizerSlug: event.organizer_slug ?? asciiSlug(event.organizer),
     image: event.image_url,
     tags: [event.type ?? event.category?.slug ?? 'event'],
     location,
@@ -104,7 +102,7 @@ export default function EventDetailsPage(): JSX.Element {
           </div>
           <div className="mb-5 flex items-center gap-3">
             <ResponsiveImage src={event.organizerLogo} alt={event.organizer} aspect="square" loading="lazy" className="h-10 w-10 rounded-full" />
-            <Link to={`/ma-fr/event/producer/${organizerSlug(event.organizer)}`} className="text-sm text-slate-200 underline">{event.organizer}</Link>
+            <Link to={`/ma-fr/producer/${encodeURIComponent(event.organizerSlug ?? asciiSlug(event.organizer))}`} className="text-sm text-slate-200 underline">{event.organizer}</Link>
           </div>
           <h1 className="text-4xl font-bold leading-tight">{event.title}</h1>
           <p className="mt-4 text-slate-300">📍 {event.location}</p>

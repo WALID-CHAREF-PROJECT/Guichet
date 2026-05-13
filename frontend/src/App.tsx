@@ -6,6 +6,7 @@ import AccountAreaPage, {
   AccountBalance,
   AccountDashboard,
   AccountFavorites,
+  AccountHelpPlaceholder,
   AccountMovies,
   AccountProfile,
   AccountReservations,
@@ -67,6 +68,8 @@ export default function App(): JSX.Element {
         <Route path="/ma-fr/cinema/:slug" element={<CinemaDetailsPage />} />
         <Route path="/ma-fr/sport" element={<SportPage />} />
         <Route path="/ma-fr/event/tags/:tag" element={<EventTagsPage />} />
+        <Route path="/ma-fr/producer/:slug" element={<OrganizerPublicPage />} />
+        <Route path="/ma-fr/organizer/:slug" element={<OrganizerPublicPage />} />
         <Route path="/ma-fr/event/producer/:slug" element={<OrganizerPublicPage />} />
         <Route path="/ma-fr/event/:slug" element={<EventDetailsPage />} />
         <Route path="/ma-fr/event/:category/:slug" element={<EventDetailsPage />} />
@@ -87,6 +90,10 @@ export default function App(): JSX.Element {
           <Route path="balance" element={<AccountBalance />} />
           <Route path="security" element={<AccountSecurity />} />
           <Route path="status" element={<AccountStatus />} />
+          <Route path="help/contact" element={<AccountHelpPlaceholder title="Contacter le service client" subtitle="Un formulaire de contact dédié sera bientôt disponible. En attendant, utilisez les coordonnées de support indiquées sur vos confirmations de commande." />} />
+          <Route path="help/legal" element={<AccountHelpPlaceholder title="Conditions légales" />} />
+          <Route path="help/faq" element={<AccountHelpPlaceholder title="F.A.Q" />} />
+          <Route path="help/refund" element={<AccountHelpPlaceholder title="Politique de remboursement" />} />
         </Route>
 
         <Route path="/ma-fr/organizer" element={<RequireOrganizer><OrganizerDashboardPage /></RequireOrganizer>} />

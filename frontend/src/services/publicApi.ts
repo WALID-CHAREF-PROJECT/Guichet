@@ -348,10 +348,15 @@ export interface PublicOrganizerProfile {
   cover_image?: string | null;
   description?: string | null;
   city?: string | null;
+  address?: string | null;
+  support_email?: string | null;
+  support_phone?: string | null;
+  verified?: boolean;
+  is_active?: boolean;
 }
 
 export async function getPublicOrganizer(slug: string): Promise<{ organizer: PublicOrganizerProfile; events: EventItem[] }> {
-  const payload = await request<{ organizer: PublicOrganizerProfile; events: Array<EventItem & Record<string, unknown>> }>(`/organizers/${slug}`);
+  const payload = await request<{ organizer: PublicOrganizerProfile; events: Array<EventItem & Record<string, unknown>> }>(`${'/organizers/'}${encodeURIComponent(slug)}`);
   return {
     organizer: {
       ...payload.organizer,
