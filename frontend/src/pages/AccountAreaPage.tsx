@@ -19,9 +19,66 @@ const helpMenu = [
   { to: '/ma-fr/account/help/refund', label: 'Politique de remboursement' },
 ];
 
-export default function AccountAreaPage(): JSX.Element {
+function AccountMenuContent({ onNavigate }: { onNavigate?: () => void }): JSX.Element {
   const { user, logout } = useUser();
   const navigate = useNavigate();
+  const initials = `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}`.toUpperCase() || 'G';
+  const contact = user?.email || user?.phone || 'Coordonnées non renseignées';
+  const navClass = ({ isActive }: { isActive: boolean }): string => [
+    'flex min-h-12 items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300',
+    isActive
+      ? 'border-orange-300/70 bg-orange-400/15 text-white shadow-[0_10px_28px_rgba(249,115,22,0.16)]'
+      : 'border-white/5 bg-white/[0.045] text-slate-200 hover:border-white/15 hover:bg-white/[0.08] hover:text-white'
+  ].join(' ');
+
+  const signOut = (): void => {
+    logout();
+    onNavigate?.();
+    navigate('/ma-fr/login');
+  };
+
+  return (
+    <div className="flex min-h-full flex-col gap-5">
+      <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-4 shadow-inner shadow-white/5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-300 to-orange-600 text-lg font-black text-[#041743] shadow-lg shadow-orange-500/20">{initials}</div>
+          <div className="min-w-0">
+            <p className="truncate text-base font-bold text-white">{user?.firstName} {user?.lastName}</p>
+            <p className="truncate text-xs text-slate-300">{contact}</p>
+          </div>
+        </div>
+        <Link onClick={onNavigate} to="/ma-fr/account" className="mt-4 flex min-h-11 items-center justify-between rounded-2xl border border-white/10 bg-[#020b22]/55 px-3 py-2 text-sm text-slate-200 transition hover:bg-white/10 hover:text-white">
+          <span>Tableau de bord</span><span aria-hidden>→</span>
+        </Link>
+      </div>
+
+      <nav className="space-y-2" aria-label="Menu du compte">
+        <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Menu</p>
+        {primaryMenu.map((item) => (
+          <NavLink key={item.to} to={item.to} onClick={onNavigate} className={navClass}>
+            <span aria-hidden className="w-5 text-center">{item.icon}</span><span className="truncate">{item.label}</span>
+          </NavLink>
+        ))}
+      </nav>
+
+      <nav className="space-y-2 border-t border-white/10 pt-5" aria-label="Aide du compte">
+        <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Aide</p>
+        {helpMenu.map((item) => <NavLink key={item.to} to={item.to} onClick={onNavigate} className={navClass}>{item.label}</NavLink>)}
+      </nav>
+
+      <button
+        onClick={signOut}
+        className="mt-auto flex min-h-12 w-full items-center justify-center rounded-2xl border border-red-300/35 bg-red-500/15 px-4 py-3 text-sm font-semibold text-red-100 transition hover:bg-red-500/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-200"
+      >
+        Se déconnecter
+      </button>
+    </div>
+  );
+}
+
+export default function AccountAreaPage(): JSX.Element {
+  const { user } = useUser();
+  const [drawerOpen, setDrawerOpen] = React.useState(false);
 
   if (!user) {
     return (
@@ -32,54 +89,33 @@ export default function AccountAreaPage(): JSX.Element {
     );
   }
 
-  const initials = `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase() || 'G';
-  const navClass = ({ isActive }: { isActive: boolean }): string => `flex items-center gap-3 rounded-2xl border px-3 py-3 text-sm transition ${isActive ? 'border-orange-300/60 bg-orange-400/15 font-semibold text-white shadow-[0_10px_28px_rgba(249,115,22,0.14)]' : 'border-transparent bg-white/[0.04] text-slate-200 hover:border-white/15 hover:bg-white/[0.08] hover:text-white'}`;
-
   return (
-    <div className="grid min-w-0 gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
-      <aside className="min-w-0 overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-b from-[#071b45] via-[#041743] to-[#020b22] p-4 text-white shadow-[0_20px_55px_rgba(2,8,28,0.55)] lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
-        <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-300 to-orange-600 text-lg font-black text-[#041743] shadow-lg shadow-orange-500/20">{initials}</div>
-            <div className="min-w-0">
-              <p className="truncate text-base font-bold">{user.firstName} {user.lastName}</p>
-              <p className="truncate text-xs text-slate-300">{user.email}</p>
-            </div>
-          </div>
-          <Link to="/ma-fr/account" className="mt-4 flex items-center justify-between rounded-2xl border border-white/10 bg-[#020b22]/50 px-3 py-2 text-sm text-slate-200 transition hover:bg-white/10">
-            <span>Tableau de bord</span><span>→</span>
-          </Link>
+    <div className="min-w-0 overflow-x-hidden">
+      <div className="mb-4 flex items-center justify-between gap-3 lg:hidden">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Espace compte</p>
+          <h1 className="text-2xl font-black text-white">Mon compte</h1>
         </div>
+        <button onClick={() => setDrawerOpen(true)} className="rounded-2xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-black/20">Menu</button>
+      </div>
 
-        <nav className="mt-5 space-y-2" aria-label="Menu du compte">
-          <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Compte</p>
-          {primaryMenu.map((item) => (
-            <NavLink key={item.to} to={item.to} className={navClass}>
-              <span aria-hidden>{item.icon}</span><span>{item.label}</span>
-            </NavLink>
-          ))}
-        </nav>
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
+        <aside className="hidden min-w-0 rounded-[2rem] border border-white/10 bg-gradient-to-b from-[#071b45] via-[#041743] to-[#020b22] p-4 text-white shadow-[0_20px_55px_rgba(2,8,28,0.55)] lg:sticky lg:top-24 lg:block lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
+          <AccountMenuContent />
+        </aside>
+        <main className="min-w-0 overflow-hidden">
+          <Outlet />
+        </main>
+      </div>
 
-        <div className="mt-6 border-t border-white/10 pt-5">
-          <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Aide</p>
-          <div className="mt-2 space-y-1.5">
-            {helpMenu.map((item) => <NavLink key={item.to} to={item.to} className={navClass}>{item.label}</NavLink>)}
-          </div>
+      {drawerOpen ? (
+        <div className="fixed inset-0 z-[90] bg-black/70 backdrop-blur-sm lg:hidden" onClick={() => setDrawerOpen(false)}>
+          <aside className="flex h-full w-[min(88vw,360px)] flex-col overflow-y-auto border-r border-white/10 bg-gradient-to-b from-[#071b45] via-[#041743] to-[#020b22] p-4 text-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <button onClick={() => setDrawerOpen(false)} className="mb-4 w-fit rounded-xl border border-white/20 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10">Fermer</button>
+            <AccountMenuContent onNavigate={() => setDrawerOpen(false)} />
+          </aside>
         </div>
-
-        <button
-          onClick={() => {
-            logout();
-            navigate('/ma-fr/login');
-          }}
-          className="mt-6 w-full rounded-2xl border border-red-300/35 bg-red-500/15 px-4 py-3 text-left text-sm font-semibold text-red-100 transition hover:bg-red-500/25"
-        >
-          Se déconnecter
-        </button>
-      </aside>
-      <main className="min-w-0 overflow-hidden">
-        <Outlet />
-      </main>
+      ) : null}
     </div>
   );
 }

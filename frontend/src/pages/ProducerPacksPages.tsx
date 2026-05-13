@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { producerPacksService, uploadAdminMedia, PackRecord, ProducerDashboardData, ProducerRecord } from '../services/producerPacks';
-import { asciiSlug } from '../utils/slug';
+import { asciiSlug, publicProfileSlug } from '../utils/slug';
 
 const defaultDashboard: ProducerDashboardData = {
   producer: null,
@@ -55,7 +55,7 @@ export function AdminProducersPage(): JSX.Element {
     <div className="grid gap-4 xl:grid-cols-2">{producers.length ? producers.map((producer) => <article key={producer.id} className={card}>
       <div className="flex gap-4"><img src={producer.logo || producer.cover_image || 'https://images.unsplash.com/photo-1505236858219-8359eb29e329?auto=format&fit=crop&w=240&q=80'} alt="" className="h-16 w-16 rounded-2xl object-cover" /><div className="min-w-0 flex-1"><h2 className="truncate text-xl font-bold">{producer.name}</h2><p className="text-sm text-slate-300">/{producer.slug} · {producer.email ?? 'Sans email'} · {producer.is_active ? 'Actif' : 'Inactif'}</p></div></div>
       <p className="mt-3 line-clamp-2 text-sm text-slate-300">{producer.description || 'Aucune description.'}</p>
-      <div className="mt-4 flex flex-wrap gap-2"><select className={input + ' max-w-xs'} value={producer.pack_id ?? ''} onChange={(e) => void producerPacksService.assignPack(producer.id, Number(e.target.value)).then(load)}><option value="">Assigner un pack</option>{packs.map((pack) => <option key={pack.id} value={pack.id}>{pack.name}</option>)}</select><button className={ghostBtn} onClick={() => void producerPacksService.updateProducer(producer.id, { is_active: !producer.is_active }).then(load)}>{producer.is_active ? 'Désactiver' : 'Activer'}</button><Link className={ghostBtn} to={`/ma-fr/producer/${encodeURIComponent(producer.slug)}`}>Page publique</Link><button className={dangerBtn} onClick={() => void producerPacksService.deleteProducer(producer.id).then(load)}>Supprimer</button></div>
+      <div className="mt-4 flex flex-wrap gap-2"><select className={input + ' max-w-xs'} value={producer.pack_id ?? ''} onChange={(e) => void producerPacksService.assignPack(producer.id, Number(e.target.value)).then(load)}><option value="">Assigner un pack</option>{packs.map((pack) => <option key={pack.id} value={pack.id}>{pack.name}</option>)}</select><button className={ghostBtn} onClick={() => void producerPacksService.updateProducer(producer.id, { is_active: !producer.is_active }).then(load)}>{producer.is_active ? 'Désactiver' : 'Activer'}</button><Link className={ghostBtn} to={`/ma-fr/producer/${encodeURIComponent(publicProfileSlug(producer.slug, producer.name))}`}>Page publique</Link><button className={dangerBtn} onClick={() => void producerPacksService.deleteProducer(producer.id).then(load)}>Supprimer</button></div>
     </article>) : <div className={card + ' xl:col-span-2 text-center text-slate-300'}>Aucun fournisseur. Créez votre premier fournisseur avec logo, couverture et pack.</div>}</div>
     <Link className="text-sm font-semibold text-cyan-200 underline" to="/ma-fr/admin/packs">Gérer les packs producteurs</Link>
   </section>;
