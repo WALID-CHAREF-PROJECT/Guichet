@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
+use App\Support\SlugNormalizer;
 
 class MarketplaceController extends Controller
 {
@@ -120,10 +121,7 @@ class MarketplaceController extends Controller
 
     private function normalizedSlugCandidates(string $slug): array
     {
-        $decoded = rawurldecode($slug);
-        $normalized = Str::slug($decoded);
-
-        return array_values(array_unique(array_filter([$slug, $decoded, $normalized])));
+        return SlugNormalizer::candidates($slug);
     }
 
     private function publicOrganizerSlugForEvent(Event $event): ?string
@@ -132,8 +130,12 @@ class MarketplaceController extends Controller
             return null;
         }
 
-        return DB::table('organizers')->where('user_id', $event->organizer_id)->value('slug')
-            ?: DB::table('producers')->where('user_id', $event->organizer_id)->value('slug');
+        $slug = DB::table('organizers')->where('user_id', $event->organizer_id)->value('slug')
+            ?: DB::table('producers')->where('user_id', $event->organizer_id)->value('slug')
+            ?: DB::table('users')->where('id', $event->organizer_id)->value('organization_slug')
+            ?: DB::table('users')->where('id', $event->organizer_id)->value('company_name');
+
+        return $slug ? SlugNormalizer::ascii((string) $slug) : null;
     }
 
     private function mapPublicEvent(Event $event): array
@@ -724,33 +726,35 @@ class MarketplaceController extends Controller
     public function organizerBySlug(string $slug): JsonResponse
     {
         $candidates = $this->normalizedSlugCandidates($slug);
-        $normalized = end($candidates) ?: rawurldecode($slug);
 
-        $organizer = DB::table('organizers')
-            ->where('is_approved', true)
-            ->whereIn('slug', $candidates)
-            ->first();
+        $organizers = DB::table('organizers')
+            ->leftJoin('users', 'organizers.user_id', '=', 'users.id')
+            ->where('organizers.is_approved', true)
+            ->where(fn ($query) => $query->whereNull('users.id')->orWhere('users.is_active', true))
+            ->select('organizers.*', 'users.organization_slug', 'users.company_name as user_company_name', 'users.email as user_email', 'users.phone as user_phone', 'users.is_active as user_is_active')
+            ->get();
 
-        if (!$organizer && $normalized) {
-            $organizer = DB::table('organizers')
-                ->where('is_approved', true)
-                ->get()
-                ->first(fn (object $row): bool => Str::slug((string) $row->slug) === $normalized);
-        }
+        $organizer = $organizers->first(function (object $row) use ($candidates): bool {
+            return SlugNormalizer::matches($row->slug ?? null, $candidates)
+                || SlugNormalizer::matches($row->organization_slug ?? null, $candidates)
+                || SlugNormalizer::matches($row->company_name ?? null, $candidates)
+                || SlugNormalizer::matches($row->user_company_name ?? null, $candidates);
+        });
 
         $producer = null;
         if (!$organizer) {
             $producer = Producer::query()
-                ->where('is_active', true)
-                ->whereIn('slug', $candidates)
-                ->first();
-
-            if (!$producer && $normalized) {
-                $producer = Producer::query()
-                    ->where('is_active', true)
-                    ->get()
-                    ->first(fn (Producer $row): bool => Str::slug((string) $row->slug) === $normalized);
-            }
+                ->leftJoin('users', 'producers.user_id', '=', 'users.id')
+                ->where('producers.is_active', true)
+                ->where(fn ($query) => $query->whereNull('users.id')->orWhere('users.is_active', true))
+                ->select('producers.*', 'users.organization_slug', 'users.company_name as user_company_name', 'users.email as user_email', 'users.phone as user_phone', 'users.is_active as user_is_active')
+                ->get()
+                ->first(function (Producer $row) use ($candidates): bool {
+                    return SlugNormalizer::matches($row->slug ?? null, $candidates)
+                        || SlugNormalizer::matches($row->organization_slug ?? null, $candidates)
+                        || SlugNormalizer::matches($row->name ?? null, $candidates)
+                        || SlugNormalizer::matches($row->user_company_name ?? null, $candidates);
+                });
         }
 
         if (!$organizer && !$producer) {
@@ -760,26 +764,51 @@ class MarketplaceController extends Controller
         $profile = $organizer ? (array) $organizer : [
             'id' => $producer->id,
             'user_id' => $producer->user_id,
-            'company_name' => $producer->name,
-            'slug' => $producer->slug,
+            'company_name' => $producer->name ?: ($producer->user_company_name ?? null),
+            'slug' => $producer->slug ?: ($producer->organization_slug ?? SlugNormalizer::ascii($producer->name)),
             'logo' => $producer->logo,
             'cover_image' => $producer->cover_image,
             'description' => $producer->description,
             'city' => $producer->city,
             'address' => $producer->address,
-            'support_email' => $producer->support_email ?: $producer->email,
-            'support_phone' => $producer->support_phone ?: $producer->phone,
+            'support_email' => $producer->support_email ?: ($producer->email ?: ($producer->user_email ?? null)),
+            'support_phone' => $producer->support_phone ?: ($producer->phone ?: ($producer->user_phone ?? null)),
             'is_approved' => (bool) $producer->is_active,
             'is_active' => (bool) $producer->is_active,
         ];
 
+        $profileSlug = SlugNormalizer::ascii((string) ($profile['slug'] ?? $profile['company_name'] ?? ''));
+        $profileNames = array_values(array_unique(array_filter([
+            $profile['company_name'] ?? null,
+            $producer->name ?? null,
+            $organizer->user_company_name ?? null,
+        ])));
+        $eventOwnerIds = array_values(array_unique(array_filter([$profile['user_id'] ?? null], fn ($id): bool => $id !== null && $id !== '')));
+
         $events = Event::query()
             ->with('category', 'city')
-            ->where('organizer_id', $profile['user_id'] ?? null)
             ->where('status', 'published')
+            ->where(function ($query) use ($eventOwnerIds, $profileSlug, $profileNames): void {
+                if ($eventOwnerIds) {
+                    $query->whereIn('organizer_id', $eventOwnerIds);
+                }
+
+                foreach ($profileNames as $name) {
+                    $method = $eventOwnerIds ? 'orWhere' : 'where';
+                    $query->{$method}('organizer', $name);
+                }
+
+                if (!$eventOwnerIds && !$profileNames && $profileSlug) {
+                    $query->whereRaw('1 = 0');
+                }
+            })
             ->orderBy('event_date')
             ->get()
-            ->map(fn (Event $event) => $this->mapPublicEvent($event));
+            ->filter(fn (Event $event): bool => $eventOwnerIds || in_array($event->organizer, $profileNames, true) || SlugNormalizer::ascii($event->organizer) === $profileSlug)
+            ->map(fn (Event $event) => $this->mapPublicEvent($event))
+            ->values();
+
+        $publicSlug = SlugNormalizer::ascii((string) ($profile['slug'] ?? $profile['company_name'] ?? ''));
 
         return response()->json([
             'organizer' => [
@@ -787,7 +816,7 @@ class MarketplaceController extends Controller
                 'user_id' => isset($profile['user_id']) ? (string) $profile['user_id'] : null,
                 'company_name' => $profile['company_name'],
                 'name' => $profile['company_name'],
-                'slug' => $profile['slug'],
+                'slug' => $publicSlug,
                 'logo' => $this->publicUrl($profile['logo'] ?? null),
                 'cover_image' => $this->publicUrl($profile['cover_image'] ?? null),
                 'description' => $profile['description'] ?? null,
@@ -797,6 +826,7 @@ class MarketplaceController extends Controller
                 'support_phone' => $profile['support_phone'] ?? null,
                 'verified' => (bool) ($profile['is_approved'] ?? $profile['is_active'] ?? false),
                 'is_active' => (bool) ($profile['is_active'] ?? $profile['is_approved'] ?? true),
+                'is_approved' => (bool) ($profile['is_approved'] ?? $profile['is_active'] ?? true),
             ],
             'events' => $events,
         ]);

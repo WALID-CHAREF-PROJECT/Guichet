@@ -1,5 +1,6 @@
 import { API_BASE_URL } from './api/config';
 import { Category, EventItem, PaginatedResponse } from '../types/api';
+import { publicProfileSlug } from '../utils/slug';
 
 const fallbackImage = 'https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?auto=format&fit=crop&w=1200&q=80';
 
@@ -153,6 +154,8 @@ function mapEvent(raw: EventItem & Record<string, unknown>): EventItem {
   return {
     ...raw,
     image_url: image,
+    organizer_slug: publicProfileSlug(raw.organizer_slug as string | null | undefined, raw.organizer),
+    producer_slug: publicProfileSlug((raw as { producer_slug?: string | null }).producer_slug, raw.organizer),
     buyingMode,
     buying_mode: buyingMode,
     hasPlan,
@@ -428,10 +431,11 @@ export interface PublicOrganizerProfile {
 }
 
 export async function getPublicOrganizer(slug: string): Promise<{ organizer: PublicOrganizerProfile; events: EventItem[] }> {
-  const payload = await request<{ organizer: PublicOrganizerProfile; events: Array<EventItem & Record<string, unknown>> }>(`${'/organizers/'}${encodeURIComponent(slug)}`);
+  const payload = await request<{ organizer: PublicOrganizerProfile; events: Array<EventItem & Record<string, unknown>> }>(`${'/organizers/'}${encodeURIComponent(publicProfileSlug(slug) || slug)}`);
   return {
     organizer: {
       ...payload.organizer,
+      slug: publicProfileSlug(payload.organizer.slug, payload.organizer.company_name),
       logo: payload.organizer.logo ? normalizeMediaUrl(payload.organizer.logo) : null,
       cover_image: payload.organizer.cover_image ? normalizeMediaUrl(payload.organizer.cover_image) : null,
     },

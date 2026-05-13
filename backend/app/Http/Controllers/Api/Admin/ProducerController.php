@@ -12,12 +12,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Support\SlugNormalizer;
 
 class ProducerController extends Controller
 {
     private function normalizeSlug(string $value): string
     {
-        return Str::slug($value) ?: Str::lower(trim($value));
+        return SlugNormalizer::ascii($value);
     }
 
     private function prepareSlug(Request $request): void
@@ -44,7 +45,7 @@ class ProducerController extends Controller
             'password' => ['required', 'string', 'min:6'],
             'phone' => ['nullable', 'string', 'max:50'],
             'name' => ['required', 'string', 'max:255'],
-            'slug' => ['required', 'string', 'max:255', 'unique:producers,slug'],
+            'slug' => ['required', 'string', 'max:255', 'unique:producers,slug', 'unique:organizers,slug'],
             'logo' => ['nullable'],
             'cover_image' => ['nullable'],
             'city' => ['nullable', 'string', 'max:255'],
@@ -189,8 +190,8 @@ class ProducerController extends Controller
                 }
 
                 User::query()->whereKey($producer->user_id)->update(array_filter([
-                    'company_name' => $data['name'] ?? null,
-                    'organization_slug' => $data['slug'] ?? null,
+                    'company_name' => $data['name'] ?? ($organizerUpdates['company_name'] ?? null),
+                    'organization_slug' => $data['slug'] ?? ($organizerUpdates['slug'] ?? null),
                     'is_active' => array_key_exists('is_active', $data) ? (bool) $data['is_active'] : null,
                 ], fn ($value) => $value !== null));
             }
