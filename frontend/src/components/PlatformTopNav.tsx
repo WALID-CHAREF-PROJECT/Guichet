@@ -48,23 +48,23 @@ export default function PlatformTopNav({ active, showCategories = false }: { act
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/10 bg-[#030d2a]/95 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-sky-200/10 bg-[#020b22]/90 backdrop-blur-xl">
       <div className="mx-auto w-full max-w-[1800px] px-4 py-4 lg:px-8">
         <div className="flex items-center justify-between gap-4 pb-4">
-          <Link to="/ma-fr/billeterie" className="text-4xl font-black tracking-tight text-white">Guichet</Link>
+          <Link to="/ma-fr/billeterie" className="bg-gradient-to-r from-sky-100 via-cyan-100 to-amber-200 bg-clip-text text-4xl font-black tracking-tight text-transparent">Guichet</Link>
           <div className="flex items-center gap-2">
-            <button className="rounded-full border border-white/25 px-2.5 py-1 text-xs font-semibold text-white hover:bg-white/10">FR</button>
-            <button className="rounded-full border border-white/25 px-2.5 py-1 text-xs font-semibold text-white/75 hover:bg-white/10">MA</button>
-            <Link to="/ma-fr/panier" className="relative rounded-full border border-white/20 bg-white/10 p-2.5 text-sm text-white hover:bg-white/20">🛒<span className="absolute -right-2 -top-2 rounded-full bg-orange-500 px-1.5 text-[10px] font-bold">{totals.totalQuantity}</span></Link>
-            <button onClick={() => setDrawerOpen(true)} className="rounded-full border border-white/20 bg-white/10 p-2.5 text-sm text-white hover:bg-white/20">☰</button>
+            <button className="rounded-full border border-sky-100/30 bg-white/[0.04] px-2.5 py-1 text-xs font-semibold text-white transition hover:bg-white/[0.12]">FR</button>
+            <button className="rounded-full border border-sky-100/20 bg-white/[0.02] px-2.5 py-1 text-xs font-semibold text-slate-300 transition hover:bg-white/[0.12]">MA</button>
+            <Link to="/ma-fr/panier" className="relative rounded-full border border-sky-100/20 bg-white/[0.08] p-2.5 text-sm text-white shadow-glass transition hover:border-sky-200/45 hover:bg-white/[0.16]">🛒<span className="absolute -right-2 -top-2 rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-[#1c1200]">{totals.totalQuantity}</span></Link>
+            <button onClick={() => setDrawerOpen(true)} className="rounded-full border border-sky-100/20 bg-white/[0.08] p-2.5 text-sm text-white transition hover:border-sky-200/45 hover:bg-white/[0.16]">☰</button>
           </div>
         </div>
 
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <ServiceTabs active={active} />
           <div className="flex items-center gap-2">
-            <div className="flex w-full items-center gap-2 rounded-full border border-white/15 bg-[#102249] px-4 py-2 text-sm text-slate-200 xl:w-[390px]"><span>🔎</span><input value={searchParams.get('q') ?? ''} onChange={(e)=>{const next=new URLSearchParams(searchParams.toString()); if(e.target.value) next.set('q', e.target.value); else next.delete('q'); navigate({pathname:location.pathname, search:next.toString()});}} className="w-full bg-transparent outline-none placeholder:text-slate-400" placeholder="Cherchez ce que vous voulez" /></div>
-            <button onClick={openFilters} className="rounded-full border border-white/20 bg-[#102249] p-2.5 text-white hover:bg-[#163264]">⚙️</button>
+            <div className="flex w-full items-center gap-2 rounded-full border border-sky-200/20 bg-[#11284f]/80 px-4 py-2 text-sm text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] xl:w-[390px]"><span>🔎</span><input value={searchParams.get('q') ?? ''} onChange={(e)=>{const next=new URLSearchParams(searchParams.toString()); if(e.target.value) next.set('q', e.target.value); else next.delete('q'); navigate({pathname:location.pathname, search:next.toString()});}} className="w-full bg-transparent outline-none placeholder:text-slate-400" placeholder="Cherchez ce que vous voulez" /></div>
+            <button onClick={openFilters} className="rounded-full border border-sky-200/20 bg-[#11284f]/85 p-2.5 text-white transition hover:border-sky-200/40 hover:bg-[#1a3a71]">⚙️</button>
           </div>
         </div>
       </div>

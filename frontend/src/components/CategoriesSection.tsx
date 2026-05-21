@@ -29,7 +29,7 @@ export default function CategoriesSection({ categories }: Props): JSX.Element {
           <Link
             key={category.id}
             to={`/ma-fr/billeterie?category=${category.slug}`}
-            className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#041743] shadow-sm shadow-black/20 transition hover:-translate-y-1 hover:border-white/25"
+            className="group relative overflow-hidden rounded-2xl border border-sky-100/15 bg-[#041743] shadow-glass transition hover:-translate-y-1 hover:border-sky-200/35"
           >
             <ResponsiveImage
               src={category.image || categoryImages[category.slug] || fallbackCategoryImage}
@@ -38,8 +38,8 @@ export default function CategoriesSection({ categories }: Props): JSX.Element {
               loading="lazy"
               imgClassName="transition duration-300 group-hover:scale-105"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-blue-950/70 via-blue-900/30 to-transparent" />
-            <div className="absolute bottom-3 left-3 rounded-full bg-orange-500 px-3 py-1 text-sm font-semibold text-white">
+            <div className="absolute inset-0 bg-gradient-to-t from-[#031227]/90 via-[#08224f]/40 to-transparent" />
+            <div className="absolute bottom-3 left-3 rounded-full border border-white/20 bg-amber-400/95 px-3 py-1 text-sm font-semibold text-[#281700] shadow-md shadow-amber-500/30">
               {category.name}
             </div>
           </Link>
