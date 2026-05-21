@@ -51,7 +51,7 @@ export default function EventCard({ event }: Props): JSX.Element {
       aria-label={event.title}
       onClick={() => navigate(route)}
       onKeyDown={(keyboardEvent) => { if (keyboardEvent.key === 'Enter') navigate(route); }}
-      className="group relative cursor-pointer overflow-hidden rounded-2xl border border-white/10 bg-[#041743] shadow-sm shadow-black/20 transition duration-300 hover:-translate-y-1 hover:border-white/25 hover:shadow-xl hover:shadow-black/30 focus:outline-none focus:ring-2 focus:ring-orange-400"
+      className="group premium-surface premium-hover relative cursor-pointer overflow-hidden rounded-2xl bg-[#041743]/90 [transform-style:preserve-3d] hover:[transform:perspective(1200px)_translateY(-4px)_rotateX(1.2deg)] focus:outline-none focus:ring-2 focus:ring-orange-400"
     >
       <div className="absolute right-3 top-3 z-10" onClick={(clickEvent) => clickEvent.stopPropagation()}><FavoriteButton itemId={event.slug} itemType="event" payload={{ slug: event.slug, title: event.title, image: event.image_url, location, date: event.starts_at_human, route, organizer: event.organizer }} /></div>
       <ResponsiveImage src={event.image_url} alt={event.title} aspect="video" loading="lazy" imgClassName="transition duration-500 group-hover:scale-105" />

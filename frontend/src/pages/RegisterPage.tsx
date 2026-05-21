@@ -33,24 +33,33 @@ export default function RegisterPage(): JSX.Element {
   }
 
   return (
-    <section className="mx-auto max-w-xl rounded-2xl border border-white/10 bg-[#041743] p-8 shadow-sm">
-      <h1 className="text-3xl font-bold text-white">Inscription</h1>
-      <p className="mt-2 text-slate-300">Créez un compte Guichet et démarrez avec un espace vide personnel.</p>
-      <form onSubmit={(event) => void onSubmit(event)} className="mt-6 space-y-4">
-        <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Prénom" className="w-full rounded border border-white/20 bg-white/5 px-3 py-2" />
-        <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Nom de famille" className="w-full rounded border border-white/20 bg-white/5 px-3 py-2" />
-        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="w-full rounded border border-white/20 bg-white/5 px-3 py-2" />
-        <input type="password" minLength={6} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mot de passe" className="w-full rounded border border-white/20 bg-white/5 px-3 py-2" />
-        <input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Numéro mobile" className="w-full rounded border border-white/20 bg-white/5 px-3 py-2" />
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} /> J'accepte les conditions générales</label>
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={marketing} onChange={(e) => setMarketing(e.target.checked)} /> Recevoir les nouveautés</label>
-        <button type="submit" className="w-full rounded bg-orange-500 px-4 py-2 font-medium text-white hover:bg-orange-600">Créer mon compte</button>
-      </form>
-      {message && <p className="mt-3 text-sm text-red-400">{message}</p>}
-      <p className="mt-4 text-sm text-slate-300">
-        Vous avez déjà un compte ?{' '}
-        <Link to="/ma-fr/login" className="font-semibold text-brand-300">Se connecter</Link>
-      </p>
+    <section className="auth-shell">
+      <div className="auth-card">
+        <div className="auth-brand-row">
+          <span className="auth-brand-icon">✨</span>
+          <div>
+            <p className="auth-kicker">Billetterie Nouvelle Génération</p>
+            <h1 className="auth-title">Inscription</h1>
+          </div>
+        </div>
+        <p className="auth-subtitle">Créez votre compte Guichet et commencez votre expérience ticketing premium.</p>
+
+        <form onSubmit={(event) => void onSubmit(event)} className="mt-8 space-y-4">
+          <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Prénom" className="auth-input" />
+          <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Nom de famille" className="auth-input" />
+          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="auth-input" />
+          <input type="password" minLength={6} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mot de passe" className="auth-input" />
+          <input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Numéro mobile" className="auth-input" />
+          <label className="auth-check-label"><input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} /> J'accepte les conditions générales</label>
+          <label className="auth-check-label"><input type="checkbox" checked={marketing} onChange={(e) => setMarketing(e.target.checked)} /> Recevoir les nouveautés</label>
+          <button type="submit" className="auth-button">Créer mon compte</button>
+        </form>
+
+        {message && <p className="auth-message auth-message-error">{message}</p>}
+        <p className="mt-4 text-sm text-slate-300">
+          Vous avez déjà un compte ? <Link to="/ma-fr/login" className="font-semibold text-brand-300">Se connecter</Link>
+        </p>
+      </div>
     </section>
   );
 }
