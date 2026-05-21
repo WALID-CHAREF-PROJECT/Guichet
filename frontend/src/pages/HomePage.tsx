@@ -43,7 +43,7 @@ export default function HomePage(): JSX.Element {
   return (
     <>
       {loading && <LoadingSkeleton label="Chargement de la page d’accueil..." />}
-      {!loading && error && <EmptyState title="Impossible de charger le contenu public." description={error} action={<button onClick={load} className="rounded-full bg-white px-5 py-2 font-semibold text-[#041743]">Réessayer</button>} />}
+      {!loading && error && <EmptyState title="Impossible de charger le contenu public." description={error} action={<button onClick={load} className="rounded-full border border-sky-100/30 bg-white/95 px-5 py-2 font-semibold text-[#041743] shadow-md">Réessayer</button>} />}
 
       {!loading && !error && (
         <>
@@ -62,18 +62,18 @@ export default function HomePage(): JSX.Element {
           <section className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-4xl font-bold">Événements à l’affiche</h2>
-              <Link to="/ma-fr/billeterie" className="rounded-full border border-white/40 px-4 py-1 text-sm">Tout voir</Link>
+              <Link to="/ma-fr/billeterie" className="rounded-full border border-sky-100/30 bg-white/[0.04] px-4 py-1 text-sm text-slate-100 transition hover:border-sky-200/55 hover:bg-white/[0.12]">Tout voir</Link>
             </div>
             {events.length > 0 ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{events.map((event) => <EventCard key={event.id} event={event} />)}</div> : <EmptyState title="Aucun événement publié pour le moment." />}
           </section>
 
           {categories.length > 0 ? <CategoriesSection categories={categories} /> : <EmptyState title="Aucune catégorie active pour le moment." />}
           {content.filter((block) => !['hero', 'banner'].includes(block.type)).map((block) => (
-            <section key={block.id} className="rounded-2xl border border-white/10 bg-[#041743] p-6">
+            <section key={block.id} className="rounded-2xl border border-sky-100/15 bg-gradient-to-br from-[#0c224b] to-[#081933] p-6 shadow-glass">
               <h2 className="text-2xl font-bold">{block.title}</h2>
               {block.subtitle && <p className="mt-2 text-slate-200">{block.subtitle}</p>}
               {block.description && <p className="mt-3 text-slate-300">{block.description}</p>}
-              {block.ctaLink && block.ctaLabel && <Link to={block.ctaLink} className="mt-4 inline-flex rounded-full bg-white px-4 py-2 font-semibold text-[#041743]">{block.ctaLabel}</Link>}
+              {block.ctaLink && block.ctaLabel && <Link to={block.ctaLink} className="mt-4 inline-flex rounded-full border border-sky-100/40 bg-white px-4 py-2 font-semibold text-[#041743] shadow">{block.ctaLabel}</Link>}
             </section>
           ))}
         </>

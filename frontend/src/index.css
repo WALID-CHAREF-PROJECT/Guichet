@@ -7,10 +7,11 @@
 }
 
 body {
-  @apply bg-[#020f2f] text-slate-100;
+  @apply bg-[#020817] text-slate-100 antialiased;
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  letter-spacing: 0.01em;
 }
 
 #root {
-  @apply min-h-screen bg-[radial-gradient(circle_at_top,#05285d_0%,#03153f_40%,#020f2f_75%)];
+  @apply min-h-screen bg-[radial-gradient(circle_at_top,#0f2a57_0%,#071a3a_30%,#040f25_55%,#020817_78%)] bg-fixed;
 }
