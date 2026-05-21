@@ -15,3 +15,33 @@ body {
 #root {
   @apply min-h-screen bg-[radial-gradient(circle_at_top,#0f2a57_0%,#071a3a_30%,#040f25_55%,#020817_78%)] bg-fixed;
 }
+
+
+.auth-shell {
+  @apply relative mx-auto flex min-h-[75vh] w-full max-w-6xl items-center justify-center overflow-hidden rounded-[2rem] px-4 py-10 md:px-10;
+  background: radial-gradient(circle at 15% 20%, rgba(59, 130, 246, 0.22), transparent 45%), radial-gradient(circle at 80% 15%, rgba(249, 115, 22, 0.24), transparent 35%), linear-gradient(145deg, #020b22, #041743 45%, #07102a);
+}
+.auth-shell::before { content: ''; @apply pointer-events-none absolute inset-0; background: linear-gradient(120deg, rgba(148,163,184,0.06), transparent 30%, rgba(255,255,255,0.04) 65%, transparent 100%); }
+.auth-card { @apply relative z-10 w-full max-w-xl rounded-3xl border border-white/20 bg-white/10 p-8 text-slate-100 shadow-2xl backdrop-blur-2xl; box-shadow: 0 25px 65px rgba(2,8,23,0.55), inset 0 1px 0 rgba(255,255,255,0.25); }
+.auth-card-compact { @apply max-w-2xl; }
+.auth-brand-row { @apply flex items-center gap-4; }
+.auth-brand-icon { @apply inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-white/20 bg-gradient-to-br from-sky-400/60 via-blue-500/40 to-indigo-600/60 text-2xl shadow-lg shadow-blue-900/60; }
+.auth-kicker { @apply text-xs uppercase tracking-[0.2em] text-sky-200; }
+.auth-title { @apply text-3xl font-black text-white; }
+.auth-subtitle { @apply mt-3 text-slate-200; }
+.auth-input { @apply w-full rounded-xl border border-white/20 bg-[#081a47]/80 px-4 py-3 text-white placeholder:text-slate-400 outline-none transition; }
+.auth-input:focus { @apply border-sky-300 ring-2 ring-sky-300/40; }
+.auth-button { @apply w-full rounded-xl bg-gradient-to-r from-orange-500 to-amber-400 px-5 py-3 font-semibold text-slate-900 shadow-lg shadow-orange-800/30 transition duration-300 hover:-translate-y-0.5 hover:shadow-xl; }
+.auth-check-label { @apply flex items-center gap-2 text-sm text-slate-200; }
+.auth-message { @apply mt-4 rounded-xl border px-3 py-2 text-sm; }
+.auth-message-error { @apply border-rose-400/40 bg-rose-500/10 text-rose-200; }
+.auth-message-success { @apply border-emerald-400/40 bg-emerald-500/10 text-emerald-200; }
+
+.premium-surface { @apply border border-white/10 bg-white/[0.04] shadow-[0_20px_45px_rgba(2,8,23,0.35)] backdrop-blur-sm; }
+.premium-hover { @apply transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_55px_rgba(14,116,144,0.28)]; }
+.shimmer { background: linear-gradient(105deg, rgba(255,255,255,0.03) 35%, rgba(255,255,255,0.18) 50%, rgba(255,255,255,0.03) 65%); background-size: 200% 100%; animation: shimmer 1.8s infinite; }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

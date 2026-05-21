@@ -26,22 +26,31 @@ export default function LoginPage(): JSX.Element {
   }
 
   return (
-    <section className="mx-auto max-w-xl rounded-2xl border border-white/10 bg-[#041743] p-8 shadow-sm">
-      <h1 className="text-3xl font-bold text-white">Connexion</h1>
-      <p className="mt-2 text-slate-300">Connectez-vous pour gérer vos billets facilement.</p>
-      <form onSubmit={(event) => void onSubmit(event)} className="mt-6 space-y-4">
-        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Votre email" className="w-full rounded border border-white/20 bg-white/5 px-3 py-2" />
-        <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mot de passe" className="w-full rounded border border-white/20 bg-white/5 px-3 py-2" />
-        <button type="submit" className="w-full rounded bg-brand-600 px-4 py-2 font-medium text-white hover:bg-brand-700">Se connecter</button>
-      </form>
-      {message && <p className="mt-3 text-sm text-red-400">{message}</p>}
-      <p className="mt-4 text-sm text-slate-300">
-        <Link to="/ma-fr/forgot-password" className="font-semibold text-brand-300">Mot de passe oublié ?</Link>
-      </p>
-      <p className="mt-2 text-sm text-slate-300">
-        Nouveau sur Guichet ?{' '}
-        <Link to="/ma-fr/signup" className="font-semibold text-brand-300">Créer un compte</Link>
-      </p>
+    <section className="auth-shell">
+      <div className="auth-card">
+        <div className="auth-brand-row">
+          <span className="auth-brand-icon">🎟️</span>
+          <div>
+            <p className="auth-kicker">Guichet Premium Access</p>
+            <h1 className="auth-title">Connexion</h1>
+          </div>
+        </div>
+        <p className="auth-subtitle">Connectez-vous pour gérer vos billets, réservations et favoris facilement.</p>
+
+        <form onSubmit={(event) => void onSubmit(event)} className="mt-8 space-y-4">
+          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Votre email" className="auth-input" />
+          <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mot de passe" className="auth-input" />
+          <button type="submit" className="auth-button">Se connecter</button>
+        </form>
+
+        {message && <p className="auth-message auth-message-error">{message}</p>}
+        <p className="mt-4 text-sm text-slate-300">
+          <Link to="/ma-fr/forgot-password" className="font-semibold text-brand-300">Mot de passe oublié ?</Link>
+        </p>
+        <p className="mt-2 text-sm text-slate-300">
+          Nouveau sur Guichet ? <Link to="/ma-fr/signup" className="font-semibold text-brand-300">Créer un compte</Link>
+        </p>
+      </div>
     </section>
   );
 }

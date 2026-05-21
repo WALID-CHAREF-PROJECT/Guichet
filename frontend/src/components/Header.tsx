@@ -72,10 +72,10 @@ export default function Header(): JSX.Element {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#031438]/90 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#031438]/80 shadow-[0_12px_35px_rgba(2,8,23,0.45)] backdrop-blur-xl">
       <div className="mx-auto max-w-[1700px] space-y-4 px-4 py-4 lg:px-8">
         <div className="flex items-center justify-between">
-          <Link to="/" className="text-5xl font-black leading-none text-white">{translate('brand')}</Link>
+          <Link to="/" className="rounded-2xl border border-white/20 bg-white/5 px-4 py-1 text-5xl font-black leading-none text-white shadow-lg shadow-sky-900/30">{translate('brand')}</Link>
           <div className="hidden items-center gap-2 md:flex">
             <button onClick={() => changeLanguage('fr')} className={`rounded border px-2 py-0.5 text-xs ${language === 'fr' ? 'border-white/20 bg-white/10' : 'border-white/30'}`}>FR</button>
             <button onClick={() => changeLanguage('en')} className={`rounded border px-2 py-0.5 text-xs ${language === 'en' ? 'border-white/20 bg-white/10' : 'border-white/30'}`}>EN</button>
